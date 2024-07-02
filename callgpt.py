@@ -1,10 +1,8 @@
 import os
-import subprocess
 from openai import AzureOpenAI
 from environment import endpoint,tok
-import requests
 import base64
-from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+
 
 os.environ['AZURE_OPENAI_ENDPOINT'] = endpoint
 os.environ['AZURE_OPENAI_API_KEY'] = tok
