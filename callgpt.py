@@ -14,8 +14,8 @@ client = AzureOpenAI(
     api_version="2024-02-01"
 )
 
-perfect_prompt="What are the references in the text? list it out for me. Then, list out the texts that references these references."
-user_input="What are the references in the text? list it out for me. Then, list out the texts that references these references. "
+perfect_prompt="What are the references in the text? List out the full references for me. Then, list out the texts that references these references."
+user_input="What are the references in the text? List out the full references for me. Then, list out the texts that references these references. "
 PDF="FC-Institute-Publication-on-Lactose-intolerance_2022.pdf"
 text="extracted"
 p=extract_text_from_pdf(PDF)
