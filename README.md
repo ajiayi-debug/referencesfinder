@@ -32,3 +32,6 @@ Run the environment.py script before running anything else. Do re-run environmen
 I personally had no issues with the certificate (I just downloaded the certificate). However, if you do face issues, Insert the following code into environment.py:
 `os.environ['REQUESTS_CA_BUNDLE'] = [path to certificate]`
 You may access the certificate from the relevant parties
+
+## Extracting info from PDF
+[images](https://medium.com/@alexaae9/python-how-to-extract-images-from-pdf-documents-9492a767a613#6a19)
