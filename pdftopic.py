@@ -1,26 +1,39 @@
-from spire.pdf.common import *
-from spire.pdf import *
+import fitz  # PyMuPDF
+from PIL import Image
+import io
 
-# Create a PdfDocument object
-doc = PdfDocument()
+# Open the PDF file
+pdf_document = fitz.open('FC-Institute-Publication-on-Lactose-intolerance_2022.pdf')
 
-# Load a PDF document
-doc.LoadFromFile('FC-Institute-Publication-on-Lactose-intolerance_2022.pdf')
-  
 images = []
 
-# Loop through the pages in the document
-for i in range(doc.Pages.Count):
-    page = doc.Pages.get_Item(i)
+# Loop through each page
+for page_number in range(len(pdf_document)):
+    page = pdf_document.load_page(page_number)
+    images_list = page.get_images(full=True)
+    
+    for img_index, img in enumerate(images_list):
+        xref = img[0]
+        base_image = pdf_document.extract_image(xref)
+        image_bytes = base_image["image"]
+        image_ext = base_image["ext"]
+        
+        # Load the image using PIL
+        image = Image.open(io.BytesIO(image_bytes))
+        
+        # Convert CMYK and palette mode images to RGB
+        if image.mode == "CMYK" or image.mode == "P":
+            image = image.convert("RGB")
+        
+        images.append((image, image_ext, page_number, img_index))
 
-    # Extract images from a specific page
-    for image in page.ExtractImages():
-        images.append(image)
+# Save extracted images
+for image, image_ext, page_number, img_index in images:
+    image_filename = f"FC_lactose_intolerance_page_{page_number+1}_image_{img_index+1}.png"
+    
+    # Save the image using PIL
+    image.save(image_filename)
 
-# Save images to specified location with specified format extension
-index = 0
-for image in images:
-    imageFileName = 'FC_lactose_intolerance_{0:d}.png'.format(index)
-    index += 1
-    image.Save(imageFileName, ImageFormat.get_Png())
-doc.Close()
+pdf_document.close()
+
+
