@@ -19,7 +19,7 @@ def encode_image(image_path):
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode("utf-8")
 
-base64_image = encode_image("roastdr.png") #can be image url as well
+base64_image = encode_image("cropdr.png") #can be image url as well
 
 
 # Create a completion request
