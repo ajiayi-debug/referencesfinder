@@ -1,7 +1,7 @@
 import os
 from openai import AzureOpenAI
 from environment import endpoint,tok
-import base64
+from pdftotext import extract_text_from_pdf, save_text_to_file, read_text_file
 
 
 os.environ['AZURE_OPENAI_ENDPOINT'] = endpoint
@@ -14,25 +14,28 @@ client = AzureOpenAI(
     api_version="2024-02-01"
 )
 
-# Read and encode the image file
-def encode_image(image_path):
-    with open(image_path, "rb") as image_file:
-        return base64.b64encode(image_file.read()).decode("utf-8")
+perfect_prompt="What are the references in the text? list it out for me. Then, list out the texts that references these references."
+user_input="What are the references in the text? list it out for me. Then, list out the texts that references these references. "
+PDF="FC-Institute-Publication-on-Lactose-intolerance_2022.pdf"
+text="extracted"
+p=extract_text_from_pdf(PDF)
+d=save_text_to_file(p,text)
+text=read_text_file(text)
 
-base64_image = encode_image("cropdr.png") #can be image url as well
+
 
 
 # Create a completion request
 response = client.chat.completions.create(
     model="gpt-4o",  # Adjust the model name as needed
+    temperature=0,
     messages=[
         {"role": "system", "content": "You are a helpful assistant."},
         {"role": "user", "content": [
-            {"type": "text", "text": "Can you quantify the ingredients and estimate the respective micronutrients by estimating and calculating the volume of the food in the picture? Use the picture only (no external recipes, just use what you see in the picture and no average size).Include Sodium,Vitamins and Macronutrients. and also give me a classification of what food it is. Format your answer according to this : Food name, then nutrients."},
-            {"type": "image_url", "image_url": {
-                "url": f"data:image/png;base64,{base64_image}"}
-            }
-        ]}
+            {"type": "text", "text": user_input + text},
+            
+            ]
+        }
     ]
 )
 
