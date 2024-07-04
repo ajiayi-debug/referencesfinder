@@ -1,6 +1,9 @@
 from gptapi import *
 from pdftotext import *
 from filenames import *
+from dotenv import load_dotenv
+load_dotenv()
+PDF=os.getenv("PDF")
 
 def main():
     text=full_cycle(PDF,filename="extracted")
