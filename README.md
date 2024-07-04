@@ -12,17 +12,23 @@ Token can be automatically created using environment.py script while endpoint ca
 ### Create .env file
 Replace [endpoint], [google key], [PDF] and [az cli] with the respective links and paths
 ```sh
-
+endpoint = [endpoint]
+googlekey= [google key]
+az_path = [az cli]
+PDF= [PDF]
 
 ```
 
 ### Certificate issues
-I personally had no issues with the certificate (I just downloaded the certificate). However, if you do face issues, insert the following code into environment.py:
+I personally had no issues with the certificate (I just downloaded the certificate). However, if you do face issues, insert the following code into gptapi.py:
 `os.environ['REQUESTS_CA_BUNDLE'] = [path to certificate]`
-You may access the certificate from the relevant parties
 
-## Extracting info from PDF 
-[images](https://medium.com/@alexaae9/python-how-to-extract-images-from-pdf-documents-9492a767a613#6a19)
+as well as
+
+`cert=[path to certificate]` in the .env file
+
+
+You may access the certificate from the relevant parties
 
 ## Encrypting PDF files:
 Replace [PDF] in .env file with the relative path of the PDFs.Try to place the PDFs in the main directory. A future database will be set up.

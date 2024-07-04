@@ -1,3 +1,4 @@
 PyPDF2
 Spire.PDF
 PyMuPDF
+python-dotenv
