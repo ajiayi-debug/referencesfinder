@@ -1,7 +1,9 @@
 # Instuctions for project
 Number of files to create: 2
-[environment.py](environment.py)
-[filenames.py](filenames.py)
+
+environment.py
+
+filenames.py
 
 ## Get access to openai group ad-group as well as install Azure cli tool
 ### Accessing Azure CLI:
@@ -37,7 +39,7 @@ I personally had no issues with the certificate (I just downloaded the certifica
 `os.environ['REQUESTS_CA_BUNDLE'] = [path to certificate]`
 You may access the certificate from the relevant parties
 
-## Extracting info from PDF
+## Extracting info from PDF (Create filenames.py)
 [images](https://medium.com/@alexaae9/python-how-to-extract-images-from-pdf-documents-9492a767a613#6a19)
 
 ## Encrypting PDF files:
