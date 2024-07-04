@@ -4,6 +4,7 @@
 Download Azure CLI from [azure cli](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli-windows?tabs=azure-cli)
 ### Finding Azure CLI:
 Go to CMD and type `where az`.
+
 Take note of the path with `./az.cmd`. You will need this path to create your environment.py
 
 ### Finding token and endpoint
@@ -11,6 +12,7 @@ Token can be automatically created using environment.py script while endpoint ca
 
 ### Create .env file
 Replace [endpoint], [google key], [PDF] and [az cli] with the respective links and paths
+
 ```sh
 endpoint = [endpoint]
 googlekey= [google key]
@@ -21,6 +23,7 @@ PDF= [PDF]
 
 ### Certificate issues
 I personally had no issues with the certificate (I just downloaded the certificate). However, if you do face issues, insert the following code into gptapi.py:
+
 `os.environ['REQUESTS_CA_BUNDLE'] = [path to certificate]`
 
 as well as
