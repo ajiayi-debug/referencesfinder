@@ -46,3 +46,14 @@ def read_text_file(file_path):
     with open(file_path, 'r', encoding='utf-8') as file:
         content = file.read()
     return content
+
+def full_cycle(pdf,filename):
+    p=extract_text_from_pdf(pdf)
+    d=save_text_to_file(p,filename)
+    filename=read_text_file(filename)
+
+    return filename
+
+
+
+
