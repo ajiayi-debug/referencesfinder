@@ -35,7 +35,7 @@ endpoint = [endpoint]
 Run the environment.py script before running anything else. Do re-run environment.py every hour or so as the token refreshes every hour
 
 ### Certificate issues
-I personally had no issues with the certificate (I just downloaded the certificate). However, if you do face issues, Insert the following code into environment.py:
+I personally had no issues with the certificate (I just downloaded the certificate). However, if you do face issues, insert the following code into environment.py:
 `os.environ['REQUESTS_CA_BUNDLE'] = [path to certificate]`
 You may access the certificate from the relevant parties
 
@@ -43,7 +43,7 @@ You may access the certificate from the relevant parties
 [images](https://medium.com/@alexaae9/python-how-to-extract-images-from-pdf-documents-9492a767a613#6a19)
 
 ## Encrypting PDF files:
-create filenames.py before running main.py. Input the PDF as follows:
+Create filenames.py before running main.py. Input the PDF as follows:
 ```sh
 PDF="pdf relative path"
 ```
