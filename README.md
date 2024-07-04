@@ -46,3 +46,6 @@ Create filenames.py before running main.py. Input the PDF as follows:
 PDF="pdf relative path"
 ```
 Make sure to place the PDFs in the main directory 
+
+## Getting google api key
+Go to [Google api search](https://developers.google.com/custom-search/v1/overview) and request for an api key. 
