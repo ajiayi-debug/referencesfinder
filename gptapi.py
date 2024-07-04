@@ -38,3 +38,8 @@ def request(text):
 
     # Print the response
     return response.choices[0].message.content
+
+
+
+##How to ask chatgpt to search the internet????????????
+## encrypt PDF names

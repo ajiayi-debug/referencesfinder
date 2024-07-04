@@ -12,11 +12,11 @@ filename="extracted"
 
 # print(output)
 
-def main(PDF,filename):
+def main():
     text=full_cycle(PDF,filename)
     output=request(text)
     print(output)
 
 if __name__=="__main__":
-    main(PDF,filename)
+    main()
     
