@@ -42,4 +42,3 @@ def request(text):
 
 
 ##How to ask chatgpt to search the internet????????????
-## encrypt PDF names
