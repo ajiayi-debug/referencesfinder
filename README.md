@@ -18,8 +18,12 @@ Take note of the path with `./az.cmd`. You will need this path to create your .e
 
 ### Finding token and endpoint
 Token can be automatically created using [gptapi.py](gptapi.py) script while endpoint can be found in Azure AI Studios/ Resources and Keys/ Resource name/ </> View Code
+## Encrypting PDF files:
+Replace [PDF] in .env file with the relative path of the PDFs.Try to place the PDFs in the main directory. A future database will be set up.
 
-### Create .env file
+## Getting google api key
+Go to [Google api search](https://developers.google.com/custom-search/v1/overview) and request for an api key. Replace [google key] in .env file with the received key.
+## Create .env file
 Replace [endpoint], [google key], [PDF] and [az cli] with the respective links and paths
 
 ```sh
@@ -30,7 +34,7 @@ PDF= [PDF]
 
 ```
 
-### Certificate issues
+## Certificate issues
 I personally had no issues with the certificate (I just downloaded the certificate). However, if you do face issues, insert the following code into gptapi.py:
 
 ```sh
@@ -48,8 +52,4 @@ in the .env file
 
 You may access the certificate from the relevant parties
 
-## Encrypting PDF files:
-Replace [PDF] in .env file with the relative path of the PDFs.Try to place the PDFs in the main directory. A future database will be set up.
 
-## Getting google api key
-Go to [Google api search](https://developers.google.com/custom-search/v1/overview) and request for an api key. Replace [google key] in .env file with the received key.
