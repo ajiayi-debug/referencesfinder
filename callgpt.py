@@ -14,8 +14,8 @@ client = AzureOpenAI(
     api_version="2024-02-01"
 )
 
-perfect_prompt="What are the references in the text? List out the full references for me. Then, list out the texts that references these references."
-user_input="What are the references in the text? List out the full references for me. Then, list out the texts that references these references. "
+perfect_prompt="What are the references in the text? List out the full references for me. Then, list out the full texts that references these references according to page number."
+user_input="You are in charge of updating PDFs for the company. In the following text, what are the references in the text? List out the full references. Then, list out the full texts that references these references according to page number. Make sure to state any mistakes in the referencing such as duplicate referencing or unused referencing."
 PDF="FC-Institute-Publication-on-Lactose-intolerance_2022.pdf"
 text="extracted"
 p=extract_text_from_pdf(PDF)
@@ -30,9 +30,9 @@ response = client.chat.completions.create(
     model="gpt-4o",  # Adjust the model name as needed
     temperature=0,
     messages=[
-        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "system", "content": user_input},
         {"role": "user", "content": [
-            {"type": "text", "text": user_input + text},
+            {"type": "text", "text": text},
             
             ]
         }
