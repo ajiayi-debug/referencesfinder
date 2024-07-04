@@ -1,6 +1,5 @@
-environment.py
 __pycache__/
 *.pdf
 *.docx
-filenames.py
 extracted.txt
+.env
