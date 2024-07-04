@@ -1,4 +1,11 @@
 # Instructions for project
+## Installing dependencies
+To start, install the required packages:
+
+```sh
+pip install -r requirements.txt
+```
+
 ## Get access to openai group ad-group as well as install Azure cli tool
 ### Accessing Azure CLI:
 Download Azure CLI from [azure cli](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli-windows?tabs=azure-cli)
@@ -24,11 +31,17 @@ PDF= [PDF]
 ### Certificate issues
 I personally had no issues with the certificate (I just downloaded the certificate). However, if you do face issues, insert the following code into gptapi.py:
 
-`os.environ['REQUESTS_CA_BUNDLE'] = [path to certificate]`
+```sh
+os.environ['REQUESTS_CA_BUNDLE'] = [path to certificate]
+```
 
 as well as
 
-`cert=[path to certificate]` in the .env file
+```sh
+cert=[path to certificate]
+```
+
+in the .env file
 
 
 You may access the certificate from the relevant parties
