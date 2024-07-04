@@ -48,6 +48,7 @@ def read_text_file(file_path):
     return content
 
 def full_cycle(pdf,filename):
+    filename=filename+".txt"
     p=extract_text_from_pdf(pdf)
     d=save_text_to_file(p,filename)
     filename=read_text_file(filename)
