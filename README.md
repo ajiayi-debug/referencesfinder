@@ -10,12 +10,14 @@ pip install -r requirements.txt
 ### Accessing Azure CLI:
 Download Azure CLI from [azure cli](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli-windows?tabs=azure-cli)
 ### Finding Azure CLI:
+This part is only necessary if your device cannot find the path to Azure CLI. 
+
 Go to CMD and type `where az`.
 
-Take note of the path with `./az.cmd`. You will need this path to create your environment.py
+Take note of the path with `./az.cmd`. You will need this path to create your .env file
 
 ### Finding token and endpoint
-Token can be automatically created using environment.py script while endpoint can be found in Azure AI Studios/ Resources and Keys/ Resource name/ </> View Code
+Token can be automatically created using [gptapi.py](gptapi.py) script while endpoint can be found in Azure AI Studios/ Resources and Keys/ Resource name/ </> View Code
 
 ### Create .env file
 Replace [endpoint], [google key], [PDF] and [az cli] with the respective links and paths
