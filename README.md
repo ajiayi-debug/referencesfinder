@@ -1,4 +1,4 @@
-# Instuctions for project
+# Instructions for project
 Number of files to create: 2
 
 environment.py
