@@ -2,3 +2,13 @@ PyPDF2
 Spire.PDF
 PyMuPDF
 python-dotenv
+langchain
+openai
+chromadb
+langchain-community
+langchain-openai
+google-api-python-client
+langchain-google-community
+certifi
+beautifulsoup4
+lxml
