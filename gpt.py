@@ -30,38 +30,63 @@ name=os.getenv("name")
 ver=os.getenv("ver")
 cert=os.getenv("cert")
 
-text="Where shall I eat dinner today in Singapore??"
 
+
+# Initialize the AzureOpenAI client
 client = AzureOpenAI(
     azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"), 
     api_key=os.getenv("AZURE_OPENAI_API_KEY"),  
     api_version=os.getenv("ver")
 )
 
-response = client.chat.completions.create(
+
+system_prompt="You are in charge of updating PDFs for the company. In the following text, what are the references in the text? List out the full references. Then, list out the full texts that references these references according to page number. Make sure to state any mistakes in the referencing such as duplicate referencing or unused referencing."
+
+edit="If the updated references debunks the text, add on to the previous text of the latest citations debunking the previous citation's claims. Make sure to retain the previous text as much as possible."
+
+
+
+# Create a completion request
+def request(text):
+    response = client.chat.completions.create(
         model="gpt-4o",  # Adjust the model name as needed
         temperature=0,
         messages=[
-            {"role": "system", "content": "Refine the query for a google search. For example, Query: Is Sam Altman fired? Refined Query: Sam Altman fired"},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": [
                 {"type": "text", "text": text},
                 
-            ]
-        }
-    ]
-)
+                ]
+            }
+        ]
+    )
 
-output=response.choices[0].message.content
+    # Print the response
+    return response.choices[0].message.content
 
-print(output)
+def findref(references):
+    response = client.chat.completions.create(
+            model="gpt-4o",  # Adjust the model name as needed
+            temperature=0,
+            messages=[
+                {"role": "system", "content": "Refine the query for a google search of related references in order to update them such that it supports (or debunks) the related texts that used the references."},
+                {"role": "user", "content": [
+                    {"type": "text", "text": references},
+                
+                ]
+            }
+        ]
+    )
+
+    output=response.choices[0].message.content
+    return output
 
 def google_search(query, api_key, cse_id, num=1):
     service = build("customsearch", "v1", developerKey=api_key)
     result = service.cse().list(q=query, cx=cse_id, num=num).execute()
     return result['items']
 
-gs=google_search(output,google_api_key,google_cse_id,num=1)
-print(gs)
+
 
 def fetch_web_content(url):
     try:
@@ -92,12 +117,3 @@ def summarize_content(content,qns):
     except requests.RequestException as e:
         print(f"Failed to summarize content: {e}")
         return ""
-
-for result in gs:
-    title = result['title']
-    link = result['link']
-    print(f"Fetching content from: {title} - {link}")
-    content = fetch_web_content(link)
-    content=summarize_content(content,text)
-    print(content)
-    
