@@ -3,3 +3,5 @@ __pycache__/
 *.docx
 extracted.txt
 .env
+DigiCert_Global_Root_G2.crt
+chroma_db_oai/
