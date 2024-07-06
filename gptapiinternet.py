@@ -30,7 +30,7 @@ name=os.getenv("name")
 ver=os.getenv("ver")
 cert=os.getenv("cert")
 
-text="Where shall I eat dinner today in Singapore??"
+text="What is the weather today?"
 
 client = AzureOpenAI(
     azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"), 
@@ -55,7 +55,7 @@ output=response.choices[0].message.content
 
 print(output)
 
-def google_search(query, api_key, cse_id, num=1):
+def google_search(query, api_key, cse_id, num=5):
     service = build("customsearch", "v1", developerKey=api_key)
     result = service.cse().list(q=query, cx=cse_id, num=num).execute()
     return result['items']
@@ -80,7 +80,7 @@ def summarize_content(content,qns):
             model="gpt-4o",  # Adjust the model name as needed
             temperature=0,
             messages=[
-                {"role": "system", "content": f"Summarise the content to answer the question {qns}"},
+                {"role": "system", "content": f"Summarise the content to answer the question {qns}. Include the links used"},
                 {"role": "user", "content": [
                     {"type": "text", "text": content},
                 

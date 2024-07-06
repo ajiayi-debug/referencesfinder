@@ -81,7 +81,7 @@ def findref(references):
     output=response.choices[0].message.content
     return output
 
-def google_search(query, api_key, cse_id, num=1):
+def google_search(query, api_key, cse_id, num=10):
     service = build("customsearch", "v1", developerKey=api_key)
     result = service.cse().list(q=query, cx=cse_id, num=num).execute()
     return result['items']
