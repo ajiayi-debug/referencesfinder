@@ -30,7 +30,7 @@ name=os.getenv("name")
 ver=os.getenv("ver")
 cert=os.getenv("cert")
 
-text="What is the weather today at Singapore?"
+text="What is the weather today?"
 
 client = AzureOpenAI(
     azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"), 
@@ -61,7 +61,7 @@ def google_search(query, api_key, cse_id, num=5):
     return result['items']
 
 gs=google_search(output,google_api_key,google_cse_id,num=1)
-print(gs)
+
 
 def fetch_web_content(url):
     try:
@@ -69,7 +69,7 @@ def fetch_web_content(url):
         response.raise_for_status()
         soup = BeautifulSoup(response.text, 'lxml')
         text = soup.get_text(separator=' ', strip=True)
-        print(text)
+        
         return text
     except requests.RequestException as e:
         print(f"Failed to fetch {url}: {e}")
