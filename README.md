@@ -1,4 +1,4 @@
-# Instructions for project
+# Instructions for project (as of 8/7/2024)
 ## Installing dependencies
 To start, install the required packages:
 
@@ -16,40 +16,44 @@ Go to CMD and type `where az`.
 
 Take note of the path with `./az.cmd`. You will need this path to create your .env file
 
-### Finding token and endpoint
-Token can be automatically created using [gptapi.py](gptapi.py) script while endpoint can be found in Azure AI Studios/ Resources and Keys/ Resource name/ </> View Code
+## Finding token and endpoint
+Token will automatically be created when running [main.py](main.py) while endpoint can be found in Azure AI Studios/ Resources and Keys/ Resource name/ </> View Code
 ## Encrypting PDF files:
 Replace [PDF] in .env file with the relative path of the PDFs.Try to place the PDFs in the main directory. A future database will be set up.
 
-## Getting google api key
-Go to [Google api search](https://developers.google.com/custom-search/v1/overview) and request for an api key. Replace [google key] in .env file with the received key.
+## Finding version
+Take note that the prompt format only works for gpt 4 onwards (only can recognise images with gpt 4 onwards). Replace [model] with gpt version. In my case, I used "gpt-4o". Replace [version] with your version of model. This can be found in Azure AI Studios/ Resources and Keys/ Deployments/ name of model. In my case, I used "2024-02-01"
+
+## Getting google api key and google cse id
+Go to [Google api search](https://developers.google.com/custom-search/v1/overview) and request for an api key. Replace [google api key] in .env file with the received key.
+
+Go to [Google CSE id creation](https://programmablesearchengine.google.com/controlpanel/create) and create a cse id. Replace [google cse id] in .env file with the received cse id.
+
+
+## Certificate issues
+I personally had no issues with the certificate (I just downloaded the certificate). However, if you do face issues, insert the path to certificate into [path to certificate]
+
 ## Create .env file
-Replace [endpoint], [google key], [PDF] and [az cli] with the respective links and paths
+Replace [endpoint], [google api key], [PDF], [path to certificate], [google cse id], [version], [model] and [az cli] with the respective links and paths
 
 ```sh
 endpoint = [endpoint]
-googlekey= [google key]
+googleapikey= [google api key]
 az_path = [az cli]
 PDF= [PDF]
-
-```
-
-## Certificate issues
-I personally had no issues with the certificate (I just downloaded the certificate). However, if you do face issues, insert the following code into gptapi.py:
-
-```sh
-os.environ['REQUESTS_CA_BUNDLE'] = [path to certificate]
-```
-
-as well as
-
-```sh
+googlecseid=[google cse id]
+ver=[version]
+name=[model]
 cert=[path to certificate]
 ```
+## How to run:
+### PDF
+Replace [PDF] with the PDF you would liuke to get references and related references for. (future update will include rewriting some parts of texts to include debunks, etc)
+### Running project
+Run [main.py](main.py). You will see an excel file called output.xlsx containing a summary for each article referenced in the PDF as well as the created query by gpt to input into google search. 
 
-in the .env file
+[gpt.py](gpt.py) and [pdftotext.py](pdftotext.py) contains all main functions used. 
 
-
-You may access the certificate from the relevant parties
+[gptapiinternet.py](gptapiinternet.py) provides a reference on how to connect gpt api to google
 
 
