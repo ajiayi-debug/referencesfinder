@@ -30,7 +30,7 @@ name=os.getenv("name")
 ver=os.getenv("ver")
 cert=os.getenv("cert")
 
-text="What is the weather today?"
+text="What is the weather today at Singapore?"
 
 client = AzureOpenAI(
     azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"), 
@@ -69,6 +69,7 @@ def fetch_web_content(url):
         response.raise_for_status()
         soup = BeautifulSoup(response.text, 'lxml')
         text = soup.get_text(separator=' ', strip=True)
+        print(text)
         return text
     except requests.RequestException as e:
         print(f"Failed to fetch {url}: {e}")
