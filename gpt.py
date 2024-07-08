@@ -6,6 +6,9 @@ from googleapiclient.discovery import build
 from dotenv import load_dotenv
 from openai import AzureOpenAI
 from bs4 import BeautifulSoup
+import time
+from googleapiclient.errors import HttpError
+import pandas as pd
 
 
 load_dotenv()
@@ -69,7 +72,7 @@ def findref(references):
             model="gpt-4o",  # Adjust the model name as needed
             temperature=0,
             messages=[
-                {"role": "system", "content": "Refine the query for a google search of related references in order to update them such that it supports (or debunks) the related texts that used the references."},
+                {"role": "system", "content": "Refine the query for a google search of related references in order to update them such that it supports (or debunks) the related texts that used the references. As your knowledge is cut off from 2023, just say latest update instead of year in the queries. Return the queires in list form such that I can iterate through with code. For example, [query1,query2,...]. No extra words ."},
                 {"role": "user", "content": [
                     {"type": "text", "text": references},
                 
@@ -81,10 +84,24 @@ def findref(references):
     output=response.choices[0].message.content
     return output
 
-def google_search(query, api_key, cse_id, num=10):
-    service = build("customsearch", "v1", developerKey=api_key)
-    result = service.cse().list(q=query, cx=cse_id, num=num).execute()
-    return result['items']
+def google_search(query, num=1, max_retries=3):
+    service = build("customsearch", "v1", developerKey=google_api_key)
+    retries = 0
+    while retries < max_retries:
+        try:
+            result = service.cse().list(q=query, cx=google_cse_id, num=num).execute()
+            return result['items']
+        except HttpError as e:
+            print(f"HTTP error occurred: {e}")
+            retries += 1
+            time.sleep(5)  # Wait for 5 seconds before retrying
+        except Exception as e:
+            print(f"Error occurred: {e}")
+            retries += 1
+            time.sleep(5)  # Wait for 5 seconds before retrying
+    
+    print(f"Failed to retrieve search results for query: {query}")
+    return []
 
 
 
@@ -99,13 +116,13 @@ def fetch_web_content(url):
         print(f"Failed to fetch {url}: {e}")
         return ""
 
-def summarize_content(content,qns):
+def summarize_content(content):
     try:
         response = client.chat.completions.create(
             model="gpt-4o",  # Adjust the model name as needed
             temperature=0,
             messages=[
-                {"role": "system", "content": f"Summarise the content to answer the question {qns}"},
+                {"role": "system", "content": f"Summarise the content."},
                 {"role": "user", "content": [
                     {"type": "text", "text": content},
                 
@@ -117,3 +134,67 @@ def summarize_content(content,qns):
     except requests.RequestException as e:
         print(f"Failed to summarize content: {e}")
         return ""
+
+def convert_to_excel(excel_data):
+    df = pd.DataFrame(excel_data)
+    excel_filename = "output.xlsx"
+    df.to_excel(excel_filename, index=False, engine='openpyxl')
+    print(f"Summarized content saved to '{excel_filename}'")
+    return excel_filename
+
+def findsimiliar(excel):
+    df=pd.read_excel(excel)
+    ls=[]
+    excel_filename = "output.xlsx"
+    for c in df["Summarized Content"]:
+        ls.append(call(c))
+    df["similiar?"]=ls
+    df.to_excel(excel_filename, index=False, engine='openpyxl')
+    print(f"Summarized content saved to '{excel_filename}'")
+    
+
+def call(col):
+    response = client.chat.completions.create(
+            model="gpt-4o",  # Adjust the model name as needed
+            temperature=0,
+            messages=[
+                {"role": "system", "content": "Create a query to find similiar articles or an article that is of opposing view to it. Make sure it is released after the date it was published. Return the queires in list form such that I can iterate through with code. For example, [query1,query2,...]. No extra words ."},
+                {"role": "user", "content": [
+                    {"type": "text", "text": col},
+                
+                ]
+            }
+        ]
+    )
+    gs=google_search(response.choices[0].message.content)
+    first_result_url = gs[0]['link']
+    content = fetch_web_content(first_result_url)
+    summarized_content = summarize_content(content)
+    return summarized_content
+
+
+
+def get_summary_of_existing(ref):
+    excel_data=[]
+
+    for r in ref:
+        search_results=google_search(r)
+        if search_results:
+            # Fetch content from the first search result URL
+            first_result_url = search_results[0]['link']
+            content = fetch_web_content(first_result_url)
+            
+            if content:
+                # Summarize the fetched content
+                summarized_content = summarize_content(content)
+                print(f"Summarized content for query '{r}':\n{summarized_content}")
+                excel_data.append({"Query": r, "Summarized Content": summarized_content})
+            else:
+                print(f"Failed to fetch content from {first_result_url}")
+        else:
+            print(f"No search results found for query '{r}'")
+    if excel_data:
+        df = pd.DataFrame(excel_data)
+        excel_filename = "output.xlsx"
+        df.to_excel(excel_filename, index=False, engine='openpyxl')
+        print(f"Summarized content saved to '{excel_filename}'")
