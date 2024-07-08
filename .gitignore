@@ -6,3 +6,4 @@ extracted.txt
 *.crt
 chroma_db_oai/
 test.py
+*.xlsx

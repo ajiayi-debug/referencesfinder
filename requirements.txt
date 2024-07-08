@@ -12,6 +12,7 @@ langchain-google-community
 certifi
 beautifulsoup4
 lxml
-selenium
 base64
 webdriver-manager
+pandas
+openpyxl
