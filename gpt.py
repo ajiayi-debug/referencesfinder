@@ -67,6 +67,9 @@ def request(text):
     # Print the response
     return response.choices[0].message.content
 
+
+
+
 def findref(references):
     response = client.chat.completions.create(
             model="gpt-4o",  # Adjust the model name as needed
@@ -116,24 +119,24 @@ def fetch_web_content(url):
         print(f"Failed to fetch {url}: {e}")
         return ""
 
-def summarize_content(content):
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4o",  # Adjust the model name as needed
-            temperature=0,
-            messages=[
-                {"role": "system", "content": f"Summarise the content."},
-                {"role": "user", "content": [
-                    {"type": "text", "text": content},
+# def summarize_content(content):
+#     try:
+#         response = client.chat.completions.create(
+#             model="gpt-4o",  # Adjust the model name as needed
+#             temperature=0,
+#             messages=[
+#                 {"role": "system", "content": f"Summarise the content."},
+#                 {"role": "user", "content": [
+#                     {"type": "text", "text": content},
                 
-                    ]
-                }
-            ]
-        )
-        return response.choices[0].message.content
-    except requests.RequestException as e:
-        print(f"Failed to summarize content: {e}")
-        return ""
+#                     ]
+#                 }
+#             ]
+#         )
+#         return response.choices[0].message.content
+#     except requests.RequestException as e:
+#         print(f"Failed to summarize content: {e}")
+#         return ""
 
 def convert_to_excel(excel_data):
     df = pd.DataFrame(excel_data)
@@ -142,59 +145,33 @@ def convert_to_excel(excel_data):
     print(f"Summarized content saved to '{excel_filename}'")
     return excel_filename
 
-def findsimiliar(excel):
-    df=pd.read_excel(excel)
-    ls=[]
-    excel_filename = "output.xlsx"
-    for c in df["Summarized Content"]:
-        ls.append(call(c))
-    df["similiar?"]=ls
-    df.to_excel(excel_filename, index=False, engine='openpyxl')
-    print(f"Summarized content saved to '{excel_filename}'")
+
     
 
-def call(col):
-    response = client.chat.completions.create(
-            model="gpt-4o",  # Adjust the model name as needed
-            temperature=0,
-            messages=[
-                {"role": "system", "content": "Create a query to find similiar articles or an article that is of opposing view to it. Make sure it is released after the date it was published. Return the queires in list form such that I can iterate through with code. For example, [query1,query2,...]. No extra words ."},
-                {"role": "user", "content": [
-                    {"type": "text", "text": col},
-                
-                ]
-            }
-        ]
-    )
-    gs=google_search(response.choices[0].message.content)
-    first_result_url = gs[0]['link']
-    content = fetch_web_content(first_result_url)
-    summarized_content = summarize_content(content)
-    return summarized_content
 
 
 
-def get_summary_of_existing(ref):
-    excel_data=[]
+# def get_summary_of_existing(ref):
+#     excel_data=[]
 
-    for r in ref:
-        search_results=google_search(r)
-        if search_results:
-            # Fetch content from the first search result URL
-            first_result_url = search_results[0]['link']
-            content = fetch_web_content(first_result_url)
+#     for r in ref:
+#         search_results=google_search(r)
+#         if search_results:
+#             # Fetch content from the first search result URL
+#             first_result_url = search_results[0]['link']
+#             content = fetch_web_content(first_result_url)
             
-            if content:
-                # Summarize the fetched content
-                summarized_content = summarize_content(content)
-                print(f"Summarized content for query '{r}':\n{summarized_content}")
-                excel_data.append({"Query": r, "Summarized Content": summarized_content})
-            else:
-                print(f"Failed to fetch content from {first_result_url}")
-        else:
-            print(f"No search results found for query '{r}'")
-    if excel_data:
-        df = pd.DataFrame(excel_data)
-        excel_filename = "output.xlsx"
-        df.to_excel(excel_filename, index=False, engine='openpyxl')
-        print(f"Summarized content saved to '{excel_filename}'")
+#             if content:
+#                 # Summarize the fetched content
+#                 summarized_content = summarize_content(content)
+#                 print(f"Summarized content for query '{r}':\n{summarized_content}")
+#                 excel_data.append({"Query": r, "Summarized Content": summarized_content})
+#             else:
+#                 print(f"Failed to fetch content from {first_result_url}")
+#         else:
+#             print(f"No search results found for query '{r}'")
+#     if excel_data:
+#         df = pd.DataFrame(excel_data)
+#         excel_filename = "output.xlsx"
+#         df.to_excel(excel_filename, index=False, engine='openpyxl')
+#         print(f"Summarized content saved to '{excel_filename}'")
