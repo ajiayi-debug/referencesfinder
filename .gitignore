@@ -1,9 +1,10 @@
 __pycache__/
 *.pdf
 *.docx
-extracted.txt
+*.txt
 .env
 *.crt
 chroma_db_oai/
 test.py
 *.xlsx
+doc/

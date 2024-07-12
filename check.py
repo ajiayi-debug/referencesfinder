@@ -11,10 +11,12 @@ from googleapiclient.errors import HttpError
 import pandas as pd
 from pdftotext import *
 
-load_dotenv()
 
-text="A proportion of the world’s population is able to tolerate lactose as they have a genetic variation that ensures they continue to produce sufficient quantities of the enzyme lactase after childhood."
-PDF="heyman.pdf"
+load_dotenv()
+pdf=os.getenv("PDF")
+
+PDF=[]
+
 
 az_path = os.getenv("az_path")
 
@@ -44,15 +46,71 @@ client = AzureOpenAI(
     api_version=os.getenv("ver")
 )
 
+system_prompt="You are in charge of updating PDFs for the company. In the following text, what are the references in the text? List out the full references. Then, list out the full texts that references these references according to page number. Make sure to state any mistakes in the referencing such as duplicate referencing or unused referencing."
 
 
 # Create a completion request
-def request(pdf):
+def request(text):
     response = client.chat.completions.create(
         model="gpt-4o",  # Adjust the model name as needed
         temperature=0,
         messages=[
-            {"role": "system", "content": "You are a reference fact checker. You check if the text content can be found in the PDF. If yes, you highlight the information in the PDF"},
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": [
+                {"type": "text", "text": text},
+                
+                ]
+            }
+        ]
+    )
+
+    # Print the response
+    return response.choices[0].message.content
+
+
+def streamline(output):
+    response = client.chat.completions.create(
+        model="gpt-4o",  # Adjust the model name as needed
+        temperature=0,
+        messages=[
+            {"role": "system", "content": "return the full text referencing the references as well as the references (in their correct citation format) in this format: {[text 1, reference 1],[text 2, reference 2],...}. Dont bother about the mistakes. Only return in that format only. I want to use the output for coding."},
+            {"role": "user", "content": [
+                {"type": "text", "text": output},
+                
+                ]
+            }
+        ]
+    )
+
+    # Print the response
+    return response.choices[0].message.content
+
+def arrange(input,list):
+    response = client.chat.completions.create(
+        model="gpt-4o",  # Adjust the model name as needed
+        temperature=0,
+        messages=[
+            {"role": "system", "content": "Arrange the references according to the list of names of PDFs. Make sure that each name has their own text (not the other way around). If the reference does not exist in the list, remove the reference. Keep the original format of the dictionary of lists. Only return the dictionary, do not include the words python or ```"},
+            {"role": "user", "content": [
+                {"type": "text", "text": input},
+                {"type": "text", "text": list},
+                
+                ]
+            }
+        ]
+    )
+
+    # Print the response
+    return response.choices[0].message.content
+
+# Create a completion request
+def checker(pdf,text):
+    query="You are a reference fact checker. You check if the text content can be found in the PDF. If yes, you highlight the information in the PDF"
+    response = client.chat.completions.create(
+        model="gpt-4o",  # Adjust the model name as needed
+        temperature=0,
+        messages=[
+            {"role": "system", "content": query},
             {"role": "user", "content": [
                 {"type": "text", "text": text},
                 {"type": "text", "text": pdf}
@@ -64,7 +122,32 @@ def request(pdf):
     # Print the response
     return response.choices[0].message.content
 
+d=["Aliment Pharmacol Ther - 2007 - LOMER - Review article  lactose intolerance in clinical practice   myths and realities.pdf","Countryregionalandglobalestimates.pdf","Effects_of_Prebiotic_and_Probiotic_Supplementation.pdf","EFSA Journal - 2010 -  - Scientific Opinion on lactose thresholds in lactose intolerance and galactosaemia.pdf","FermentedfoodsandprobioticsAnapproach.pdf","heyman.pdf","Kranen.pdf","lactose_intolerance_an_update_on_its_pathogenesis_diagnosis_treatment.pdf","lactoseandlactosederivatives.pdf","lactosemalabsorptionandintolerance.pdf","lactosemalabsorptionandpresumedrelateddisorders.pdf","M47NHG-Standaard_Voedselovergevoeligheid.pdf","managementandtreatmentoflactosemalabsorption.pdf","updateonlactoseintoleranceandmalabsorption.pdf" ]
+dstr=str(d)
+Doc=[]
+for i in range(len(d)):
+    texts=full_cycle(d[i],filename=str(i))
+    Doc.append(str(i)+".txt")
 
-pdf=full_cycle(PDF,filename="extracted")
-rq=request(pdf)
-print(rq)
+for filename in Doc:
+    # Read the processed content from the file
+    input_path = filename  # Assuming files are in the current directory
+    with open(input_path, 'r', encoding='utf-8') as f:
+        processed_text = f.read()
+    
+    # Write the processed content to the 'doc' directory
+    output_path = os.path.join('doc', filename)
+    with open(output_path, 'w', encoding='utf-8') as f:
+        f.write(processed_text)
+
+
+
+
+
+main=full_cycle(pdf,filename="extracted")
+output=request(main)
+print(output)
+sl=streamline(output)
+arg=arrange(sl,dstr)
+print(arg)
+#Should I one by one check each element or shuld I insert ALL elements ?????

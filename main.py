@@ -7,9 +7,10 @@ PDF=os.getenv("PDF")
 def main():
     text=full_cycle(PDF,filename="extracted")
     output=request(text)
+    print(output)
     ref=findref(output)
     ref=eval(ref) if ref else []
-    get_summary_of_existing(ref)
+    print(ref)
 
 if __name__=="__main__":
     main()
