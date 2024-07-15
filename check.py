@@ -105,7 +105,7 @@ def arrange(input,list):
 
 # Create a completion request
 def checker(pdf,text):
-    query="You are a reference fact checker. You check if the text content can be found in the PDF. If yes, you highlight the information in the PDF"
+    query="You are a reference fact checker. You check if the text content can be found in the PDF. If yes, you highlight the information in the PDF."
     response = client.chat.completions.create(
         model="gpt-4o",  # Adjust the model name as needed
         temperature=0,
@@ -121,6 +121,27 @@ def checker(pdf,text):
 
     # Print the response
     return response.choices[0].message.content
+
+def checkall(pdflist,text):
+    query="You are a reference fact checker. You check if the text content can be found in the PDFs only with the PDF titles that match the reference. Start with the title of the PDF and proceed with the matching. If there are other references from other sources that match the PDF, ignore them. If there is a match, you highlight the information in the PDFs systematically. "
+    L=[]
+    L.append({"type": "text", "text": text})
+    for pdf in pdflist:
+        L.append({"type": "text", "text": pdf})
+    print(L)
+    response = client.chat.completions.create(
+        model="gpt-4o",  # Adjust the model name as needed
+        temperature=0,
+        messages=[
+            {"role": "system", "content": query},
+            {"role": "user", "content": L
+            }
+        ]
+    )
+
+    # Print the response
+    return response.choices[0].message.content
+
 
 d=["Aliment Pharmacol Ther - 2007 - LOMER - Review article  lactose intolerance in clinical practice   myths and realities.pdf","Countryregionalandglobalestimates.pdf","Effects_of_Prebiotic_and_Probiotic_Supplementation.pdf","EFSA Journal - 2010 -  - Scientific Opinion on lactose thresholds in lactose intolerance and galactosaemia.pdf","FermentedfoodsandprobioticsAnapproach.pdf","heyman.pdf","Kranen.pdf","lactose_intolerance_an_update_on_its_pathogenesis_diagnosis_treatment.pdf","lactoseandlactosederivatives.pdf","lactosemalabsorptionandintolerance.pdf","lactosemalabsorptionandpresumedrelateddisorders.pdf","M47NHG-Standaard_Voedselovergevoeligheid.pdf","managementandtreatmentoflactosemalabsorption.pdf","updateonlactoseintoleranceandmalabsorption.pdf" ]
 dstr=str(d)
@@ -150,4 +171,18 @@ print(output)
 sl=streamline(output)
 arg=arrange(sl,dstr)
 print(arg)
-#Should I one by one check each element or shuld I insert ALL elements ?????
+
+
+help=["0.txt","1.txt","2.txt","3.txt","4.txt","5.txt","6.txt","7.txt","8.txt","9.txt","10.txt","11.txt","12.txt","13.txt"]
+HELP=[]
+for h in help:
+    HELP.append(read_text_file(h))
+
+
+filename = 'results.txt'
+with open(filename, 'w', encoding='utf-8') as file:
+    for item in HELP:
+        c = checker(item, arg)
+        file.write(c + '\n')
+
+print(f'Results have been written to {filename}')

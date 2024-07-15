@@ -6,6 +6,7 @@ PDF=os.getenv("PDF")
 
 def main():
     text=full_cycle(PDF,filename="extracted")
+    print(text)
     output=request(text)
     print(output)
     ref=findref(output)
