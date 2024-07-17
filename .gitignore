@@ -8,3 +8,4 @@ chroma_db_oai/
 test.py
 *.xlsx
 doc/
+add_new/

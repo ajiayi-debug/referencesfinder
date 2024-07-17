@@ -2,6 +2,7 @@ import os
 from openai import AzureOpenAI
 from dotenv import load_dotenv
 import subprocess
+import pandas as pd
 
 load_dotenv()
 
@@ -23,9 +24,13 @@ client = AzureOpenAI(
   azure_endpoint =os.getenv("AZURE_OPENAI_ENDPOINT") 
 )
 
+excel_file = 'processed_documents.xlsx'
+df = pd.read_excel(excel_file)
+print(df.head())
+
 response = client.embeddings.create(
     input = "Your text string goes here",
-    model= "embed"
+    model= os.getenv("embed_model")
 )
 
 print(response.model_dump_json(indent=2))

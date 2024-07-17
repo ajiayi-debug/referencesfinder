@@ -105,7 +105,7 @@ def arrange(input,list):
 
 # Create a completion request
 def checker(pdf,text):
-    query="You are a reference fact checker. You check if the text content can be found in the PDF. If yes, you highlight the information in the PDF."
+    query="You are a reference fact checker. You check if the text contents can be found in the PDF. If yes, you highlight the information in the PDF."
     response = client.chat.completions.create(
         model="gpt-4o",  # Adjust the model name as needed
         temperature=0,
@@ -165,12 +165,12 @@ for filename in Doc:
 
 
 
-main=full_cycle(pdf,filename="extracted")
-output=request(main)
-print(output)
-sl=streamline(output)
-arg=arrange(sl,dstr)
-print(arg)
+# main=full_cycle(pdf,filename="extracted")
+# output=request(main)
+# print(output)
+# sl=streamline(output)
+# arg=arrange(sl,dstr)
+# print(arg)
 
 
 help=["0.txt","1.txt","2.txt","3.txt","4.txt","5.txt","6.txt","7.txt","8.txt","9.txt","10.txt","11.txt","12.txt","13.txt"]
@@ -178,11 +178,11 @@ HELP=[]
 for h in help:
     HELP.append(read_text_file(h))
 
+#all texts for heyman pdf
+pdf="heyman.pdf"
+heyman=full_cycle(pdf, filename="heyman")
+text="'A proportion of the world’s population is able to tolerate lactose as they have a genetic variation that ensures they continue to produce sufficient quantities of the enzyme lactase after childhood.','If a positive effect is observed, the recommendation is to introduce lactose into the diet again in order to rule out the placebo effect of a lactose-free diet and to confirm the diagnosis.','Most people do not need to stop consuming milk or dairy products altogether, since the majority are able to tolerate 12 grams of lactose as a single dose','A person is said to suffer from primary lactose intolerance if symptoms develop with normal dairy consumption of 1 to 3 glasses of milk per day.','The lactase activity is usually fully or partially restored during recovery of the intestinal mucosa.','Fermented dairy products such as yoghurt, buttermilk and low-fat soft cheese often contain less lactose than milk. This is due to the fact that the lactic acid bacteria in these products have already broken down some of the lactose'"
 
-filename = 'results.txt'
-with open(filename, 'w', encoding='utf-8') as file:
-    for item in HELP:
-        c = checker(item, arg)
-        file.write(c + '\n')
 
-print(f'Results have been written to {filename}')
+check=checker(heyman,text)
+print(check)
