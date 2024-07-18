@@ -37,7 +37,7 @@ def request(text):
         model="gpt-4o",  # Adjust the model name as needed
         temperature=0,
         messages=[
-            {"role": "system", "content": "Where do you think additional references will be appropriate?"},
+            {"role": "system", "content": "Where do you think additional references will be appropriate? Make sure the chosen texts does not have a reference already or is related to another text with a reference."},
             {"role": "user", "content": [
                 {"type": "text", "text": text},
                 
@@ -53,3 +53,4 @@ def request(text):
 text=full_cycle(PDF,filename="extracted")
 output=request(text)
 print(output)
+
