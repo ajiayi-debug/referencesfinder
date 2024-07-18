@@ -3,6 +3,8 @@ from openai import AzureOpenAI
 from dotenv import load_dotenv
 import subprocess
 import pandas as pd
+import re
+import tiktoken
 
 load_dotenv()
 
@@ -26,13 +28,40 @@ client = AzureOpenAI(
 
 excel_file = 'processed_documents.xlsx'
 df = pd.read_excel(excel_file)
+
+def normalize_text(s, sep_token = " \n "):
+  s = re.sub(r'\s+',  ' ', s).strip()
+  s = re.sub(r". ,","",s)
+  # remove all instances of multiple spaces
+  s = s.replace("..",".")
+  s = s.replace(". .",".")
+  s = s.replace("\n", "")
+  s = s.strip()
+    
+  return s
+
+def split_text_by_page_marker(text: str):
+    chunks = text.split('Text on page ')
+    # Adding back the 'Text on page' marker to each chunk except the first one
+    chunks = [chunks[0]] + ['Text on page ' + chunk for chunk in chunks[1:]]
+    return chunks
+
+
+df['Text Content']= df["Text Content"].apply(lambda x : normalize_text(x))
 print(df.head())
+
+
+# tokenizer = tiktoken.get_encoding("cl100k_base")
+# df['n_tokens'] = df["Text Content"].apply(lambda x: len(tokenizer.encode(x)))
+# df = df[df.n_tokens<8192]
+# print(len(df))
+
 
 response = client.embeddings.create(
     input = "Your text string goes here",
     model= os.getenv("embed_model")
 )
 
-print(response.model_dump_json(indent=2))
+#print(response.model_dump_json(indent=2))
 
 
