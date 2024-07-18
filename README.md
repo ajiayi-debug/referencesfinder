@@ -25,7 +25,7 @@ Token will automatically be created when running [main.py](main.py) while endpoi
 Replace [PDF] in .env file with the relative path of the PDFs.Try to place the PDFs in the main directory. A future database will be set up.
 
 ## Finding version
-Take note that the prompt format only works for gpt 4 onwards (only can recognise images with gpt 4 onwards). Replace [model] with gpt version. In my case, I used "gpt-4o". Replace [version] with your version of model. This can be found in Azure AI Studios/ Resources and Keys/ Deployments/ name of model. In my case, I used "2024-02-01"
+Take note that the prompt format only works for gpt 4 onwards. Replace [model] with gpt version. In my case, I used "gpt-4o". Replace [version] with your version of model. This can be found in Azure AI Studios/ Resources and Keys/ Deployments/ name of model. In my case, I used "2024-02-01"
 
 ## Getting google api key and google cse id
 Go to [Google api search](https://developers.google.com/custom-search/v1/overview) and request for an api key. Replace [google api key] in .env file with the received key.
@@ -51,7 +51,7 @@ cert=[path to certificate]
 ```
 ## How to run:
 ### PDF
-Replace [PDF] with the PDF you would liuke to get references and related references for. (future update will include rewriting some parts of texts to include debunks, etc)
+Replace [PDF] with the PDF you would like to get references and related references for. (future update will include rewriting some parts of texts to include debunks, etc)
 ### Running project
 Run [main.py](main.py). You will see an excel file called output.xlsx containing a summary for each article referenced in the PDF as well as the created query by gpt to input into google search. 
 
