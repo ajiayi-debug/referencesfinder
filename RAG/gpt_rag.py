@@ -44,8 +44,8 @@ client = AzureOpenAI(
 )
 
 
-# Create a completion request
-def request(text):
+# Get names of all PDF articles
+def naming(text):
     response = client.chat.completions.create(
         model="gpt-4o",  # Adjust the model name as needed
         temperature=0,
@@ -86,7 +86,7 @@ def get_names(processed_texts,directory):
             processed_text = f.read()
             cleaned_text = ''.join(char for char in processed_text if unicodedata.category(char)[0] != 'C')
         # text=read_text_file(input_path)
-            name=request(cleaned_text)
+            name=naming(cleaned_text)
             processed_texts[i]=str(name)
     return processed_texts
 
@@ -96,7 +96,7 @@ def get_names(processed_texts,directory):
 
 # print(get_names(processed_texts))
 
-system_prompt="In the following text, what are the full texts of each reference and the name of the reference articles? Format your respnse in this manner:[['The lactase activity is usually fully or partially restored during recovery of the intestinal mucosa.','actose intolerance in infants, children, and adolescents.'],...]"
+system_prompt="In the following text, what are the full texts of each reference and the name of the reference articles? Format your respnse in this manner:[['The lactase activity is usually fully or partially restored during recovery of the intestinal mucosa.','Lactose intolerance in infants, children, and adolescents'],...]"
 
 
 # Create a completion request
@@ -136,3 +136,19 @@ def check(text):
     return response.choices[0].message.content
 
 
+def similiar_ref(text,ref):
+    response = client.chat.completions.create(
+        model="gpt-4o",  # Adjust the model name as needed
+        temperature=0,
+        messages=[
+            {"role": "system", "content":f"Choose the best content that matches {ref} to answer the question: Can the reference be found in the articles that it references?"},
+            {"role": "user", "content": [
+                {"type": "text", "text": text},
+                
+                ]
+            }
+        ]
+    )
+
+    # Print the response
+    return response.choices[0].message.content
