@@ -3,31 +3,89 @@ from openpyxl import Workbook
 import unicodedata
 from gpt_rag import *
 import fitz  # PyMuPDF
+import glob
 
-def read_pdf_file_list():
-    """Return the list of PDF file names."""
-    return [
-        "Aliment Pharmacol Ther - 2007 - LOMER - Review article  lactose intolerance in clinical practice   myths and realities.pdf",
-        "Countryregionalandglobalestimates.pdf",
-        "Effects_of_Prebiotic_and_Probiotic_Supplementation.pdf",
-        "EFSA Journal - 2010 -  - Scientific Opinion on lactose thresholds in lactose intolerance and galactosaemia.pdf",
-        "FermentedfoodsandprobioticsAnapproach.pdf",
-        "heyman.pdf",
-        "Kranen.pdf",
-        "lactose_intolerance_an_update_on_its_pathogenesis_diagnosis_treatment.pdf",
-        "lactoseandlactosederivatives.pdf",
-        "lactosemalabsorptionandintolerance.pdf",
-        "lactosemalabsorptionandpresumedrelateddisorders.pdf",
-        "M47NHG-Standaard_Voedselovergevoeligheid.pdf",
-        "managementandtreatmentoflactosemalabsorption.pdf",
-        "updateonlactoseintoleranceandmalabsorption.pdf"
-    ]
+def read_pdf_file_list(directory):
+    abs_directory = os.path.abspath(directory)
+    if not os.path.exists(abs_directory):
+        raise FileNotFoundError(f"The directory {abs_directory} does not exist.")
+    
+    pdf_files = glob.glob(os.path.join(abs_directory, "*.pdf"))
+    return pdf_files
 
-def get_txt_names():
-    pdf_list = read_pdf_file_list()
+def get_txt_names(directory):
+    pdf_list = read_pdf_file_list(directory)
     doc_files = [f"{i}.txt" for i in range(len(pdf_list))]
-
     return doc_files
+
+def extract_text_from_pdf(pdf_path):
+    """
+    Extract text from each page of a PDF file using PyMuPDF.
+    
+    Args:
+    - pdf_path (str): Path to the PDF file.
+    
+    Returns:
+    - list: List containing text extracted from each page.
+    """
+    pdf_document = fitz.open(pdf_path)
+    extracted_text = []
+    
+    for page_number in range(len(pdf_document)):
+        page = pdf_document.load_page(page_number)
+        text = page.get_text()
+        extracted_text.append(text)
+    
+    pdf_document.close()
+    return extracted_text
+
+def save_text(text_list, filename, output_dir):
+    """
+    Save extracted text to a .txt file in the specified output directory.
+    
+    Args:
+        text_list (list): List containing text from each page.
+        filename (str): Name of the output text file.
+        output_dir (str): Directory to save the output text file.
+    """
+    # Ensure the output directory exists
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Construct the full path to the output file
+    output_file = os.path.join(output_dir, filename)
+    
+    with open(output_file, 'w', encoding='utf-8') as text_file:
+        for page_number, text in enumerate(text_list):
+            text_file.write(f"Text on page {page_number + 1}:\n{text}\n\n")
+
+
+
+def full_cycle_specific(pdf,filename, output_dir):
+    filename=filename+".txt"
+    p=extract_text_from_pdf(pdf)
+    d=save_text(p,filename,output_dir)
+    # full_txt_path = os.path.join(output_dir, filename)
+    # filename=read_text_file(full_txt_path)
+
+    # return filename
+
+def process_and_save_pdfs(pdf_list, output_dir='doc'):
+    """
+    Process each PDF file, save the processed text to the specified output directory.
+    
+    Args:
+        pdf_list (list): List of PDF file paths.
+        output_dir (str): Directory to save processed text files.
+    """
+    os.makedirs(output_dir, exist_ok=True)  # Ensure the output directory exists
+    
+    for i, pdf_path in enumerate(pdf_list):
+        # Process the PDF and get the processed text
+        file_content = full_cycle_specific(pdf_path, filename=str(i), output_dir=output_dir)
+        
+        # Optionally, you can print the content or do additional processing here
+        
+        
 
 def read_processed_texts(directory,filenames):
     """
@@ -130,10 +188,4 @@ def read_text_file(file_path):
         content = file.read()
     return content
 
-def full_cycle(pdf,filename):
-    filename=filename+".txt"
-    p=extract_text_from_pdf(pdf)
-    d=save_text_to_file(p,filename)
-    filename=read_text_file(filename)
 
-    return filename
