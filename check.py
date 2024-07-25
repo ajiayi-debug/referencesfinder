@@ -143,23 +143,23 @@ def checkall(pdflist,text):
     return response.choices[0].message.content
 
 
-d=["Aliment Pharmacol Ther - 2007 - LOMER - Review article  lactose intolerance in clinical practice   myths and realities.pdf","Countryregionalandglobalestimates.pdf","Effects_of_Prebiotic_and_Probiotic_Supplementation.pdf","EFSA Journal - 2010 -  - Scientific Opinion on lactose thresholds in lactose intolerance and galactosaemia.pdf","FermentedfoodsandprobioticsAnapproach.pdf","heyman.pdf","Kranen.pdf","lactose_intolerance_an_update_on_its_pathogenesis_diagnosis_treatment.pdf","lactoseandlactosederivatives.pdf","lactosemalabsorptionandintolerance.pdf","lactosemalabsorptionandpresumedrelateddisorders.pdf","M47NHG-Standaard_Voedselovergevoeligheid.pdf","managementandtreatmentoflactosemalabsorption.pdf","updateonlactoseintoleranceandmalabsorption.pdf" ]
-dstr=str(d)
-Doc=[]
-for i in range(len(d)):
-    texts=full_cycle(d[i],filename=str(i))
-    Doc.append(str(i)+".txt")
+# d=["Aliment Pharmacol Ther - 2007 - LOMER - Review article  lactose intolerance in clinical practice   myths and realities.pdf","Countryregionalandglobalestimates.pdf","Effects_of_Prebiotic_and_Probiotic_Supplementation.pdf","EFSA Journal - 2010 -  - Scientific Opinion on lactose thresholds in lactose intolerance and galactosaemia.pdf","FermentedfoodsandprobioticsAnapproach.pdf","heyman.pdf","Kranen.pdf","lactose_intolerance_an_update_on_its_pathogenesis_diagnosis_treatment.pdf","lactoseandlactosederivatives.pdf","lactosemalabsorptionandintolerance.pdf","lactosemalabsorptionandpresumedrelateddisorders.pdf","M47NHG-Standaard_Voedselovergevoeligheid.pdf","managementandtreatmentoflactosemalabsorption.pdf","updateonlactoseintoleranceandmalabsorption.pdf" ]
+# dstr=str(d)
+# Doc=[]
+# for i in range(len(d)):
+#     texts=full_cycle(d[i],filename=str(i))
+#     Doc.append(str(i)+".txt")
 
-for filename in Doc:
-    # Read the processed content from the file
-    input_path = filename  # Assuming files are in the current directory
-    with open(input_path, 'r', encoding='utf-8') as f:
-        processed_text = f.read()
+# for filename in Doc:
+#     # Read the processed content from the file
+#     input_path = filename  # Assuming files are in the current directory
+#     with open(input_path, 'r', encoding='utf-8') as f:
+#         processed_text = f.read()
     
-    # Write the processed content to the 'doc' directory
-    output_path = os.path.join('doc', filename)
-    with open(output_path, 'w', encoding='utf-8') as f:
-        f.write(processed_text)
+#     # Write the processed content to the 'doc' directory
+#     output_path = os.path.join('doc', filename)
+#     with open(output_path, 'w', encoding='utf-8') as f:
+#         f.write(processed_text)
 
 
 
@@ -173,10 +173,10 @@ for filename in Doc:
 # print(arg)
 
 
-help=["0.txt","1.txt","2.txt","3.txt","4.txt","5.txt","6.txt","7.txt","8.txt","9.txt","10.txt","11.txt","12.txt","13.txt"]
-HELP=[]
-for h in help:
-    HELP.append(read_text_file(h))
+# help=["0.txt","1.txt","2.txt","3.txt","4.txt","5.txt","6.txt","7.txt","8.txt","9.txt","10.txt","11.txt","12.txt","13.txt"]
+# HELP=[]
+# for h in help:
+#     HELP.append(read_text_file(h))
 
 #all texts for heyman pdf
 pdf="heyman.pdf"

@@ -9,9 +9,8 @@ def main():
     codable=ast.literal_eval(output)
     df=read_file("embedded.xlsx","RAG")
     for code in codable:
-        print(code)
         pdf=retrieve_pdf(df,code)
-        #similiar=retrieve_similiar_text(pdf,code)
+        similiar=retrieve_similiar_text(pdf,code)
         #print(similiar)
         #rag=similiar_ref()
     
