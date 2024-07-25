@@ -79,7 +79,7 @@ def chunk_text(text, max_tokens):
     for i in range(0, len(tokens), max_tokens):
         chunk_tokens = tokens[i:i + max_tokens]
         chunk_text = tokenizer.decode(chunk_tokens)
-        chunks.append(chunk_text)
+        chunks.append(chunk_text) 
     return chunks
 
 """ Call this function to chunk the text according to tokenizer number (recco 8190 tokens) """
@@ -136,13 +136,25 @@ def get_embedding(text, model=os.getenv("embed_model")): # model = "deployment_n
 #         print(res) 
 #     return res
 
+
+#Helper function to convert dtype obj to dtype float
+def convert_to_float_array(obj):
+    """
+    Convert an object (e.g., list or string representation of a list) to a numpy array of floats.
+    """
+    if isinstance(obj, str):
+        # Convert string representation of a list to a list
+        obj = eval(obj)
+    return np.array(obj, dtype=float)
+
+
 #helper function
 def search_docs_text(df, user_query, top_n=4, to_print=True):
     embedding = get_embedding(
         user_query,
         model=os.getenv("embed_model") # model should be set to the deployment name you chose when you deployed the text-embedding-ada-002 (Version 2) model
     )
-    df.embed_v3.astype(float)
+    df['embed_v3'] = df['embed_v3'].apply(convert_to_float_array)
     df["similarities_text"] = df.embed_v3.apply(lambda x: cosine_similarity(x, embedding)) 
     
     res = (
@@ -161,14 +173,14 @@ def normalize_string(s):
 #each input is an element containing [text,name]
 def retrieve_pdf(df,name_and_text):
     name = normalize_string(name_and_text[1])
-    print(name)
+   
     # Apply normalization to the "PDF File" column
     df['normalized_pdf_file'] = df['PDF File'].apply(normalize_string)
     
     # Filter the DataFrame using the normalized values
     new_df = df[df['normalized_pdf_file'] == name]
     
-    print(new_df)
+    
     return new_df
 
 
