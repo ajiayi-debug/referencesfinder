@@ -137,14 +137,15 @@ def check(text):
 
 
 def similiar_ref(text,ref):
+    query="You are a reference fact checker. You check if the text contents can be found in the PDF in terms of semantic meaning. If yes, you highlight the information in the PDF. The information should preferably be a sentence. Output the semantically similiar sentence only."
     response = client.chat.completions.create(
         model="gpt-4o",  # Adjust the model name as needed
         temperature=0,
         messages=[
-            {"role": "system", "content":f"Choose the best content that matches {ref} to answer the question: Can the reference be found in the articles that it references?"},
+            {"role": "system", "content": query},
             {"role": "user", "content": [
-                {"type": "text", "text": text},
-                
+                {"type": "text", "text": f"Text Content: {text}, PDF:{ref}"},
+                # {"type": "text", "text": f"PDF:{ref}"}
                 ]
             }
         ]

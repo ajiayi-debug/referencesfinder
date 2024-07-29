@@ -108,7 +108,7 @@ def embed(df):
 #df['embed_v3'] = df["Text Chunks"].apply(lambda x : generate_embeddings (x, model = os.getenv("embed_model"))) 
 
 """ Call this function to send embedded data to an excel file """
-def send_embed_excel(df,directory, filename):
+def send_excel(df,directory, filename):
     # os.makedirs(directory)
     output_path=os.path.join(directory,filename)
     df.to_excel(output_path, index=False)
@@ -152,7 +152,6 @@ def convert_to_float_array(obj):
 #helper function
 def search_docs_text(df, user_query, top_n=4, to_print=True):
     df=df.copy()
-    print(df)
     embedding = get_embedding(
         user_query,
         model=os.getenv("embed_model") # model should be set to the deployment name you chose when you deployed the text-embedding-ada-002 (Version 2) model
@@ -164,8 +163,8 @@ def search_docs_text(df, user_query, top_n=4, to_print=True):
         df.sort_values("similarities_text", ascending=False)
         .head(top_n)
     )
-    if to_print:
-        print(res) 
+    # if to_print:
+    #     print(res) 
     return res
 
 #helper function for regex
@@ -198,4 +197,7 @@ def retrieve_similiar_text(new_df,name_and_text):
 
 #res = search_docs(df, "At birth, almost every infant produces enough lactase to digest the lactose in breast milk. The production of lactase decreases gradually after the age of 3 years.", top_n=4)
 
-
+"""" Call this function to get top row of focused df to get op cosine similiarity for gpt to find the sentence with closest meaning """
+def focus_on_best(df):
+    ans=df.iloc[0]['Text Content']
+    return ans
