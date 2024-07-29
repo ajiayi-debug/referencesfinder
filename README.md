@@ -9,7 +9,8 @@ To start, install the required packages:
 pip install -r requirements.txt
 ```
 
-## Get access to openai group ad-group as well as install Azure cli tool (If you want to use other methods to call openai api, you will have to edit the functions accordingly (change azure to open ai)
+## Get access to openai group ad-group as well as install Azure cli tool 
+#### (If you want to use other methods to call openai api, you will have to edit the functions accordingly (change azure to open ai)
 ### Accessing Azure CLI:
 Download Azure CLI from [azure cli](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli-windows?tabs=azure-cli)
 ### Finding Azure CLI:
