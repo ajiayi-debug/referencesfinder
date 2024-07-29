@@ -117,23 +117,6 @@ def get_references(text):
     # Print the response
     return response.choices[0].message.content
 
-# Create a completion request
-def check(text):
-    response = client.chat.completions.create(
-        model="gpt-4o",  # Adjust the model name as needed
-        temperature=0,
-        messages=[
-            {"role": "system", "content": ""},
-            {"role": "user", "content": [
-                {"type": "text", "text": text},
-                
-                ]
-            }
-        ]
-    )
-
-    # Print the response
-    return response.choices[0].message.content
 
 
 def similiar_ref(text,ref):
