@@ -20,7 +20,7 @@ Go to CMD and type `where az`.
 Take note of the path with `./az.cmd`. You will need this path to create your .env file
 
 ## Finding token and endpoint
-Token will automatically be created when running [main.py](main.py) while endpoint can be found in Azure AI Studios/ Resources and Keys/ Resource name/ </> View Code
+Token will automatically be created when running script while endpoint can be found in Azure AI Studios/ Resources and Keys/ Resource name/ </> View Code
 ## Encrypting PDF files:
 Replace [PDF] in .env file with the relative path of the PDFs.Try to place the PDFs in the main directory. A future database will be set up.
 
