@@ -50,13 +50,13 @@ name=[model]
 cert=[path to certificate]
 ```
 ## How to run:
-### PDF
+<del>### PDF
 Replace [PDF] with the PDF you would like to get references and related references for. (future update will include rewriting some parts of texts to include debunks, etc)
-### Running project
+<del>### Running project
 Run [main.py](main.py). You will see an excel file called output.xlsx containing a summary for each article referenced in the PDF as well as the created query by gpt to input into google search. 
 
-[gpt.py](gpt.py) and [pdftotext.py](pdftotext.py) contains all main functions used. 
+<del>[gpt.py](gpt.py) and [pdftotext.py](pdftotext.py) contains all main functions used. 
 
-[gptapiinternet.py](gptapiinternet.py) provides a reference on how to connect gpt api to google
+<del>[gptapiinternet.py](gptapiinternet.py) provides a reference on how to connect gpt api to google 
 
 
