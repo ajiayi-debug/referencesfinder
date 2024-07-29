@@ -59,4 +59,8 @@ Run [main.py](main.py). You will see an excel file called output.xlsx containing
 
 <del>[gptapiinternet.py](gptapiinternet.py) provides a reference on how to connect gpt api to google 
 
+### RAG
+
+Run [createlibrary.py](RAG/createlibrary.py) to 
+
 
