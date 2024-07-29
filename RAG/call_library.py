@@ -4,15 +4,25 @@ from embedding import *
 import ast
 
 def main():
+    output_directory = 'RAG'
+    df=read_file("processed.xlsx",output_directory)
+    embed_filename="embedded.xlsx"
+    content='Text Content'
+    split_df=splitting(df,content)
+    token_df=tokenize(split_df,content)
+    chunki=chunking(token_df,content,8190)
+    emb=embed(chunki)
+    send_embed_excel(emb, output_directory, embed_filename)
     text=full_cycle("FC-Institute-Publication-on-Lactose-intolerance_2022.pdf",filename="extracted")
     output=get_references(text)
     codable=ast.literal_eval(output)
-    df=read_file("embedded.xlsx","RAG")
+
     for code in codable:
-        pdf=retrieve_pdf(df,code)
-        similiar=retrieve_similiar_text(pdf,code)
-        #print(similiar)
-        #rag=similiar_ref()
+        print(code)
+        pdf=retrieve_pdf(emb,code)
+        similiar=retrieve_similiar_text(pdf,code) #returns rowsss of refs
+        print(similiar)
+        # rag=similiar_ref()
     
 
 
