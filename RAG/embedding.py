@@ -97,8 +97,8 @@ def chunking(df, title, tokens):
 
 #helper function
 def generate_embeddings(text, model=os.getenv("embed_model")): # model = "deployment_name"
-    return client.embeddings.create(input = [text], model=model).data[0].embedding
-
+    embed=client.embeddings.create(input = [text], model=model).data[0].embedding
+    return embed
 """ Call this function to generate embeddings """
 def embed(df):
     df['embed_v3'] = df["Text Chunks"].apply(lambda x : generate_embeddings (x, model = os.getenv("embed_model")))
@@ -119,7 +119,8 @@ def cosine_similarity(a, b):
     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
 #helper function
 def get_embedding(text, model=os.getenv("embed_model")): # model = "deployment_name"
-    return client.embeddings.create(input = [text], model=model).data[0].embedding
+    embed=client.embeddings.create(input = [text], model=model).data[0].embedding
+    return embed
 
 # def search_docs_names(df, user_query, top_n=4, to_print=True):
 #     embedding = get_embedding(
@@ -150,12 +151,14 @@ def convert_to_float_array(obj):
 
 #helper function
 def search_docs_text(df, user_query, top_n=4, to_print=True):
+    df=df.copy()
+    print(df)
     embedding = get_embedding(
         user_query,
         model=os.getenv("embed_model") # model should be set to the deployment name you chose when you deployed the text-embedding-ada-002 (Version 2) model
     )
-    df['embed_v3'] = df['embed_v3'].apply(convert_to_float_array)
-    df["similarities_text"] = df.embed_v3.apply(lambda x: cosine_similarity(x, embedding)) 
+    df.loc[:, 'embed_v3'] = df['embed_v3'].apply(convert_to_float_array)
+    df.loc[:,"similarities_text"] = df.embed_v3.apply(lambda x: cosine_similarity(x, embedding)) 
     
     res = (
         df.sort_values("similarities_text", ascending=False)
