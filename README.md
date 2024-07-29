@@ -1,7 +1,7 @@
 # Overview of References Finder:
 To find the references and related references to update previous references in PDFs OR if latest reference found to debunk previous reference, update PDF by writing additional texts as well as update the references. 
 
-# Instructions for project (as of 8/7/2024)
+# Instructions for project (as of 29/7/2024)
 ## Installing dependencies
 To start, install the required packages:
 
@@ -9,7 +9,7 @@ To start, install the required packages:
 pip install -r requirements.txt
 ```
 
-## Get access to openai group ad-group as well as install Azure cli tool
+## Get access to openai group ad-group as well as install Azure cli tool (If you want to use other methods to call openai api, you will have to edit the functions accordingly (change azure to open ai)
 ### Accessing Azure CLI:
 Download Azure CLI from [azure cli](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli-windows?tabs=azure-cli)
 ### Finding Azure CLI:
