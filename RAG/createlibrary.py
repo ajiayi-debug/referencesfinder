@@ -20,7 +20,7 @@ def main():
     token_df=tokenize(split_df,content)
     chunki=chunking(token_df,content,8190)
     emb=embed(chunki)
-    send_embed_excel(emb, output_directory, embed_filename)
+    send_excel(emb, output_directory, embed_filename)
 
 
 
