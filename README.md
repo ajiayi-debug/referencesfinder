@@ -27,6 +27,8 @@ Replace [PDF] in .env file with the relative path of the PDFs.Try to place the P
 ## Finding version
 Take note that the prompt format only works for gpt 4 onwards. Replace [model] with gpt version. In my case, I used "gpt-4o". Replace [version] with your version of model. This can be found in Azure AI Studios/ Resources and Keys/ Deployments/ name of model. In my case, I used "2024-02-01"
 
+An embedding model was also used. Replace [embed_model] with your embedding model. For my case, I used "text-embedding-3-large". Take note that if you use any other models, the chunking size needs to be changed under the function chunking(dataframe, name of column to chunk, token size to chunk to) in [call_library](RAG/call_library.py) .
+
 ## Getting google api key and google cse id
 Go to [Google api search](https://developers.google.com/custom-search/v1/overview) and request for an api key. Replace [google api key] in .env file with the received key.
 
@@ -37,7 +39,7 @@ Go to [Google CSE id creation](https://programmablesearchengine.google.com/contr
 I personally had no issues with the certificate (I just downloaded the certificate). However, if you do face issues, insert the path to certificate into [path to certificate]
 
 ## Create .env file
-Replace [endpoint], [google api key], [PDF], [path to certificate], [google cse id], [version], [model] and [az cli] with the respective links and paths
+Replace [endpoint], [google api key], [PDF], [path to certificate], [google cse id], [version], [model], [embed_model] and [az cli] with the respective links and paths
 
 ```sh
 endpoint = [endpoint]
@@ -48,6 +50,8 @@ googlecseid=[google cse id]
 ver=[version]
 name=[model]
 cert=[path to certificate]
+embed_model=[embed_model]
+
 ```
 ## How to run:
 <del>### PDF
