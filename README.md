@@ -55,14 +55,6 @@ embed_model=[embed_model]
 
 ```
 ## How to run:
-<del>### PDF
-Replace [PDF] with the PDF you would like to get references and related references for. (future update will include rewriting some parts of texts to include debunks, etc)
-<del>### Running project
-Run [main.py](main.py). You will see an excel file called output.xlsx containing a summary for each article referenced in the PDF as well as the created query by gpt to input into google search. 
-
-<del>[gpt.py](gpt.py) and [pdftotext.py](pdftotext.py) contains all main functions used. 
-
-<del>[gptapiinternet.py](gptapiinternet.py) provides a reference on how to connect gpt api to google 
 
 ### RAG
 Create a folder called text in the main directory and add all reference articles into it (in PDF format for now).
@@ -81,4 +73,12 @@ Your output should be an excel file called find_ref.xlsx with the following colu
 
 `reference text in reference article: what the reference text in the main article is referencing in the reference article`
 
+### test 
+#### (Outdated way of working, but still good for general reference on how to call gpt and how to connect gpt to google)
+Replace [PDF] with the main article name (pdf_name.pdf)
+### Running project
+Run [main.py](test/main.py). You will see an excel file called output.xlsx containing a summary for each article referenced in the PDF as well as the created query by gpt to input into google search. 
 
+[gpt.py](test/gpt.py) and [pdftotext.py](test/pdftotext.py) contains all main functions used. 
+
+[gptapiinternet.py](test/gptapiinternet.py) provides a reference on how to connect gpt api to google 
