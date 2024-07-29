@@ -56,7 +56,7 @@ embed_model=[embed_model]
 ```
 ## How to run:
 
-### RAG
+### RAG (main way of working for now)
 Create a folder called text in the main directory and add all reference articles into it (in PDF format for now).
 
 Add the main article (PDF format) into [RAG](RAG) and change the [PDF] relative path to the main article's name (pdfname.pdf) in .env file that you created.
