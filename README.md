@@ -60,7 +60,20 @@ Run [main.py](main.py). You will see an excel file called output.xlsx containing
 <del>[gptapiinternet.py](gptapiinternet.py) provides a reference on how to connect gpt api to google 
 
 ### RAG
+Create a folder called text in the main directory and add all reference articles into it (in PDF format for now).
 
-Run [createlibrary.py](RAG/createlibrary.py) to 
+Add the main article (PDF format) into [RAG](RAG) and change the [PDF] relative path to the main article's name (pdfname.pdf) in .env file that you created.
+
+Run [createlibrary.py](RAG/createlibrary.py) to process all reference articles.
+
+Run [call_library.py](RAG/call_library.py) to call the gpt to access the reference articles to see if the main article did indeed reference them.
+
+Your output should be an excel file called find_ref.xlsx with the following column names:
+
+`reference article name: name of article that is referenced in main article`
+
+`reference text in main article: text in main article that references reference article`
+
+`reference text in reference article: what the reference text in the main article is referencing in the reference article`
 
 
