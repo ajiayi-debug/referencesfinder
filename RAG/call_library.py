@@ -3,7 +3,8 @@ from gpt_rag import *
 from embedding import *
 import ast
 import pandas as pd
-
+from dotenv import *
+pdf_to_check=os.getenv("PDF")
 
 def main():
     output_directory = 'RAG'
@@ -15,7 +16,7 @@ def main():
     chunki=chunking(token_df,content,8190)
     emb=embed(chunki)
     send_excel(emb, output_directory, embed_filename)
-    text=full_cycle("FC-Institute-Publication-on-Lactose-intolerance_2022.pdf",filename="extracted")
+    text=full_cycle(pdf_to_check,filename="extracted")
     output=get_references(text)
     codable=ast.literal_eval(output)
 
