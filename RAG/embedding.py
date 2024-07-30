@@ -197,7 +197,9 @@ def retrieve_similiar_text(new_df,name_and_text):
 
 #res = search_docs(df, "At birth, almost every infant produces enough lactase to digest the lactose in breast milk. The production of lactase decreases gradually after the age of 3 years.", top_n=4)
 
-"""" Call this function to get top row of focused df to get op cosine similiarity for gpt to find the sentence with closest meaning """
+"""" Call this function to get top row of focused df to get op cosine similiarity for gpt to find the sentence with closest meaning OR Call this function to get Text content of each PDF (non-embed df)"""
 def focus_on_best(df):
     ans=df.iloc[0]['Text Content']
     return ans
+
+
