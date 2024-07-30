@@ -25,7 +25,7 @@ def main():
     dfs = []
     for code in codable:
         pdf = retrieve_pdf(emb, code)
-        similiar = retrieve_similiar_text(pdf, code)  # Returns rows of refs that have semantically similar meaning to text of main pdf
+        similiar = retrieve_similiar_text(pdf, code)  # return top cosine similiarity of each pdf name, but honestly does not matter for this case oops
         best = focus_on_best(similiar)
         getans = similiar_ref(code[0], best)
         
