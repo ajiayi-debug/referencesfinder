@@ -13,14 +13,9 @@ def main():
     output_directory = 'RAG'  # Specify the directory where you want to save the Excel file
     output_filename = 'processed.xlsx'
     write_to_excel(processed_name, processed_texts, output_directory, output_filename)
-    embed_filename="embedded.xlsx"
-    content='Text Content'
-    df=read_file(output_filename,output_directory)
-    split_df=splitting(df,content)
-    token_df=tokenize(split_df,content)
-    chunki=chunking(token_df,content,8190)
-    emb=embed(chunki)
-    send_excel(emb, output_directory, embed_filename)
+    
+
+   
 
 
 
