@@ -23,7 +23,7 @@ Take note of the path with `./az.cmd`. You will need this path to create your .e
 ## Finding token and endpoint
 Token will automatically be created when running script while endpoint can be found in Azure AI Studios/ Resources and Keys/ Resource name/ </> View Code
 ## Encrypting PDF files:
-Replace [PDF] in .env file with the relative path of the PDFs.Try to place the PDFs in the main directory. A future database will be set up.
+Replace [PDF] in .env file with the name of the PDFs. Try to place the PDFs in main directory. A future database will be set up.
 
 ## Finding version
 Take note that the prompt format only works for gpt 4 onwards. Replace [model] with gpt version. In my case, I used "gpt-4o". Replace [version] with your version of model. This can be found in Azure AI Studios/ Resources and Keys/ Deployments/ name of model. In my case, I used "2024-02-01"
@@ -59,7 +59,7 @@ embed_model=[embed_model]
 ### RAG (main way of working for now)
 Create a folder called text in the main directory and add all reference articles into it (in PDF format for now).
 
-Add the main article (PDF format) into [RAG](RAG) and change the [PDF] relative path to the main article's name (pdfname.pdf) in .env file that you created.
+Add the main article (PDF format) into main directory and change the [PDF] relative path to the main article's name (pdfname.pdf) in .env file that you created.
 
 Run [createlibrary.py](RAG/createlibrary.py) to process all reference articles.
 
