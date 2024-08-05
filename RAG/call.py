@@ -7,12 +7,11 @@ from dotenv import *
 pdf_to_check=os.getenv("PDF")
 
 def main():
-    output_directory = 'RAG'
-    df=read_file("processed.xlsx",output_directory)
     text=full_cycle(pdf_to_check,filename="extracted")
     output=get_references(text)
     codable=ast.literal_eval(output)
-
+    output_directory = 'RAG'
+    df=read_file("processed.xlsx",output_directory)
     # turns out gpt 4o is better than cosine similiarity as the text chunks are still too long for accurate representation of vectors, so cosine similiarity is off. Still, we can keep the embbedded database for future references!
     
     dfs = []

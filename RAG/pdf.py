@@ -4,6 +4,7 @@ import unicodedata
 from gpt_rag import *
 import fitz  # PyMuPDF
 import glob
+import re
 
 def read_pdf_file_list(directory):
     abs_directory = os.path.abspath(directory)
@@ -199,4 +200,17 @@ def full_cycle(pdf,filename):
 
     return filename
 
+def chunk_text_by_page(text):
+    """
+    Chunk the text based on page numbers.
+    Args:
+        text (str): The text to chunk.
+    Returns:
+        list: A list of text chunks.
+    """
+    pattern = r'(?=Text on page \d+:)'
+    chunks = re.split(pattern, text)
+    # Remove any empty strings from the list (this might happen if text starts with 'Text on page 1:')
+    chunks = [chunk.strip() for chunk in chunks if chunk.strip()]
+    return chunks
 
