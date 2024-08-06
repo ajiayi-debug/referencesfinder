@@ -96,7 +96,7 @@ def get_names(processed_texts,directory):
 
 # print(get_names(processed_texts))
 
-system_prompt="In the following text, what are the full texts of each reference and the name of the reference articles? Format your respnse in this manner:[['The lactase activity is usually fully or partially restored during recovery of the intestinal mucosa.','Lactose intolerance in infants, children, and adolescents'],...]"
+system_prompt="In the following text, what are the full texts of each reference (can be multiple sentences) and the name of the reference articles? Format your respnse in this manner:[['The lactase activity is usually fully or partially restored during recovery of the intestinal mucosa.','Lactose intolerance in infants, children, and adolescents'],...]"
 
 
 # Create a completion request
@@ -120,7 +120,7 @@ def get_references(text):
 
 
 def similiar_ref(text,ref):
-    query="You are a reference fact checker. You check if the text contents can be found in the PDF in terms of semantic meaning. If yes, you highlight the information in the PDF. The information should preferably be a sentence. Output the semantically similiar sentence only."
+    query="You are a reference fact checker. You check if the reference can be found in the article in terms of semantic meaning. If yes, you highlight the information in the article. The information should preferably be a sentence. Output the semantically similiar information only. Don't output the Text Content."
     response = client.chat.completions.create(
         model="gpt-4o",  # Adjust the model name as needed
         temperature=0,

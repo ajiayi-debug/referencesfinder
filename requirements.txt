@@ -13,3 +13,4 @@ webdriver-manager
 pandas
 openpyxl
 aiohttp
+pymongo

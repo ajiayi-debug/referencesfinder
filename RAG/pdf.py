@@ -210,7 +210,17 @@ def chunk_text_by_page(text):
     """
     pattern = r'(?=Text on page \d+:)'
     chunks = re.split(pattern, text)
-    # Remove any empty strings from the list (this might happen if text starts with 'Text on page 1:')
     chunks = [chunk.strip() for chunk in chunks if chunk.strip()]
+    
+    # Ensure consistency in chunk formatting
+    for i in range(len(chunks)):
+        if not chunks[i].startswith('Text on page'):
+            chunks[i] = f'Text on page {i+1}:\n{chunks[i]}'
+    
     return chunks
 
+def concat(df):
+    s = ""
+    for d in df["Text Content"]:
+        s += d + " "
+    return s.strip()
