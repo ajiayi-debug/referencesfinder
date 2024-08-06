@@ -120,7 +120,7 @@ def get_references(text):
 
 
 def similiar_ref(text,ref):
-    query="You are a reference fact checker. You check if the reference can be found in the article in terms of semantic meaning. If yes, you highlight the information in the article. The information should preferably be a sentence. Output the semantically similiar information only. Don't output the Text Content."
+    query="You are a reference fact checker. You check if the reference can be found in the article in terms of semantic meaning. If yes, you highlight the information in the article. The information should preferably be a sentence. Output the semantically similiar information only. Don't output the Text Content (reference sentenceused to compare with the article)."
     response = client.chat.completions.create(
         model="gpt-4o",  # Adjust the model name as needed
         temperature=0,
