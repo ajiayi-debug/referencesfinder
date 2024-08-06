@@ -19,6 +19,7 @@ def main():
     text=full_cycle(pdf_to_check,filename="extracted")
     output=get_references(text)
     codable=ast.literal_eval(output)
+    len(codable)
     # turns out gpt 4o is better than cosine similiarity as the text chunks are still too long for accurate representation of vectors, so cosine similiarity is off. Still, we can keep the embbedded database for future references!
     
     dfs = []
