@@ -5,6 +5,10 @@ from gpt_rag import *
 import fitz  # PyMuPDF
 import glob
 import re
+import os
+from dotenv import *
+load_dotenv()
+
 
 def read_pdf_file_list(directory):
     abs_directory = os.path.abspath(directory)

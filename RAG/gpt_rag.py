@@ -9,6 +9,7 @@ import time
 from googleapiclient.errors import HttpError
 import pandas as pd
 import unicodedata
+import json
 
 
 
@@ -76,8 +77,7 @@ def read_text_file(file_path):
         content = file.read()
     return content
 
-# output=request(read_text_file("heyman.txt"))
-# print(output)
+
 
 def get_names(processed_texts,directory):
     for i in range(len(processed_texts)):
@@ -92,14 +92,11 @@ def get_names(processed_texts,directory):
 
 
 
-# processed_texts=["heyman.txt"]
 
-# print(get_names(processed_texts))
-
-system_prompt="In the following text, what are the full texts of each reference (can be multiple sentences) and the name of the reference articles? Format your respnse in this manner:[['The lactase activity is usually fully or partially restored during recovery of the intestinal mucosa.','Lactose intolerance in infants, children, and adolescents'],...]"
+system_prompt="In the following text, what are the full texts of each reference (can be multiple sentences) and the name of the reference articles? Format your response in this manner:[['The lactase activity is usually fully or partially restored during recovery of the intestinal mucosa.','Lactose intolerance in infants, children, and adolescents'],...]"
 
 
-# Create a completion request
+# Get the references and the cited articles' names in the main article
 def get_references(text):
     response = client.chat.completions.create(
         model="gpt-4o",  # Adjust the model name as needed
@@ -118,16 +115,16 @@ def get_references(text):
     return response.choices[0].message.content
 
 
-
+# Get the text that the reference inb the main article is citing in the reference article
 def similiar_ref(text,ref):
-    query="You are a reference fact checker. You check if the reference can be found in the article in terms of semantic meaning. If yes, you highlight the information in the article. The information should preferably be a sentence. Output the semantically similiar information only. Don't output the Text Content (reference sentenceused to compare with the article)."
+    query="You are a reference fact checker. You check if the reference can be found in the abstract of the article in terms of semantic meaning. If yes, you highlight the information in the abstract of the article. Output the semantically similiar information only. Don't output the Text Content (reference sentenceused to compare with the article)."
     response = client.chat.completions.create(
         model="gpt-4o",  # Adjust the model name as needed
         temperature=0,
         messages=[
             {"role": "system", "content": query},
             {"role": "user", "content": [
-                {"type": "text", "text": f"Text Content: {text}, PDF:{ref}"},
+                {"type": "text", "text": f"Text Content: {text}, Article:{ref}"},
                 # {"type": "text", "text": f"PDF:{ref}"}
                 ]
             }
@@ -136,3 +133,25 @@ def similiar_ref(text,ref):
 
     # Print the response
     return response.choices[0].message.content
+
+#Clean up gpt 4o output in getting the text that the references in main articles are citing as the format can be off. 
+def clean_responses(sentence):
+    query="Tidy up the following text to output sentence(s). Dont include unnecessary jargons like Text Content and PDF. For example: '**PDF: ****Text on page 3: ****Malabsorption of lactose, resulting from the combination of lactase deficiency and lactose intake levels of more than 10–15 g per day, and giving symptoms of lactose intolerance have often led to the rejection of milk as a food and to discouragement of milk in food aid programs for the third world.**' becomes 'Malabsorption of lactose, resulting from the combination of lactase deficiency and lactose intake levels of more than 10–15 g per day, and giving symptoms of lactose intolerance have often led to the rejection of milk as a food and to discouragement of milk in food aid programs for the third world.'"
+    response = client.chat.completions.create(
+        model="gpt-4o",  # Adjust the model name as needed
+        temperature=0,
+        messages=[
+            {"role": "system", "content": query},
+            {"role": "user", "content": [
+                {"type": "text", "text": f"The text is: {sentence}"},
+                # {"type": "text", "text": f"PDF:{ref}"}
+                ]
+            }
+        ]
+    )
+
+    # Print the response
+    return response.choices[0].message.content
+
+
+

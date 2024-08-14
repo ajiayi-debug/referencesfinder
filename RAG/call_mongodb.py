@@ -40,3 +40,26 @@ def upsert_database_and_collection(uri, db_name, collection_name, records):
 
 
 
+def replace_database_collection(uri, db_name, collection_name, records):
+    """
+    Replace the entire collection in the database with the new records.
+    
+    Args:
+        uri (str): MongoDB connection URI.
+        db_name (str): Name of the database.
+        collection_name (str): Name of the collection.
+        records (list): List of dictionaries to be inserted.
+    """
+    client = MongoClient(uri)
+    db = client[db_name]
+    collection = db[collection_name]
+
+    # Drop the existing collection if it exists
+    if collection_name in db.list_collection_names():
+        db.drop_collection(collection_name)
+        print(f"Dropped existing collection: {collection_name}")
+
+    # Insert all records into the new collection
+    if records:
+        collection.insert_many(records)
+        print(f"Inserted {len(records)} records into {collection_name}.")
