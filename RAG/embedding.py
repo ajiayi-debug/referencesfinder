@@ -9,6 +9,7 @@ import numpy as np
 import re
 from num2words import num2words
 
+
 load_dotenv()
 
 az_path = os.getenv("az_path")
@@ -20,7 +21,6 @@ token = result.stdout.decode('utf-8').strip()
 # Set environment variables
 os.environ['AZURE_OPENAI_ENDPOINT'] = os.getenv('endpoint')
 os.environ['AZURE_OPENAI_API_KEY'] = token
-
 
 
 client = AzureOpenAI(
@@ -154,7 +154,7 @@ def search_docs_text(df, user_query, top_n=4, to_print=True):
     df=df.copy()
     embedding = get_embedding(
         user_query,
-        model=os.getenv("embed_model") # model should be set to the deployment name you chose when you deployed the text-embedding-ada-002 (Version 2) model
+        model=os.getenv("embed_model") # model should be set to the deployment name you chose when you deployed the model
     )
     df.loc[:, 'embed_v3'] = df['embed_v3'].apply(convert_to_float_array)
     df.loc[:,"similarities_text"] = df.embed_v3.apply(lambda x: cosine_similarity(x, embedding)) 
@@ -187,7 +187,7 @@ def retrieve_pdf(df,name_and_text):
 
 
 
-""" Call this function to obtain top 4 similiar texts in abstract based on cosine similiarity """
+""" Call this function to obtain top 4 similiar texts in abstract based on cosine similiarity. Output is a dataframe."""
 
 def retrieve_similiar_text(new_df,name_and_text):
     text=name_and_text[0]
@@ -201,5 +201,8 @@ def retrieve_similiar_text(new_df,name_and_text):
 def focus_on_best(df):
     ans=df.iloc[0]['Text Content']
     return ans
+
+
+
 
 

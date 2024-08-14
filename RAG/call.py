@@ -37,9 +37,10 @@ def main():
         combine=concat(pdf)
 
         getans = similiar_ref(code[0], combine)
+        cleanans=clean_responses(getans)
         
         # Create a DataFrame for the current row and specify an index
-        row = pd.DataFrame({'reference article name': [code[1]], 'Reference text in main article': [code[0]], 'Reference text in reference article': [getans]})
+        row = pd.DataFrame({'reference article name': [code[1]], 'Reference text in main article': [code[0]], 'Reference text in reference article': [cleanans]})
         
         dfs.append(row)
     
@@ -53,7 +54,9 @@ def main():
     send_excel(output_df,"RAG",final_ans)
     
     records = output_df.to_dict(orient='records')
-    upsert_database_and_collection(uri, data, collection, records)
+    #upsert_database_and_collection(uri, data, collection, records)
+    """Only use this when database is already created and you want a fresh db """
+    replace_database_collection(uri, data, collection, records)
     print("Data sent to MongoDB Atlas.")
 
 
