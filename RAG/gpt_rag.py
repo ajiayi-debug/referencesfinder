@@ -117,14 +117,15 @@ def get_references(text):
 
 # Get the text that the reference inb the main article is citing in the reference article
 def similiar_ref(text,ref):
-    query="You are a reference fact checker. You check if the reference can be found in the abstract of the article in terms of semantic meaning. If yes, you highlight the information in the abstract of the article. Output the semantically similiar information only. Don't output the Text Content (reference sentenceused to compare with the article)."
+    # query="You are a reference fact checker. You check if the reference can be found in the abstract of the article in terms of semantic meaning. If yes, you highlight the information in the abstract of the article. Else, you output 'exclude' ."
+    query="You are a reference fact checker. You check if the reference can be found in the abstract of the article in terms of semantic meaning. If yes, you highlight the information in the abstract of the article. Output the semantically similiar information only. Don't output the Text Content (reference sentence used to compare with the article)."
     response = client.chat.completions.create(
         model="gpt-4o",  # Adjust the model name as needed
         temperature=0,
         messages=[
             {"role": "system", "content": query},
             {"role": "user", "content": [
-                {"type": "text", "text": f"Text Content: {text}, Article:{ref}"},
+                {"type": "text", "text": f"Reference: {text}, Abstract:{ref}"},
                 # {"type": "text", "text": f"PDF:{ref}"}
                 ]
             }
@@ -155,3 +156,73 @@ def clean_responses(sentence):
 
 
 
+def rearrange_list(text,list):
+    response = client.chat.completions.create(
+        model="gpt-4o",  # Adjust the model name as needed
+        temperature=0,
+        messages=[
+            {"role": "system", "content": 'You are a semantic ranker. You rank the list according to how semantically similiar the text in the list are to the text for comparison. You output the rank of the list as a list of indexes ONLY, making sure that the rank starts from index 0 and not 1.'},
+            {"role": "user", "content": [
+                {"type": "text", "text": f"Text for comparison: {text}. List: {list}"},
+                # {"type": "text", "text": f"PDF:{ref}"}
+                ]
+            }
+        ]
+    )
+
+    # Print the response
+    return response.choices[0].message.content
+
+def check_gpt(output):
+    response = client.chat.completions.create(
+        model="gpt-4o",  # Adjust the model name as needed
+        temperature=0,
+        messages=[
+            {"role": "system", "content": 'You check if the input is in the form of a list like e.g [0,1,2,3,4,5]. If it is, output the input as it is ONLY. Else, reformat the input list and output the reformatted list ONLY.'},
+            {"role": "user", "content": [
+                {"type": "text", "text": f"Input: {output}"},
+                # {"type": "text", "text": f"PDF:{ref}"}
+                ]
+            }
+        ]
+    )
+
+    # Print the response
+    return response.choices[0].message.content
+
+
+
+def rank_and_check(text,list):
+    response = client.chat.completions.create(
+        model="gpt-4o",  # Adjust the model name as needed
+        temperature=0,
+        messages=[
+            {"role": "system", "content": 'You are a semantic ranker. You rank the list according to how semantically similiar the text in the list are to the text for comparison. You output the rank of the list as a list of indexes ONLY like [0,2,3,4,5,1], making sure that the rank starts from index 0 and not 1.'},
+            {"role": "user", "content": [
+                {"type": "text", "text": f"Text for comparison: {text}. List: {list}"},
+                # {"type": "text", "text": f"PDF:{ref}"}
+                ]
+            }
+        ]
+    )
+
+    # Print the response
+    return response.choices[0].message.content
+
+
+def clean_away_nonsemantic(text):
+    response = client.chat.completions.create(
+        model="gpt-4o",  # Adjust the model name as needed
+        temperature=0,
+        messages=[
+            {"role": "system", "content": 'When the text says anything related to no semantic meaning or similiarity, output *. Else, output the text as it is.'},
+            {"role": "user", "content": [
+                {"type": "text", "text": f"Text:{text}"},
+                # {"type": "text", "text": f"PDF:{ref}"}
+                ]
+            }
+        ]
+    )
+
+    # Print the response
+    return response.choices[0].message.content

@@ -228,3 +228,6 @@ def concat(df):
     for d in df["Text Content"]:
         s += d + " "
     return s.strip()
+
+
+

@@ -6,7 +6,7 @@ import pandas as pd
 from dotenv import *
 from pymongo import MongoClient
 from call_mongodb import *
-import tqdm
+from tqdm import tqdm
 
 load_dotenv()
 pdf_to_check=os.getenv("PDF")
@@ -26,29 +26,46 @@ def main():
     output=get_references(text)
     codable=ast.literal_eval(output)
     len(codable)
-    # turns out gpt 4o is better than cosine similiarity as the text chunks are still too long for accurate representation of vectors, so cosine similiarity is off. Still, we can keep the embbedded database for future references!
-    
+
     dfs = []
-    for code in tqdm(codable, desc="Findin"):
+    for code in tqdm(codable, desc="Processing cos similiarity and pruning"):
         pdf = retrieve_pdf(df, code)
-        similiar = retrieve_similiar_text(pdf, code)  # return top 4 cosine similiarity of each pdf name
-        
-        for index,row in similiar.iterrows():
+        similiar = retrieve_similiar_text_threshold(pdf, code, 10, 0.5)  # return top n, >0.5 cosine similiarity of each pdf name
+        #list of chunks
+        similiarcopy=similiar.copy()
+        lstchunk=similiarcopy['Text Content'].tolist()
+        # index_reassigned=ast.literal_eval(check_gpt(rearrange_list(code[0], lstchunk)))
+        max_retries = 3  
+        retry_delay = 1 
+        attempt=0
+        while attempt<max_retries:
+            try:
+                index_reassigned=ast.literal_eval(rank_and_check(code[0],lstchunk))
+                print(index_reassigned)
+                reset_index_df=similiar.reset_index(drop=True)
+                similiar_rearranged=reset_index_df.iloc[index_reassigned]
+                break
+            except IndexError as e:
+                print(f"IndexError: {e}. Attempt {attempt + 1} of {max_retries}. Retrying...")
+                attempt += 1
+                time.sleep(retry_delay)
+
+        for index,row in similiar_rearranged.iterrows():
             textcontent=row['Text Content']
             cossim=row['similarities_text']
             getans = similiar_ref(code[0], textcontent)
             cleanans=clean_responses(getans)
         
-            # Create a DataFrame for the current row and specify an index
-            newrow = pd.DataFrame({'reference article name': [code[1]], 'Reference text in main article': [code[0]], 'Reference text in reference article': [cleanans], 'Chunk': [textcontent], 'Cosine Similiarity': [cossim]})
-        
+            #Create a DataFrame for the current row and specify an index
+            newrow = pd.DataFrame({'reference article name': [code[1]], 'Reference text in main article': [code[0]], 'Reference identified by gpt4o in chunk': [cleanans], 'Chunk': [textcontent], 'Cosine Similiarity': [cossim]})
+            #newrow = pd.DataFrame({'reference article name': [code[1]], 'Reference text in main article': [code[0]], 'Chunk': [textcontent], 'Cosine Similiarity': [cossim]})
             dfs.append(newrow)
     
     # Concatenate all row DataFrames into one
     output_df = pd.concat(dfs, ignore_index=True)
     
     # Specify the file name and path
-    final_ans = 'find_ref_new_embed.xlsx'
+    final_ans = 'find_ref_new_embed_pruned_top10.xlsx'
     send_excel(output_df,output_directory,final_ans)
     
 

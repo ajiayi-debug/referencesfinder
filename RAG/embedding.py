@@ -150,7 +150,7 @@ def convert_to_float_array(obj):
 
 
 #helper function
-def search_docs_text(df, user_query, top_n=4, to_print=True):
+def search_docs_text(df, user_query, top_n, to_print=True):
     df=df.copy()
     embedding = get_embedding(
         user_query,
@@ -166,7 +166,30 @@ def search_docs_text(df, user_query, top_n=4, to_print=True):
     # if to_print:
     #     print(res) 
     return res
-
+#add extra threshold to above helper function
+def search_docs_text_threshold(df, user_query, top_n, threshold, to_print=True):
+    df=df.copy()
+    embedding = get_embedding(
+        user_query,
+        model=os.getenv("embed_model") # model should be set to the deployment name you chose when you deployed the model
+    )
+    df.loc[:, 'embed_v3'] = df['embed_v3'].apply(convert_to_float_array)
+    df.loc[:,"similarities_text"] = df.embed_v3.apply(lambda x: cosine_similarity(x, embedding)) 
+    filtered_df = df[df["similarities_text"] > threshold]
+    if filtered_df.empty:
+        # If no document has a similarity above the threshold, return the top similarity
+        top_similarity = df["similarities_text"].max()
+        res = pd.DataFrame({'top_similarity': [top_similarity]})
+    else:
+        # Otherwise, return the top N documents above the threshold
+        res = (
+            filtered_df.sort_values("similarities_text", ascending=False)
+            .head(top_n)
+        )
+    
+    # if to_print:
+    #     print(res) 
+    return res
 #helper function for regex
 def normalize_string(s):
     return re.sub(r'\s+', '', s).lower()
@@ -187,22 +210,25 @@ def retrieve_pdf(df,name_and_text):
 
 
 
-""" Call this function to obtain top 4 similiar texts in abstract based on cosine similiarity. Output is a dataframe."""
+""" Call this function to obtain top n similiar texts in abstract based on cosine similiarity. Output is a dataframe."""
 
-def retrieve_similiar_text(new_df,name_and_text):
+def retrieve_similiar_text(new_df,name_and_text, top_n):
     text=name_and_text[0]
-    sd=search_docs_text(new_df, text, top_n=4)
+    sd=search_docs_text(new_df, text, top_n)
     return sd
 
+""" Call this function to obtain top n and >0.5 similiar texts in abstract based on cosine similiarity. Output is a dataframe."""
+def retrieve_similiar_text_threshold(new_df,name_and_text, top_n, threshold):
+    text=name_and_text[0]
+    sd=search_docs_text_threshold(new_df, text, top_n, threshold)
+    return sd
 
 #res = search_docs(df, "At birth, almost every infant produces enough lactase to digest the lactose in breast milk. The production of lactase decreases gradually after the age of 3 years.", top_n=4)
 
-"""" Call this function to get top row of focused df to get op cosine similiarity for gpt to find the sentence with closest meaning OR Call this function to get Text content of each PDF (non-embed df)"""
+"""" Call this function to get top row of focused df to get top cosine similiarity for gpt to find the sentence with closest meaning OR Call this function to get Text content of each PDF (non-embed df)"""
 def focus_on_best(df):
     ans=df.iloc[0]['Text Content']
     return ans
-
-
 
 
 
