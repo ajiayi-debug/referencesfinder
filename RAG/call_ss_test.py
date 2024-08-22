@@ -49,7 +49,8 @@ def download_pdf(session: Session, url: str, path: str, user_agent: str = 'reque
 
 def download_paper(session: Session, paper_id: str, directory: str = 'papers', user_agent: str = 'requests/2.0.0') -> Union[str, None]:
     paper = get_paper(session, paper_id, fields='paperId,isOpenAccess,openAccessPdf')
-
+    print(paper['isOpenAccess'])
+    print(paper['openAccessPdf'])
     # check if the paper is open access
     if not paper['isOpenAccess']:
         return None
