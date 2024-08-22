@@ -10,7 +10,7 @@ from googleapiclient.errors import HttpError
 import pandas as pd
 import unicodedata
 import json
-
+import logging
 
 
 load_dotenv()
@@ -44,24 +44,32 @@ client = AzureOpenAI(
     api_version=os.getenv("ver")
 )
 
+def retry_on_exception(func, *args, max_retries=3, retry_delay=2, **kwargs):
+    attempt = 0
+    while attempt < max_retries:
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            attempt += 1
+            logging.error(f"Attempt {attempt} failed with error: {e}. Retrying in {retry_delay} seconds...")
+            time.sleep(retry_delay)
+    logging.error(f"All {max_retries} attempts failed for {func.__name__}.")
+    return None
 
 # Get names of all PDF articles
 def naming(text):
-    response = client.chat.completions.create(
-        model="gpt-4o",  # Adjust the model name as needed
-        temperature=0,
-        messages=[
-            {"role": "system", "content": "What is the name of the article? Return the name only."},
-            {"role": "user", "content": [
-                {"type": "text", "text": text},
-                
-                ]
-            }
-        ]
-    )
+    def func():
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            temperature=0,
+            messages=[
+                {"role": "system", "content": "What is the name of the article? Return the name only."},
+                {"role": "user", "content": [{"type": "text", "text": text}]}
+            ]
+        )
+        return response.choices[0].message.content
 
-    # Print the response
-    return response.choices[0].message.content
+    return retry_on_exception(func)
 
 def read_text_file(file_path):
     """
@@ -80,14 +88,21 @@ def read_text_file(file_path):
 
 
 def get_names(processed_texts,directory):
+    def split_text_if_necessary(text, token_limit):
+        tokens = text.split()
+        if len(tokens) > token_limit:
+            half_index = len(tokens) // 2
+            return ' '.join(tokens[:half_index])
+        return text
     for i in range(len(processed_texts)):
         input_path = os.path.join(directory, processed_texts[i])
         with open(input_path, 'r', encoding='utf-8') as f:
             processed_text = f.read()
             cleaned_text = ''.join(char for char in processed_text if unicodedata.category(char)[0] != 'C')
-        # text=read_text_file(input_path)
-            name=naming(cleaned_text)
-            processed_texts[i]=str(name)
+            cleaned_text = split_text_if_necessary(cleaned_text, token_limit=1000)
+            name = naming(cleaned_text)
+            processed_texts[i] = str(name)
+    
     return processed_texts
 
 
@@ -98,131 +113,109 @@ system_prompt="In the following text, what are the full texts of each reference 
 
 # Get the references and the cited articles' names in the main article
 def get_references(text):
-    response = client.chat.completions.create(
-        model="gpt-4o",  # Adjust the model name as needed
-        temperature=0,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": [
-                {"type": "text", "text": text},
-                
-                ]
-            }
-        ]
-    )
+    def func():
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            temperature=0,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": [{"type": "text", "text": text}]}
+            ]
+        )
+        return response.choices[0].message.content
 
-    # Print the response
-    return response.choices[0].message.content
+    return retry_on_exception(func)
 
 
 # Get the text that the reference inb the main article is citing in the reference article
-def similiar_ref(text,ref):
-    # query="You are a reference fact checker. You check if the reference can be found in the abstract of the article in terms of semantic meaning. If yes, you highlight the information in the abstract of the article. Else, you output 'exclude' ."
-    query="You are a reference fact checker. You check if the reference can be found in the abstract of the article in terms of semantic meaning. If yes, you highlight the information in the abstract of the article. Output the semantically similiar information only. Don't output the Text Content (reference sentence used to compare with the article)."
-    response = client.chat.completions.create(
-        model="gpt-4o",  # Adjust the model name as needed
-        temperature=0,
-        messages=[
-            {"role": "system", "content": query},
-            {"role": "user", "content": [
-                {"type": "text", "text": f"Reference: {text}, Abstract:{ref}"},
-                # {"type": "text", "text": f"PDF:{ref}"}
-                ]
-            }
-        ]
-    )
+def similiar_ref(text, ref):
+    def func():
+        # query = "You are a reference fact checker. You check if the reference can be found in the abstract of the article in terms of semantic meaning. If yes, you highlight the information in the abstract of the article exactly as it is (Don't summarise or change anything). Output the semantically similar information only."
+        query='Extract the sentence or sentences in the abstract that is most semantically similiar to the reference.'
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            temperature=0,
+            messages=[
+                {"role": "system", "content": query},
+                {"role": "user", "content": [{"type": "text", "text": f"Reference: {text}, Abstract:{ref}"}]}
+            ]
+        )
+        return response.choices[0].message.content
 
-    # Print the response
-    return response.choices[0].message.content
+    return retry_on_exception(func)
+
 
 #Clean up gpt 4o output in getting the text that the references in main articles are citing as the format can be off. 
 def clean_responses(sentence):
-    query="Tidy up the following text to output sentence(s). Dont include unnecessary jargons like Text Content and PDF. For example: '**PDF: ****Text on page 3: ****Malabsorption of lactose, resulting from the combination of lactase deficiency and lactose intake levels of more than 10–15 g per day, and giving symptoms of lactose intolerance have often led to the rejection of milk as a food and to discouragement of milk in food aid programs for the third world.**' becomes 'Malabsorption of lactose, resulting from the combination of lactase deficiency and lactose intake levels of more than 10–15 g per day, and giving symptoms of lactose intolerance have often led to the rejection of milk as a food and to discouragement of milk in food aid programs for the third world.'"
-    response = client.chat.completions.create(
-        model="gpt-4o",  # Adjust the model name as needed
-        temperature=0,
-        messages=[
-            {"role": "system", "content": query},
-            {"role": "user", "content": [
-                {"type": "text", "text": f"The text is: {sentence}"},
-                # {"type": "text", "text": f"PDF:{ref}"}
-                ]
-            }
-        ]
-    )
+    def func():
+        query = "Tidy up the following text to output sentence(s). Don't include unnecessary jargons like Text Content and PDF..."
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            temperature=0,
+            messages=[
+                {"role": "system", "content": query},
+                {"role": "user", "content": [{"type": "text", "text": f"The text is: {sentence}"}]}
+            ]
+        )
+        return response.choices[0].message.content
 
-    # Print the response
-    return response.choices[0].message.content
+    return retry_on_exception(func)
 
 
+def rearrange_list(text, list):
+    def func():
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            temperature=0,
+            messages=[
+                {"role": "system", "content": 'You are a semantic ranker. You rank the list according to how semantically similar the text in the list is to the text for comparison. You output the rank of the list as a list of indexes ONLY...'},
+                {"role": "user", "content": [{"type": "text", "text": f"Text for comparison: {text}. List: {list}"}]}
+            ]
+        )
+        return response.choices[0].message.content
 
-def rearrange_list(text,list):
-    response = client.chat.completions.create(
-        model="gpt-4o",  # Adjust the model name as needed
-        temperature=0,
-        messages=[
-            {"role": "system", "content": 'You are a semantic ranker. You rank the list according to how semantically similiar the text in the list are to the text for comparison. You output the rank of the list as a list of indexes ONLY, making sure that the rank starts from index 0 and not 1.'},
-            {"role": "user", "content": [
-                {"type": "text", "text": f"Text for comparison: {text}. List: {list}"},
-                # {"type": "text", "text": f"PDF:{ref}"}
-                ]
-            }
-        ]
-    )
-
-    # Print the response
-    return response.choices[0].message.content
+    return retry_on_exception(func)
 
 def check_gpt(output):
-    response = client.chat.completions.create(
-        model="gpt-4o",  # Adjust the model name as needed
-        temperature=0,
-        messages=[
-            {"role": "system", "content": 'You check if the input is in the form of a list like e.g [0,1,2,3,4,5]. If it is, output the input as it is ONLY. Else, reformat the input list and output the reformatted list ONLY.'},
-            {"role": "user", "content": [
-                {"type": "text", "text": f"Input: {output}"},
-                # {"type": "text", "text": f"PDF:{ref}"}
-                ]
-            }
-        ]
-    )
+    def func():
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            temperature=0,
+            messages=[
+                {"role": "system", "content": 'You check if the input is in the form of a list like e.g. [0,1,2,3,4,5]. If it is, output the input as it is ONLY...'},
+                {"role": "user", "content": [{"type": "text", "text": f"Input: {output}"}]}
+            ]
+        )
+        return response.choices[0].message.content
 
-    # Print the response
-    return response.choices[0].message.content
+    return retry_on_exception(func)
 
 
 
-def rank_and_check(text,list):
-    response = client.chat.completions.create(
-        model="gpt-4o",  # Adjust the model name as needed
-        temperature=0,
-        messages=[
-            {"role": "system", "content": 'You are a semantic ranker. You rank the list according to how semantically similiar the text in the list are to the text for comparison. You output the rank of the list as a list of indexes ONLY like [0,2,3,4,5,1], making sure that the rank starts from index 0 and not 1.'},
-            {"role": "user", "content": [
-                {"type": "text", "text": f"Text for comparison: {text}. List: {list}"},
-                # {"type": "text", "text": f"PDF:{ref}"}
-                ]
-            }
-        ]
-    )
+def rank_and_check(text, list):
+    def func():
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            temperature=0,
+            messages=[
+                {"role": "system", "content": 'You are a semantic ranker. You rank the list according to how semantically similar the text in the list is to the text for comparison. You output the rank of the list as a list of indexes ONLY like [0,2,3,4,5,1]...'},
+                {"role": "user", "content": [{"type": "text", "text": f"Text for comparison: {text}. List: {list}"}]}
+            ]
+        )
+        return response.choices[0].message.content
 
-    # Print the response
-    return response.choices[0].message.content
-
+    return retry_on_exception(func)
 
 def clean_away_nonsemantic(text):
-    response = client.chat.completions.create(
-        model="gpt-4o",  # Adjust the model name as needed
-        temperature=0,
-        messages=[
-            {"role": "system", "content": 'When the text says anything related to no semantic meaning or similiarity, output *. Else, output the text as it is.'},
-            {"role": "user", "content": [
-                {"type": "text", "text": f"Text:{text}"},
-                # {"type": "text", "text": f"PDF:{ref}"}
-                ]
-            }
-        ]
-    )
+    def func():
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            temperature=0,
+            messages=[
+                {"role": "system", "content": 'When the text says anything related to no semantic meaning or similarity or anything related to information not begin found, output *. Else, output the text as it is.'},
+                {"role": "user", "content": [{"type": "text", "text": f"Text:{text}"}]}
+            ]
+        )
+        return response.choices[0].message.content
 
-    # Print the response
-    return response.choices[0].message.content
+    return retry_on_exception(func)
