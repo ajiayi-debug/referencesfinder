@@ -41,16 +41,16 @@ token = result.stdout.decode('utf-8').strip()
 
 ## Finding token and endpoint
 Token will automatically be created when running script while endpoint can be found in Azure AI Studios/ Resources and Keys/ Resource name/ </> View Code
-## Encrypting PDF files:
-Replace [PDF] in .env file with the name of the PDFs. Try to place the PDFs in main directory. A future database will be set up.
+## Inserting main PDF files:
+Replace [PDF] in .env file with the name of the PDFs. Place the PDFs (main article) in main directory.
 
 ## Finding version
 Replace [version] with your version of api. This can be found in Azure AI Studios/ Resources and Keys/ Deployments/ name of model. In my case, I used "2024-02-01". 
 
-## chat completion model
+## Chat completion model
 Take note that the prompt format only works for gpt 4 onwards. Replace [model] with gpt version. In my case, I used "gpt-4o". 
 
-## embedding model
+## Embedding model
 An embedding model was also used. Replace [embed_model] with your embedding model. For my case, I used "text-embedding-3-large". 
 
 ## ~~Getting Google API Key and Google CSE ID~~
@@ -69,6 +69,7 @@ Create your own personal cluster on [mongodb](https://www.mongodb.com/lp/cloud/a
 ```
 "mongodb+srv://<username>:<password>@<database>.n5tkni0.mongodb.net/?retryWrites=true&w=majority"
 ```
+
 Replace <username> with username of database user, <password> with password of database user and <database> with database name created in cluster
 ## Create .env file
 Replace [endpoint], ~~[google api key]~~, [PDF], [path to certificate], ~~[google cse id]~~, [version], [model], [embed_model], [mongodb] and [az cli] with the respective links and paths
@@ -91,7 +92,7 @@ uri_mongo=[mongodb]
 ### RAG (backend)
 #### Fact checking if articles cited in main article is valid
 ##### Done to validate existing references and workflow will be recycled to validate new references for updates
-Create a folder called text in the main directory and add all reference articles into it (in PDF format for now). Reference articles 
+Create a folder called text in the main directory and add all reference articles into it (in PDF format for now).
 
 Add the main article (PDF format) into main directory (outside [RAG](RAG) and change the [PDF] relative path to the main article's name (pdfname.pdf) in .env file that you created.
 
