@@ -62,15 +62,10 @@ def main():
     # Concatenate all row DataFrames into one
     output_df = pd.concat(dfs, ignore_index=True)
     
-    # tqdm.pandas()
-    # output_df['Cleaned Reference'] = output_df['Reference identified by gpt4o in chunk'].apply(clean_away_nonsemantic)
-    # output_df = output_df[output_df['Cleaned Reference'] != '*']
-    # output_df = output_df.drop(columns=['Cleaned Reference'])
-    # output_df = output_df[output_df['Reference text in main article'] != output_df['Reference identified by gpt4o in chunk']]
-
+    """ 
     # Specify the file name and path
     final_ans = 'find_ref_new_embed_pruned_top3_clean_test_test.xlsx'
-    send_excel(output_df, output_directory, final_ans)
+    send_excel(output_df, output_directory, final_ans) """
 
     records = output_df.to_dict(orient='records')
     replace_database_collection(uri, database, collection, records)
