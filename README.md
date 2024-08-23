@@ -45,8 +45,12 @@ Token will automatically be created when running script while endpoint can be fo
 Replace [PDF] in .env file with the name of the PDFs. Try to place the PDFs in main directory. A future database will be set up.
 
 ## Finding version
-Take note that the prompt format only works for gpt 4 onwards. Replace [model] with gpt version. In my case, I used "gpt-4o". Replace [version] with your version of model. This can be found in Azure AI Studios/ Resources and Keys/ Deployments/ name of model. In my case, I used "2024-02-01"
+Replace [version] with your version of api. This can be found in Azure AI Studios/ Resources and Keys/ Deployments/ name of model. In my case, I used "2024-02-01". 
 
+## chat completion model
+Take note that the prompt format only works for gpt 4 onwards. Replace [model] with gpt version. In my case, I used "gpt-4o". 
+
+## embedding model
 An embedding model was also used. Replace [embed_model] with your embedding model. For my case, I used "text-embedding-3-large". Take note that if you use any other models, the chunking size needs to be changed under the function chunking(dataframe, name of column to chunk, token size to chunk to) in [call_library](RAG/call_library.py) .
 
 ## ~~Getting Google API Key and Google CSE ID~~
@@ -86,16 +90,21 @@ uri_mongo=[mongodb]
 
 ### RAG (backend)
 #### Fact checking if articles cited in main article is valid
-##### Done to validate existing references and workflow willl be recycled to validate new references for updates
+##### Done to validate existing references and workflow will be recycled to validate new references for updates
 Create a folder called text in the main directory and add all reference articles into it (in PDF format for now). Reference articles 
 
 Add the main article (PDF format) into main directory and change the [PDF] relative path to the main article's name (pdfname.pdf) in .env file that you created.
 
-Run [process_library.py](RAG/process_library.py) to process all reference articles.
+Run [process_and_embed.py](RAG/process_and_embed.py) to: 
+1) Pre-process the articles (in pdf format) into .txt files
+2) Use gpt4o to figure out the title of each reference article from their .txt files (if reference article text token length exceeds gpt4o context length (I set to 2000 tokens), split the reference article text into half then process the first half to figure out the name of the article)
+3) Use semantic chunking from the following [chunker](https://github.com/aurelio-labs/semantic-chunkers) to chunk text according to semantic similiarity using text embedding 3 large. The chunker used was the [Statistical Chunker](https://github.com/aurelio-labs/semantic-chunkers/blob/main/semantic_chunkers/chunkers/statistical.py)
+4) 
 
-Run [embed_and_call.py](RAG/embed_and_call.py) to call the gpt to access the reference articles to see if the main article did indeed reference them after embedding processed documents. This only embeds but does not process embeddings as through experimentations realise that directly sending the whole article into gpt 4o performs better than cosine similiarity. 
+Run [call_after_embed.py](RAG/call_after_embed.py) to:
+1) Find all the text that references the reference articles in the main article as well as the title of the reference articles
 
-Run [call.py](RAG/call.py) to call the gpt to access the reference articles to see if main article did indeed reference them ONLY (this process is faster and recommended.)
+
 
 Your output should be an excel file called find_ref.xlsx (if use embeddings) or find_ref_non_embed.xlsx (if no embeddings) with the following column names:
 
