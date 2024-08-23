@@ -1,4 +1,5 @@
 # Overview of References Finder:
+## For more details, refer to the wiki of this project
 To find the references and related references to update previous references in PDFs OR if latest reference found to debunk previous reference, update PDF by writing additional texts as well as update the references. 
 
 # Instructions for project (as of 23/8/2024)
