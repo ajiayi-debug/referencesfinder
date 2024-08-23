@@ -98,8 +98,9 @@ Add the main article (PDF format) into main directory and change the [PDF] relat
 Run [process_and_embed.py](RAG/process_and_embed.py) to: 
 1) Pre-process the articles (in pdf format) into .txt files
 2) Use gpt4o to figure out the title of each reference article from their .txt files (if reference article text token length exceeds gpt4o context length (I set to 2000 tokens), split the reference article text into half then process the first half to figure out the name of the article)
-3) Use semantic chunking from the following [chunker](https://github.com/aurelio-labs/semantic-chunkers) to chunk text according to semantic similiarity using text embedding 3 large. The chunker used was the [Statistical Chunker](https://github.com/aurelio-labs/semantic-chunkers/blob/main/semantic_chunkers/chunkers/statistical.py)
-4) 
+3) Use semantic chunking from the following [chunker](https://github.com/aurelio-labs/semantic-chunkers) to chunk each reference article text according to semantic similiarity using text embedding 3 large. The chunker used was the [Statistical Chunker](https://github.com/aurelio-labs/semantic-chunkers/blob/main/semantic_chunkers/chunkers/statistical.py)
+4) Embed the chunks using text embedding 3 large
+5) Save the chunks and embedded chunks according to reference article title into MongoDB. The collection 'processed' contains reference article title and chunks only while the collection 'processed_and_embed' contains reference article title, chunks and the embedded chunks.
 
 Run [call_after_embed.py](RAG/call_after_embed.py) to:
 1) Find all the text that references the reference articles in the main article as well as the title of the reference articles
