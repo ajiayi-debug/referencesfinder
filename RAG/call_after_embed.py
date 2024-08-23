@@ -69,7 +69,7 @@ def main():
     # output_df = output_df[output_df['Reference text in main article'] != output_df['Reference identified by gpt4o in chunk']]
 
     # Specify the file name and path
-    final_ans = 'find_ref_new_embed_pruned_top3_clean_test.xlsx'
+    final_ans = 'find_ref_new_embed_pruned_top3_clean_test_test.xlsx'
     send_excel(output_df, output_directory, final_ans)
 
     records = output_df.to_dict(orient='records')

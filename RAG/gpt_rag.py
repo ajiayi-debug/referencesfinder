@@ -168,7 +168,7 @@ def rearrange_list(text, list):
             model="gpt-4o",
             temperature=0,
             messages=[
-                {"role": "system", "content": 'You are a semantic ranker. You rank the list according to how semantically similar the text in the list is to the text for comparison. You output the rank of the list as a list of indexes ONLY...'},
+                {"role": "system", "content": 'You are a semantic ranker. You rank the list according to how semantically similar the text in the list is to the text for comparison. Make sure that if the text for comparison is positive about a certain subject, the text in the list is ALSO positive about that SAME subject and VICE VERSA. You output the rank of the list as a list of indexes ONLY.'},
                 {"role": "user", "content": [{"type": "text", "text": f"Text for comparison: {text}. List: {list}"}]}
             ]
         )
