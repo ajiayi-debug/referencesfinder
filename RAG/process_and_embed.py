@@ -40,11 +40,11 @@ def main():
     chunki=chunking(token_df,'Text Content',8190)
     emb=embed(chunki)
 
-    filepath='test_chunk.xlsx'
+    # filepath='test_chunk.xlsx'
 
-    df_exploded.to_excel(filepath, index=False, engine='openpyxl')
+    # df_exploded.to_excel(filepath, index=False, engine='openpyxl')
 
-    send_excel(emb, 'RAG', 'test_embed_and_chunk.xlsx')
+    # send_excel(emb, 'RAG', 'test_embed_and_chunk.xlsx')
 
     
     
