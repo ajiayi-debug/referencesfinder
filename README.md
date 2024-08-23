@@ -1,7 +1,7 @@
 # Overview of References Finder:
 To find the references and related references to update previous references in PDFs OR if latest reference found to debunk previous reference, update PDF by writing additional texts as well as update the references. 
 
-# Instructions for project (as of 29/7/2024)
+# Instructions for project (as of 23/8/2024)
 ## Installing dependencies
 To start, install the required packages:
 
@@ -93,26 +93,27 @@ uri_mongo=[mongodb]
 ##### Done to validate existing references and workflow will be recycled to validate new references for updates
 Create a folder called text in the main directory and add all reference articles into it (in PDF format for now). Reference articles 
 
-Add the main article (PDF format) into main directory and change the [PDF] relative path to the main article's name (pdfname.pdf) in .env file that you created.
+Add the main article (PDF format) into main directory (outside [RAG](RAG) and change the [PDF] relative path to the main article's name (pdfname.pdf) in .env file that you created.
 
 Run [process_and_embed.py](RAG/process_and_embed.py) to: 
-1) Pre-process the articles (in pdf format) into .txt files
+1) Pre-process the reference articles (in pdf format) into .txt files
 2) Use gpt4o to figure out the title of each reference article from their .txt files (if reference article text token length exceeds gpt4o context length (I set to 2000 tokens), split the reference article text into half then process the first half to figure out the name of the article)
 3) Use semantic chunking from the following [chunker](https://github.com/aurelio-labs/semantic-chunkers) to chunk each reference article text according to semantic similiarity using text embedding 3 large. The chunker used was the [Statistical Chunker](https://github.com/aurelio-labs/semantic-chunkers/blob/main/semantic_chunkers/chunkers/statistical.py)
 4) Embed the chunks using text embedding 3 large
 5) Save the chunks and embedded chunks according to reference article title into MongoDB. The collection 'processed' contains reference article title and chunks only while the collection 'processed_and_embed' contains reference article title, chunks and the embedded chunks.
 
 Run [call_after_embed.py](RAG/call_after_embed.py) to:
-1) Find all the text that references the reference articles in the main article as well as the title of the reference articles
+1) Pre-process the main article (in pdf format) to .txt 
+2) Use gpt4o to find all cited references and the text that cites these references (will work on chunking main article in future to ensure that articles of all token lengths accepted, but in general as articles are meant for information sharing, will not be too large and most can be accepted)
+3) For each text that cites references, find the reference title it cites, then embed the text using text embedding 3 large and calculate cosine similiarity between embedded text and each embedded chunk of the reference article cited by the text. (Retrieval Augmented Generation)
+4) Return chunks that have cosine similiarity >0.5 (max 10, but usually does not exceed 10), ranked according to cosine similiarity (descendingly).
+5) Use gpt4o to re-rank the chunks according to how semantically similiar text that cites the reference is to the chunk (Found that cosine similiarity not a good ranker in terms of semantic similiarity, but good at sieving out what chunks are semantically similiar and what chunks are not) (reasoning found in wiki)
+6) Obtain top 3 chunks (to get rid of chunks that gpt 4o deems as not semantically similiar at all, ranked last or one of the last - occurs as maybe only a word or so semantically similiar in chunk and appears multiple times in chunk, causing cosine similiarity >0.5 when in actual fact its not semantically similiar to text in main article)
+7) Send output to database in Mongo DB under 'find_ref'
 
+Column names are:
 
+![image](https://github.com/user-attachments/assets/18857146-5502-4c74-92b8-f5a9745ff5b5)
 
-Your output should be an excel file called find_ref.xlsx (if use embeddings) or find_ref_non_embed.xlsx (if no embeddings) with the following column names:
-
-`reference article name: name of article that is referenced in main article`
-
-`reference text in main article: text in main article that references reference article`
-
-`reference text in reference article: what the reference text in the main article is referencing in the reference article`
 
 
