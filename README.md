@@ -51,7 +51,7 @@ Replace [version] with your version of api. This can be found in Azure AI Studio
 Take note that the prompt format only works for gpt 4 onwards. Replace [model] with gpt version. In my case, I used "gpt-4o". 
 
 ## embedding model
-An embedding model was also used. Replace [embed_model] with your embedding model. For my case, I used "text-embedding-3-large". Take note that if you use any other models, the chunking size needs to be changed under the function chunking(dataframe, name of column to chunk, token size to chunk to) in [call_library](RAG/call_library.py) .
+An embedding model was also used. Replace [embed_model] with your embedding model. For my case, I used "text-embedding-3-large". 
 
 ## ~~Getting Google API Key and Google CSE ID~~
 
