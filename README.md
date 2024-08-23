@@ -14,11 +14,30 @@ pip install -r requirements.txt
 ### Accessing Azure CLI:
 Download Azure CLI from [azure cli](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli-windows?tabs=azure-cli)
 ### Finding Azure CLI:
-This part is only necessary if your device cannot find the path to Azure CLI. 
-
+#### (If device cannot find path to Azure CLI):
 Go to CMD and type `where az`.
 
 Take note of the path with `./az.cmd`. You will need this path to create your .env file
+
+#### (If device can find path to Azure CLI):
+in [gpt_rag](RAG/gpt_rag.py), line 19-23:
+
+Change 
+
+```
+az_path = os.getenv("az_path")
+
+# Fetch Azure OpenAI access token
+result = subprocess.run([az_path, 'account', 'get-access-token', '--resource', 'https://cognitiveservices.azure.com', '--query', 'accessToken', '-o', 'tsv'], stdout=subprocess.PIPE)
+token = result.stdout.decode('utf-8').strip()
+````
+
+to 
+
+````
+result = subprocess.run(['az', 'account', 'get-access-token', '--resource', 'https://cognitiveservices.azure.com', '--query', 'accessToken', '-o', 'tsv'], stdout=subprocess.PIPE)
+token = result.stdout.decode('utf-8').strip()
+````
 
 ## Finding token and endpoint
 Token will automatically be created when running script while endpoint can be found in Azure AI Studios/ Resources and Keys/ Resource name/ </> View Code
@@ -30,10 +49,11 @@ Take note that the prompt format only works for gpt 4 onwards. Replace [model] w
 
 An embedding model was also used. Replace [embed_model] with your embedding model. For my case, I used "text-embedding-3-large". Take note that if you use any other models, the chunking size needs to be changed under the function chunking(dataframe, name of column to chunk, token size to chunk to) in [call_library](RAG/call_library.py) .
 
-## Getting google api key and google cse id
-Go to [Google api search](https://developers.google.com/custom-search/v1/overview) and request for an api key. Replace [google api key] in .env file with the received key.
+## ~~Getting Google API Key and Google CSE ID~~
 
-Go to [Google CSE id creation](https://programmablesearchengine.google.com/controlpanel/create) and create a cse id. Replace [google cse id] in .env file with the received cse id.
+~~Go to [Google API Search](https://developers.google.com/custom-search/v1/overview) and request an API key. Replace [google api key] in the .env file with the received key.~~
+
+~~Go to [Google CSE ID Creation](https://programmablesearchengine.google.com/controlpanel/create) and create a CSE ID. Replace [google cse id] in the .env file with the received CSE ID.~~
 
 
 ## Certificate issues
@@ -47,14 +67,14 @@ Create your own personal cluster on [mongodb](https://www.mongodb.com/lp/cloud/a
 ```
 Replace <username> with username of database user, <password> with password of database user and <database> with database name created in cluster
 ## Create .env file
-Replace [endpoint], [google api key], [PDF], [path to certificate], [google cse id], [version], [model], [embed_model], [mongodb] and [az cli] with the respective links and paths
+Replace [endpoint], ~~[google api key]~~, [PDF], [path to certificate], ~~[google cse id]~~, [version], [model], [embed_model], [mongodb] and [az cli] with the respective links and paths
 
 ```sh
 endpoint = [endpoint]
-googleapikey= [google api key]
+# googleapikey= [google api key]
 az_path = [az cli]
 PDF= [PDF]
-googlecseid=[google cse id]
+# googlecseid=[google cse id]
 ver=[version]
 name=[model]
 cert=[path to certificate]
@@ -64,8 +84,10 @@ uri_mongo=[mongodb]
 ```
 ## How to run:
 
-### RAG (main way of working for now)
-Create a folder called text in the main directory and add all reference articles into it (in PDF format for now).
+### RAG (backend)
+#### Fact checking if articles cited in main article is valid
+##### Done to validate existing references and workflow willl be recycled to validate new references for updates
+Create a folder called text in the main directory and add all reference articles into it (in PDF format for now). Reference articles 
 
 Add the main article (PDF format) into main directory and change the [PDF] relative path to the main article's name (pdfname.pdf) in .env file that you created.
 
@@ -83,12 +105,4 @@ Your output should be an excel file called find_ref.xlsx (if use embeddings) or 
 
 `reference text in reference article: what the reference text in the main article is referencing in the reference article`
 
-### test 
-#### (Outdated way of working, but still good for general reference on how to call gpt and how to connect gpt to google)
-Replace [PDF] with the main article name (pdf_name.pdf)
 
-Run [main.py](test/main.py). You will see an excel file called output.xlsx containing a summary for each article referenced in the PDF as well as the created query by gpt to input into google search. 
-
-[gpt.py](test/gpt.py) and [pdftotext.py](test/pdftotext.py) contains all main functions used. 
-
-[gptapiinternet.py](test/gptapiinternet.py) provides a reference on how to connect gpt api to google 
