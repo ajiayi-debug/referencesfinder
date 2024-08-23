@@ -26,16 +26,6 @@ token = result.stdout.decode('utf-8').strip()
 os.environ['AZURE_OPENAI_ENDPOINT'] = os.getenv('endpoint')
 os.environ['AZURE_OPENAI_API_KEY'] = token
 
-# Set up your Azure OpenAI API key and Google Custom Search API credentials
-azure_openai_api_key = os.getenv("AZURE_OPENAI_API_KEY")
-azure_openai_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
-google_api_key = os.getenv("googleapikey")
-google_cse_id = os.getenv("googlecseid")
-name=os.getenv("name")
-ver=os.getenv("ver")
-cert=os.getenv("cert")
-
-
 
 # Initialize the AzureOpenAI client
 client = AzureOpenAI(
@@ -99,7 +89,7 @@ def get_names(processed_texts,directory):
         with open(input_path, 'r', encoding='utf-8') as f:
             processed_text = f.read()
             cleaned_text = ''.join(char for char in processed_text if unicodedata.category(char)[0] != 'C')
-            cleaned_text = split_text_if_necessary(cleaned_text, token_limit=1000)
+            cleaned_text = split_text_if_necessary(cleaned_text, token_limit=2000)
             name = naming(cleaned_text)
             processed_texts[i] = str(name)
     
