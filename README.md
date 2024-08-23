@@ -45,7 +45,7 @@ Token will automatically be created when running script while endpoint can be fo
 Replace [PDF] in .env file with the name of the PDFs. Place the PDFs (main article) in main directory.
 
 ## Finding version
-Replace [version] with your version of api. This can be found in Azure AI Studios/ Resources and Keys/ Deployments/ name of model. In my case, I used "2024-02-01". 
+Replace [version] with your version of api. This can be found in Azure AI Studios/ Resources and Keys/ Chat playground/ </> View Code 
 
 ## Chat completion model
 Take note that the prompt format only works for gpt 4 onwards. Replace [model] with gpt version. In my case, I used "gpt-4o". 
