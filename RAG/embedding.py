@@ -195,16 +195,16 @@ def normalize_string(s):
     return re.sub(r'\s+', '', s).lower()
 
 """ Call this functon to focus on the pdf  """
-#each input is an element containing [text,name]
+#each input is an element containing [text,name, year]
 def retrieve_pdf(df,name_and_text):
     name = normalize_string(name_and_text[1])
+    print(name)
    
     # Apply normalization to the "PDF File" column
     df['normalized_pdf_file'] = df['PDF File'].apply(normalize_string)
     
     # Filter the DataFrame using the normalized values
     new_df = df[df['normalized_pdf_file'] == name]
-    
     
     return new_df
 
@@ -218,9 +218,12 @@ def retrieve_similiar_text(new_df,name_and_text, top_n):
     return sd
 
 """ Call this function to obtain top n and >0.5 similiar texts in abstract based on cosine similiarity. Output is a dataframe."""
-def retrieve_similiar_text_threshold(new_df,name_and_text, top_n, threshold):
-    text=name_and_text[0]
-    sd=search_docs_text_threshold(new_df, text, top_n, threshold)
+def retrieve_similar_text_threshold(new_df, name_and_text, top_n, threshold):
+    if new_df.empty:
+        return None  # or return an empty list, DataFrame, or any other placeholder as needed
+
+    text = name_and_text[0]
+    sd = search_docs_text_threshold(new_df, text, top_n, threshold)
     return sd
 
 #res = search_docs(df, "At birth, almost every infant produces enough lactase to digest the lactose in breast milk. The production of lactase decreases gradually after the age of 3 years.", top_n=4)

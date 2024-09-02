@@ -98,7 +98,7 @@ def get_names(processed_texts,directory):
 
 
 
-system_prompt="In the following text, what are the full texts of each reference (can be multiple sentences) and the name of the reference articles? Format your response in this manner:[['The lactase activity is usually fully or partially restored during recovery of the intestinal mucosa.','Lactose intolerance in infants, children, and adolescents'],...]"
+system_prompt="In the following text, what are the full texts of each reference (can be multiple sentences), the name of the reference articles and the year articles were publiched? Format your response in this manner:[['The lactase activity is usually fully or partially restored during recovery of the intestinal mucosa.','Lactose intolerance in infants, children, and adolescents','2006' ],...]"
 
 
 # Get the references and the cited articles' names in the main article
@@ -204,6 +204,21 @@ def clean_away_nonsemantic(text):
             messages=[
                 {"role": "system", "content": 'When the text says anything related to no semantic meaning or similarity or anything related to information not begin found, output *. Else, output the text as it is.'},
                 {"role": "user", "content": [{"type": "text", "text": f"Text:{text}"}]}
+            ]
+        )
+        return response.choices[0].message.content
+
+    return retry_on_exception(func)
+
+
+def keyword_search(text):
+    def func():
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            temperature=0,
+            messages=[
+                {"role": "system", "content": 'What are the keywords in the Text? take note these keywords will be used for a graph search in semantic scholar. Output the keywords ONLY'},
+                {"role": "user", "content": [{"type": "text", "text": f"Text:{text}" }]}
             ]
         )
         return response.choices[0].message.content
