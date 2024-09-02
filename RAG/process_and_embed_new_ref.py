@@ -9,7 +9,7 @@ from embedding import *
 from call_mongodb import *
 from semantic_chunking import *
 
-def process_pdfs_to_mongodb(files_directory, collection1, collection2):
+def process_new_pdfs_to_mongodb(files_directory, collection1, collection2):
     load_dotenv()
     uri = os.getenv("uri_mongo")
     client = MongoClient(uri)
@@ -18,13 +18,17 @@ def process_pdfs_to_mongodb(files_directory, collection1, collection2):
     directory = 'doc'  # Fixed directory
 
     pdf_list = read_pdf_file_list(files_directory)
+    # filenames = get_txt_names(files_directory)
     
     # Process and save PDFs
     process_and_save_pdfs(pdf_list, directory)
-    filenames = get_txt_names(files_directory)
+    filenames= get_txt_names(files_directory)
+    
 
     processed_texts = read_processed_texts(directory, filenames)
-    processed_name = get_names(filenames, directory)
+    #processed_name = get_names(filenames, directory)
+    processed_name=list_pdf_bases('papers')
+    print(processed_name)
     
 
     data = {'PDF File': processed_name, 'Text Content': processed_texts}
@@ -62,4 +66,3 @@ def process_pdfs_to_mongodb(files_directory, collection1, collection2):
     print(f"Data sent to MongoDB Atlas for collection: {collection2}")
 
     clear_folder(directory)
-

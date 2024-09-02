@@ -1,4 +1,5 @@
 import os
+from gpt_rag import *
 from openpyxl import Workbook
 import unicodedata
 from gpt_rag import *
@@ -7,6 +8,9 @@ import glob
 import re
 import os
 from dotenv import *
+import pandas as pd
+import shutil
+from typing import AsyncGenerator, Generator, Iterable, TypeVar, Union, List, Dict, Any, Optional
 load_dotenv()
 
 
@@ -18,12 +22,18 @@ def read_pdf_file_list(directory):
     pdf_files = glob.glob(os.path.join(abs_directory, "*.pdf"))
     return pdf_files
 
+
 def get_txt_names(directory):
     pdf_list = read_pdf_file_list(directory)
     doc_files = [f"{i}.txt" for i in range(len(pdf_list))]
     return doc_files
 
-def extract_text_from_pdf(pdf_path):
+def get_txt_names_exactly(directory):
+    # List all .txt files in the directory
+    txt_files = [f for f in os.listdir(directory) if f.endswith('.txt')]
+    return txt_files
+
+def extract_text_from_pdf_specific(pdf_path):
     """
     Extract text from each page of a PDF file using PyMuPDF.
     
@@ -31,18 +41,38 @@ def extract_text_from_pdf(pdf_path):
     - pdf_path (str): Path to the PDF file.
     
     Returns:
-    - list: List containing text extracted from each page.
+    - list: List containing text extracted from each page, or None if the file is invalid.
     """
-    pdf_document = fitz.open(pdf_path)
-    extracted_text = []
+    try:
+        pdf_document = fitz.open(pdf_path)
+        extracted_text = []
+        
+        for page_number in range(len(pdf_document)):
+            page = pdf_document.load_page(page_number)
+            text = page.get_text()
+            extracted_text.append(text)
+        
+        pdf_document.close()
+        return extracted_text
+    except Exception as e:
+        print(f"Error extracting text from {pdf_path}: {e}")
+        return None
     
-    for page_number in range(len(pdf_document)):
-        page = pdf_document.load_page(page_number)
-        text = page.get_text()
-        extracted_text.append(text)
+
+def move_invalid_pdf(pdf_path, invalid_pdfs_dir):
+    """
+    Move the invalid PDF file to the specified directory.
     
-    pdf_document.close()
-    return extracted_text
+    Args:
+    - pdf_path (str): Path to the invalid PDF file.
+    - invalid_pdfs_dir (str): Directory to move the invalid PDF file.
+    """
+    if not os.path.exists(invalid_pdfs_dir):
+        os.makedirs(invalid_pdfs_dir)
+    shutil.move(pdf_path, os.path.join(invalid_pdfs_dir, os.path.basename(pdf_path)))
+    print(f"Moved invalid PDF {pdf_path} to {invalid_pdfs_dir}")
+
+
 
 def save_text(text_list, filename, output_dir):
     """
@@ -64,17 +94,28 @@ def save_text(text_list, filename, output_dir):
             text_file.write(f"Text on page {page_number + 1}:\n{text}\n\n")
 
 
+# For reference files
+def full_cycle_specific(pdf_path, filename, output_dir, invalid_pdfs_dir='invalid_pdfs'):
+    """
+    Process a PDF file: extract text, save to .txt, and move invalid files.
+    
+    Args:
+    - pdf_path (str): Path to the PDF file.
+    - filename (str): Base filename for the output text file (without extension).
+    - output_dir (str): Directory to save the output text file.
+    - invalid_pdfs_dir (str): Directory to move invalid PDF files.
+    """
+    # Extract text from the PDF
+    text_list = extract_text_from_pdf_specific(pdf_path)
+    
+    if text_list is None:
+        # Move the invalid PDF if extraction failed
+        move_invalid_pdf(pdf_path, invalid_pdfs_dir)
+    else:
+        # Save the extracted text to a file
+        save_text(text_list, f"{filename}.txt", output_dir)
 
-def full_cycle_specific(pdf,filename, output_dir):
-    filename=filename+".txt"
-    p=extract_text_from_pdf(pdf)
-    d=save_text(p,filename,output_dir)
-    # full_txt_path = os.path.join(output_dir, filename)
-    # filename=read_text_file(full_txt_path)
-
-    # return filename
-
-def process_and_save_pdfs(pdf_list, output_dir='doc'):
+def process_and_save_pdfs(pdf_list, output_dir):
     """
     Process each PDF file, save the processed text to the specified output directory.
     
@@ -195,7 +236,7 @@ def read_text_file(file_path):
 
 
 
-
+# For main text
 def full_cycle(pdf,filename):
     filename=filename+".txt"
     p=extract_text_from_pdf(pdf)
@@ -229,5 +270,241 @@ def concat(df):
         s += d + " "
     return s.strip()
 
+def update_downloadable_status(df: pd.DataFrame, pdf_folder: str) -> pd.DataFrame:
+    """
+    Update the 'downloadable' column in the DataFrame based on whether the paper ID has a corresponding PDF file in the folder.
+
+    :param df: DataFrame containing the paper IDs.
+    :param pdf_folder: Folder path where the PDF files are stored.
+    :return: Updated DataFrame with 'downloadable' column.
+    """
+    # List all PDF files in the folder and remove the '.pdf' extension
+    pdf_files = [os.path.splitext(file)[0] for file in os.listdir(pdf_folder) if file.lower().endswith('.pdf')]
+
+    # Create a set of PDF file names for faster lookup
+    pdf_file_set = set(pdf_files)
+
+    # Check if 'downloadable' column exists, if not, add it
+    if 'downloadable' not in df.columns:
+        df['downloadable'] = 'no'
+    else:
+        # Ensure column is initialized to 'no'
+        df['downloadable'] = 'no'
+
+    # Update 'downloadable' column based on whether the paper ID is in the PDF file set
+    df.loc[df['Paper Id of new reference article found'].isin(pdf_file_set), 'downloadable'] = 'yes'
+
+    return df
 
 
+
+
+#not moving, but copying pdf files if valid, invalids deleted. (this is used for external pdfs found, so like when external pdf is valid, will be transferred to main folder)
+
+def move_pdf_files(source_folder: str, destination_folder: str, invalid_pdf_folder: str):
+    # Create destination and invalid PDF folders if they don't exist
+    os.makedirs(destination_folder, exist_ok=True)
+    os.makedirs(invalid_pdf_folder, exist_ok=True)
+
+    # Loop through all files in the source folder
+    for filename in os.listdir(source_folder):
+        if filename.endswith('.pdf'):
+            source_path = os.path.join(source_folder, filename)
+            destination_path = os.path.join(destination_folder, filename)
+            
+            if validate_pdf(source_path):
+                # If the PDF is valid, move it to the destination folder
+                shutil.copy2(source_path, destination_path)
+                print(f"Moved valid PDF: {filename}")
+            else:
+                # If the PDF is invalid, move it to the invalid PDF folder
+                invalid_pdf_path = os.path.join(invalid_pdf_folder, filename)
+                shutil.copy2(source_path, invalid_pdf_path)
+                print(f"Moved invalid PDF to invalid folder: {filename}")
+                
+                # Delete the invalid PDF
+                os.remove(invalid_pdf_path)
+                print(f"Deleted invalid PDF: {filename}")
+
+#check if each iteration same
+def validate_pdf(file_path):
+    try:
+        with open(file_path, 'rb') as f:
+            header = f.read(5)
+            if header != b'%PDF-':
+                return False
+        return True
+    except Exception as e:
+        print(f"Failed to validate PDF: {e}")
+        return False
+
+#add column called external id to dataframe, then only input ext id if paper id matches (input is list of list of external id and paper id as well as dataframe)
+
+def add_external_id_to_undownloadable_papers(df: pd.DataFrame, id_list: list[list[str]]) -> pd.DataFrame:
+    """
+    Add external IDs to a new column in the DataFrame based on matching paper IDs from a list of lists.
+    
+    :param df: A pandas DataFrame containing paper information, including paperId.
+    :param id_list: A list of lists where each sublist contains [paperId, externalId].
+    :return: Updated pandas DataFrame with a new column 'externalId_of_undownloadable_paper'.
+    """
+    # Create a dictionary to map paperId to externalId(s)
+    paper_id_to_external_id = {paper_id: external_id for paper_id, external_id in id_list}
+
+    # Initialize the new column with None values
+    df['externalId_of_undownloadable_paper'] = None
+
+    # Iterate over the DataFrame rows and update the new column where paper ID matches
+    for index, row in df.iterrows():
+        paper_id = row['Paper Id of new reference article found']
+
+        # Add the external ID if there's a match in paper_id_to_external_id
+        external_id = paper_id_to_external_id.get(paper_id)
+        if external_id:
+            df.at[index, 'externalId_of_undownloadable_paper'] = external_id
+
+    return df
+
+
+
+#add reason for download error
+
+def update_failure_reasons(df: pd.DataFrame, failed_downloads: List[Dict[str, Any]]) -> pd.DataFrame:
+    """
+    Update the DataFrame with a new column 'reason_for_failure' based on the failed downloads list.
+
+    :param df: DataFrame containing paper information.
+    :param failed_downloads: List of dictionaries with failed download information, where each dictionary
+                              contains 'paper_id' and 'reason' for the failure.
+    :return: Updated DataFrame with 'reason_for_failure' column.
+    """
+    # Convert the list of failed downloads to a dictionary for quick lookup
+    failure_dict = {item['paper_id']: item['error'] for item in failed_downloads}
+
+    # Ensure 'reason_for_failure' column exists and is initialized to NaN
+    if 'reason_for_failure' not in df.columns:
+        df['reason_for_failure'] = pd.NA
+
+    # Update 'reason_for_failure' column based on the failure_dict
+    df['reason_for_failure'] = df['Paper Id of new reference article found'].map(failure_dict)
+
+    return df
+
+
+#Add column of url of all by right able to download papers: use it to potentially pick up papers that did not download without using semantic scholar api
+
+def add_pdf_url_column(df: pd.DataFrame, metadata_list: List[Dict[str, Any]]) -> pd.DataFrame:
+    """
+    Adds a column to the DataFrame with the URL of the downloadable PDF.
+    
+    :param df: DataFrame to update.
+    :param metadata_list: List of dictionaries containing paper metadata.
+    :return: Updated DataFrame with the 'pdf_url' column.
+    """
+    # Create a dictionary mapping paper IDs to PDF URLs
+    pdf_url_dict = {
+        paper['paperId']: paper.get('openAccessPdf', {}).get('url', None)
+        for paper in metadata_list
+        if paper.get('openAccessPdf') and 'url' in paper['openAccessPdf']
+    }
+    
+    # Ensure the 'pdf_url' column exists
+    if 'pdf_url' not in df.columns:
+        df['pdf_url'] = None
+
+    # Update the DataFrame with PDF URLs
+    df['pdf_url'] = df['Paper Id of new reference article found'].map(pdf_url_dict)
+
+    return df
+
+
+def move_invalid_pdf(pdf_path, invalid_directory):
+    """
+    Moves the given PDF file to the invalid directory.
+    """
+    if not os.path.exists(invalid_directory):
+        os.makedirs(invalid_directory)
+    try:
+        shutil.move(pdf_path, invalid_directory)
+        print(f"Moved invalid PDF to {invalid_directory}: {pdf_path}")
+    except Exception as e:
+        print(f"Failed to move invalid PDF {pdf_path}: {e}")
+
+
+
+#change invalid pdf files to not downloadable in df
+def update_downloadable_status_invalid(df):
+    """
+    Update the 'downloadable' column in the DataFrame based on the presence of files in the 'invalid_pdfs' directory.
+    
+    Args:
+    - df (pd.DataFrame): DataFrame containing a column 'PDF File' with file names (excluding .pdf) and a 'downloadable' column.
+    - invalid_pdfs_dir (str): Directory where invalid PDF files are stored.
+    
+    Returns:
+    - pd.DataFrame: Updated DataFrame with 'downloadable' column set to 'no' for files found in the invalid directory.
+    """
+    invalid_pdfs_dir='invalid_pdfs'
+    # Get a list of invalid file names (without .pdf extension)
+    invalid_files = {os.path.splitext(file)[0] for file in os.listdir(invalid_pdfs_dir)}
+
+    # Update 'downloadable' column based on whether the file is in the invalid directory
+    df['downloadable'] = df['Paper Id of new reference article found'].apply(lambda x: 'no' if x in invalid_files else 'yes')
+
+    return df
+
+
+#clear doc folder
+
+
+def clear_folder(folder_path):
+    """
+    Clear all files and subdirectories in the specified folder.
+    
+    Args:
+    - folder_path (str): Path to the folder to be cleared.
+    """
+    # Check if the folder exists
+    if os.path.exists(folder_path):
+        # Iterate over all files and directories in the folder
+        for filename in os.listdir(folder_path):
+            file_path = os.path.join(folder_path, filename)
+            try:
+                # Remove directory or file
+                if os.path.isdir(file_path):
+                    shutil.rmtree(file_path)
+                else:
+                    os.remove(file_path)
+            except Exception as e:
+                print(f"Failed to delete {file_path}. Reason: {e}")
+    else:
+        print(f"The folder {folder_path} does not exist.")
+
+
+
+
+#get list of paper ids in folder with new ref pdfs
+def list_pdf_bases(pdf_folder):
+    """
+    Lists the base names (without .pdf extension) of all .pdf files in the specified folder.
+    
+    Parameters:
+        pdf_folder (str): Path to the folder containing .pdf files.
+        
+    Returns:
+        list: A list of base names of .pdf files in the folder.
+    """
+    # List all .pdf files and remove the .pdf extension
+    pdf_bases = [os.path.splitext(f)[0] for f in os.listdir(pdf_folder) if f.lower().endswith('.pdf')]
+    
+    return pdf_bases
+
+#replace paper ids with actual names 
+def replace_pdf_file_with_title(df, df_found):
+    # Create a dictionary mapping 'Paper Id of new reference article found' to 'Title of new reference article found'
+    id_to_title = dict(zip(df_found['Paper Id of new reference article found'], df_found['Title of new reference article found']))
+    
+    # Replace 'PDF file' in df with the corresponding title if the Paper ID matches
+    df['PDF File'] = df['PDF File'].map(id_to_title).fillna(df['PDF File'])
+    
+    return df
