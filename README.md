@@ -1,5 +1,6 @@
 # Overview of References Finder:
-To find the references and related references to update previous references in PDFs OR if latest reference found to debunk previous reference, update PDF by writing additional texts as well as update the references. 
+## For more details, refer to the wiki of this project
+To find the references and related references to update previous references in article OR if latest reference found to debunk previous reference, update article by writing additional texts as well as update the references. 
 
 # Instructions for project (as of 23/8/2024)
 ## Installing dependencies
@@ -42,7 +43,7 @@ token = result.stdout.decode('utf-8').strip()
 ## Finding token and endpoint
 Token will automatically be created when running script while endpoint can be found in Azure AI Studios/ Resources and Keys/ Resource name/ </> View Code
 ## Inserting main PDF files:
-Replace [PDF] in .env file with the name of the PDFs. Place the PDFs (main article) in main directory.
+Replace [PDF] in .env file with the name of the main article PDF. Place the main article (.pdf) in main directory.
 
 ## Finding version
 Replace [version] with your version of api. This can be found in Azure AI Studios/ Resources and Keys/ Chat playground/ </> View Code 
