@@ -188,7 +188,7 @@ def rank_and_check(text, list):
             model="gpt-4o",
             temperature=0,
             messages=[
-                {"role": "system", "content": 'You are a semantic ranker. You rank the list according to how semantically similar the text in the list is to the text for comparison. You output the rank of the list as a list of indexes ONLY like [0,2,3,4,5,1]...'},
+                {"role": "system", "content": 'You are a semantic ranker. You rank the list according to how semantically similar the text in the list is to the text for comparison. You output the rank of the list as a list of indexes ONLY like [0,2,3,4,5,1]. Make sure your max index is length of list - 1.'},
                 {"role": "user", "content": [{"type": "text", "text": f"Text for comparison: {text}. List: {list}"}]}
             ]
         )

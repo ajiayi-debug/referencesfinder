@@ -198,7 +198,6 @@ def normalize_string(s):
 #each input is an element containing [text,name, year]
 def retrieve_pdf(df,name_and_text):
     name = normalize_string(name_and_text[1])
-    print(name)
    
     # Apply normalization to the "PDF File" column
     df['normalized_pdf_file'] = df['PDF File'].apply(normalize_string)
@@ -222,6 +221,11 @@ def retrieve_similar_text_threshold(new_df, name_and_text, top_n, threshold):
     if new_df.empty:
         return None  # or return an empty list, DataFrame, or any other placeholder as needed
 
+    text = name_and_text[0]
+    sd = search_docs_text_threshold(new_df, text, top_n, threshold)
+    return sd
+
+def retrieve_similar_text_threshold_old(new_df, name_and_text, top_n, threshold):
     text = name_and_text[0]
     sd = search_docs_text_threshold(new_df, text, top_n, threshold)
     return sd
