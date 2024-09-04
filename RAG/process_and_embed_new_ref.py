@@ -18,22 +18,25 @@ def process_new_pdfs_to_mongodb(files_directory, collection1, collection2):
     directory = 'doc'  # Fixed directory
 
     pdf_list = read_pdf_file_list(files_directory)
-    # filenames = get_txt_names(files_directory)
+    #filenames = get_txt_names(files_directory)
     
     # Process and save PDFs
+    process_invalid_pdfs(pdf_list)
+    pdf_list = read_pdf_file_list(files_directory)
+    print(pdf_list)
     process_and_save_pdfs(pdf_list, directory)
     filenames= get_txt_names(files_directory)
-    
+
 
     processed_texts = read_processed_texts(directory, filenames)
     #processed_name = get_names(filenames, directory)
     processed_name=list_pdf_bases('papers')
-    print(processed_name)
+    
     
 
     data = {'PDF File': processed_name, 'Text Content': processed_texts}
     df = pd.DataFrame(data)
-   
+    tqdm.pandas(desc="Processing Rows")
     df['text_chunks'] = df['Text Content'].apply(semantic_chunk)
     
     df_exploded = df.explode('text_chunks').drop(columns=['Text Content'])
@@ -65,4 +68,5 @@ def process_new_pdfs_to_mongodb(files_directory, collection1, collection2):
     replace_database_collection(uri, db, collection2, records2)
     print(f"Data sent to MongoDB Atlas for collection: {collection2}")
 
-    clear_folder(directory)
+    delete_folder(directory)
+

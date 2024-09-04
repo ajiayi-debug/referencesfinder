@@ -48,12 +48,12 @@ def main():
         d=ntd[2]
         keyword=keyword_search(t)
         ntd.append(keyword)
-        papers = total_search_by_keywords(keyword, year=d, fields=field)
+        papers = total_search_by_keywords(keyword, year=d, exclude_name=n, fields=field)
         external_id_list, filtered_metadata_list = preprocess_paper_metadata(papers)
         for data in filtered_metadata_list:
             download.append(data)
         total=papers
-        print(total)
+        # print(total)
         paper_ids=extract_paper_ids(total)
         title=extract_title(total)
         year=extract_year(total)
@@ -63,8 +63,8 @@ def main():
         ntd.append(paperidandtitleandyear)
         for j in external_id_list:
             ext_id.append(j)
-    print(nametextdate)
-    print(download)
+    # print(nametextdate)
+    # print(download)
     failed_downloads, successful_downloads=asyncio.run(process_and_download(download, directory='papers'))
 
     
@@ -85,13 +85,12 @@ def main():
     df=pd.DataFrame(flattened_data,columns=columns)
     ex_pdf='external_pdfs'
     pdf_folder = 'papers'
-    invalid_pdfs='invalid_pdfs'
     df= update_downloadable_status(df, pdf_folder)
     df=add_external_id_to_undownloadable_papers(df,ext_id)
     df=update_failure_reasons(df, failed_downloads)
     df_updated=add_pdf_url_column(df,download)
     #for now we move after checks to show what semantic scholar api misses out on, but eventually we will move first then update df
-    move_pdf_files(ex_pdf, pdf_folder, invalid_pdfs)
+    move_pdf_files(ex_pdf, pdf_folder)
     final_ans = 'new_ref_paper_ids_EXT_IDS_check.xlsx'
     send_excel(df_updated, 'RAG', final_ans)
     # Convert DataFrames to records

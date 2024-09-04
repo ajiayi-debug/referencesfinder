@@ -22,7 +22,6 @@ def process_old_references(collection_processed_name, collection_name):
     
     # Get collections from MongoDB
     collection_processed = db[collection_processed_name]
-    collection = collection_name
 
     # Fetch documents from MongoDB
     documents = list(collection_processed.find({}, {
@@ -38,7 +37,7 @@ def process_old_references(collection_processed_name, collection_name):
     dfs = []
     for code in tqdm(codable, desc="Processing cosine similarity, re-ranking and pruning"):
         pdf = retrieve_pdf(df, code)
-        similiar = retrieve_similar_text_threshold(pdf, code, 10, 0.5)  # return top n, >0.5 cosine similarity of each pdf name
+        similiar = retrieve_similar_text_threshold_old(pdf, code, 10, 0.5)  # return top n, >0.5 cosine similarity of each pdf name
         lstchunk = similiar['Text Content'].tolist()
         date = int(code[2])
         index_reassigned = ast.literal_eval(rank_and_check(code[0], lstchunk))

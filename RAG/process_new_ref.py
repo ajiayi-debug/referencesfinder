@@ -17,7 +17,7 @@ db = client['data']
 
 #chunked and embedded new refs database, new database name to store output, database containing metadata
 
-def process_new_references(collection_processed_name, new_collection_name, collection_found, pdf_folder):
+def process_new_references(collection_processed_name, new_collection_name, collection_found):
     output_directory = 'RAG'  # Fixed output directory
     
     # Get collections from MongoDB
@@ -98,7 +98,7 @@ def process_new_references(collection_processed_name, new_collection_name, colle
     output_df = pd.concat(dfs, ignore_index=True)
     
     # Save results to Excel and MongoDB
-    final_ans = 'new_refs_final_ans_keyword.xlsx'
+    final_ans = 'new_refs_final_ans.xlsx'
     send_excel(output_df, output_directory, final_ans)
 
     final_ans='clean.xlsx'
