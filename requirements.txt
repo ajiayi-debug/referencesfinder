@@ -8,7 +8,6 @@ google-api-python-client
 certifi
 beautifulsoup4
 lxml
-base64
 webdriver-manager
 pandas
 openpyxl
@@ -16,3 +15,12 @@ aiohttp
 pymongo
 semantic-chunkers
 tqdm
+langchain-community
+tiktoken
+langchain-openai
+langchainhub
+chromadb
+langchain
+langgraph
+langchain-text-splitters
+python-dotenv
