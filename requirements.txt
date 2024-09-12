@@ -1,5 +1,4 @@
 PyPDF2
-Spire.PDF
 PyMuPDF
 python-dotenv
 openai
@@ -8,7 +7,6 @@ google-api-python-client
 certifi
 beautifulsoup4
 lxml
-base64
 webdriver-manager
 pandas
 openpyxl
@@ -16,3 +14,4 @@ aiohttp
 pymongo
 semantic-chunkers
 tqdm
+num2words
