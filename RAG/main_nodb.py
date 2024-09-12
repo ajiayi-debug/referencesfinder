@@ -2,7 +2,7 @@ from process_and_embed import *
 from process_and_embed_new_ref import *
 from process_old_ref import *
 from process_new_ref import *
-from seamantic_scholar_keyword_search import *
+from semantic_scholar_keyword_search import *
 
 """Original article and original references"""
 process_pdfs_to_mongodb(files_directory='text', collection1='processed', collection2='processed_and_embed')
