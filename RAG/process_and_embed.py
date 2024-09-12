@@ -29,7 +29,7 @@ def process_pdfs_to_mongodb(files_directory, collection1, collection2):
 
     data = {'PDF File': processed_name, 'Text Content': processed_texts}
     df = pd.DataFrame(data)
-   
+    tqdm.pandas(desc="Processing Rows")
     df['text_chunks'] = df['Text Content'].apply(semantic_chunk)
     
     df_exploded = df.explode('text_chunks').drop(columns=['Text Content'])
@@ -43,8 +43,8 @@ def process_pdfs_to_mongodb(files_directory, collection1, collection2):
     chunki = chunking(token_df, 'Text Content', 8190)
 
     emb=embed(chunki)
-    final_ans='new_ref_emb.xlsx'
-    send_excel(emb,'RAG', final_ans)
+    # final_ans='ref_emb.xlsx'
+    # send_excel(emb,'RAG', final_ans)
 
     # Convert DataFrames to records
     records1 = df_exploded.to_dict(orient='records')
@@ -61,5 +61,5 @@ def process_pdfs_to_mongodb(files_directory, collection1, collection2):
     replace_database_collection(uri, db, collection2, records2)
     print(f"Data sent to MongoDB Atlas for collection: {collection2}")
 
-    clear_folder(directory)
+    delete_folder(directory)
 

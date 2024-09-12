@@ -24,12 +24,14 @@ uri = os.getenv("uri_mongo")
 client = MongoClient(uri)
 db = client['data']  
 database = 'data'
-collection = db['find_ref']
-collection1 ='new_ref_found' #meta data database
+# collection = db['find_ref']
+# collection1 ='new_ref_found' #meta data database
 
 
 
-def main():
+def search_and_retrieve_keyword(collection_name, collection1_name):
+    collection=db[collection_name]
+    collection1=collection1_name
     documents = list(collection.find({}, {'_id': 1, 'reference article name': 1, 'Reference text in main article': 1, 'Reference identified by gpt4o in chunk': 1, 'Chunk': 1, 'Date': 1 }))
     df = pd.DataFrame(documents)
     nametextdate=[]
@@ -48,12 +50,12 @@ def main():
         d=ntd[2]
         keyword=keyword_search(t)
         ntd.append(keyword)
-        papers = total_search_by_keywords(keyword, year=d, fields=field)
+        papers = total_search_by_keywords(keyword, year=d, exclude_name=n, fields=field)
         external_id_list, filtered_metadata_list = preprocess_paper_metadata(papers)
         for data in filtered_metadata_list:
             download.append(data)
         total=papers
-        print(total)
+        # print(total)
         paper_ids=extract_paper_ids(total)
         title=extract_title(total)
         year=extract_year(total)
@@ -63,8 +65,8 @@ def main():
         ntd.append(paperidandtitleandyear)
         for j in external_id_list:
             ext_id.append(j)
-    print(nametextdate)
-    print(download)
+    # print(nametextdate)
+    # print(download)
     failed_downloads, successful_downloads=asyncio.run(process_and_download(download, directory='papers'))
 
     
@@ -85,13 +87,12 @@ def main():
     df=pd.DataFrame(flattened_data,columns=columns)
     ex_pdf='external_pdfs'
     pdf_folder = 'papers'
-    invalid_pdfs='invalid_pdfs'
     df= update_downloadable_status(df, pdf_folder)
     df=add_external_id_to_undownloadable_papers(df,ext_id)
     df=update_failure_reasons(df, failed_downloads)
     df_updated=add_pdf_url_column(df,download)
     #for now we move after checks to show what semantic scholar api misses out on, but eventually we will move first then update df
-    move_pdf_files(ex_pdf, pdf_folder, invalid_pdfs)
+    move_pdf_files(ex_pdf, pdf_folder)
     final_ans = 'new_ref_paper_ids_EXT_IDS_check.xlsx'
     send_excel(df_updated, 'RAG', final_ans)
     # Convert DataFrames to records
@@ -102,9 +103,3 @@ def main():
     print("Sending data to MongoDB Atlas...")
     replace_database_collection(uri, database, collection1, records)
 
-    
-if __name__ == "__main__":
-    main()
-
-#row 5 , 18 and 8 yellow
-#11 red

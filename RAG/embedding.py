@@ -196,9 +196,8 @@ def normalize_string(s):
 
 """ Call this functon to focus on the pdf  """
 #each input is an element containing [text,name, year]
-def retrieve_pdf(df,name_and_text):
-    name = normalize_string(name_and_text[1])
-    print(name)
+def retrieve_pdf(df,name_and_text_and_year):
+    name = normalize_string(name_and_text_and_year[1])
    
     # Apply normalization to the "PDF File" column
     df['normalized_pdf_file'] = df['PDF File'].apply(normalize_string)
@@ -212,8 +211,8 @@ def retrieve_pdf(df,name_and_text):
 
 """ Call this function to obtain top n similiar texts in abstract based on cosine similiarity. Output is a dataframe."""
 
-def retrieve_similiar_text(new_df,name_and_text, top_n):
-    text=name_and_text[0]
+def retrieve_similiar_text(new_df,name_and_text_and_year, top_n):
+    text=name_and_text_and_year[0]
     sd=search_docs_text(new_df, text, top_n)
     return sd
 
@@ -223,6 +222,15 @@ def retrieve_similar_text_threshold(new_df, name_and_text, top_n, threshold):
         return None  # or return an empty list, DataFrame, or any other placeholder as needed
 
     text = name_and_text[0]
+    sd = search_docs_text_threshold(new_df, text, top_n, threshold)
+    return sd
+
+def retrieve_similar_text_threshold_old(new_df, name_and_text, top_n, threshold):
+    text = name_and_text[0]
+    sd = search_docs_text_threshold(new_df, text, top_n, threshold)
+    return sd
+
+def retrieve_similar_text_threshold_text_only(new_df, text, top_n, threshold):
     sd = search_docs_text_threshold(new_df, text, top_n, threshold)
     return sd
 

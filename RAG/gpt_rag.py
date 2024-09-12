@@ -188,7 +188,7 @@ def rank_and_check(text, list):
             model="gpt-4o",
             temperature=0,
             messages=[
-                {"role": "system", "content": 'You are a semantic ranker. You rank the list according to how semantically similar the text in the list is to the text for comparison. You output the rank of the list as a list of indexes ONLY like [0,2,3,4,5,1]...'},
+                {"role": "system", "content": 'You are a semantic ranker. You rank the list according to how semantically similar the text in the list is to the text for comparison. You output the rank of the list as a list of indexes ONLY like [0,2,3,4,5,1]. Make sure your max index is length of list - 1.'},
                 {"role": "user", "content": [{"type": "text", "text": f"Text for comparison: {text}. List: {list}"}]}
             ]
         )
@@ -219,6 +219,40 @@ def keyword_search(text):
             messages=[
                 {"role": "system", "content": 'What are the keywords in the Text? take note these keywords will be used for a graph search in semantic scholar. Output the keywords ONLY'},
                 {"role": "user", "content": [{"type": "text", "text": f"Text:{text}" }]}
+            ]
+        )
+        return response.choices[0].message.content
+
+    return retry_on_exception(func)
+
+
+#Provide a summary for each subdocument to allow for quicker search
+def summarise_subdocument(text):
+    def func():
+        query='Provide a summary of the text.'
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            temperature=0,
+            messages=[
+                {"role": "system", "content": query},
+                {"role": "user", "content": [{"type": "text", "text": f"Text:{text}"}]}
+            ]
+        )
+        return response.choices[0].message.content
+
+    return retry_on_exception(func)
+
+#locate subdocument where ref is most likely found in
+def locate_subdoc(summary, ref):
+    def func():
+        # query = "You are a reference fact checker. You check if the reference can be found in the abstract of the article in terms of semantic meaning. If yes, you highlight the information in the abstract of the article exactly as it is (Don't summarise or change anything). Output the semantically similar information only."
+        query='You are a relation checker. Output yes if the Summary and Reference is related. Output no otherwise'
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            temperature=0,
+            messages=[
+                {"role": "system", "content": query},
+                {"role": "user", "content": [{"type": "text", "text": f"Summary: {summary}, Reference: {ref}"}]}
             ]
         )
         return response.choices[0].message.content
