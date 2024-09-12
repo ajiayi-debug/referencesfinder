@@ -1,5 +1,5 @@
-import dotenv
-dotenv.load_dotenv()
+from dotenv import load_dotenv
+load_dotenv()
 import pandas as pd
 from gpt_rag import *
 from pdf import *
@@ -16,12 +16,13 @@ from download_paper_ss import *
 import urllib3
 from search_ss import *
 import asyncio
+import certifi
 urllib3.disable_warnings()
 
 S2_API_KEY = os.getenv('x-api-key')
 
 uri = os.getenv("uri_mongo")
-client = MongoClient(uri)
+client = MongoClient(uri, tls=True, tlsCAFile=certifi.where())
 db = client['data']  
 database = 'data'
 # collection = db['find_ref']

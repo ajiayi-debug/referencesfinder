@@ -462,27 +462,33 @@ def move_invalid_pdf(pdf_path, invalid_directory):
 
 
 
-#change invalid pdf files to not downloadable in df
 def update_downloadable_status_invalid(df):
     """
     Update the 'downloadable' column in the DataFrame based on the presence of files in the 'invalid_pdfs' directory.
     
     Args:
     - df (pd.DataFrame): DataFrame containing a column 'PDF File' with file names (excluding .pdf) and a 'downloadable' column.
-    - invalid_pdfs_dir (str): Directory where invalid PDF files are stored.
     
     Returns:
     - pd.DataFrame: Updated DataFrame with 'downloadable' column set to 'no' for files found in the invalid directory.
     """
-    invalid_pdfs_dir='invalid_pdfs'
+    invalid_pdfs_dir = 'invalid_pdfs'
+
+    # Check if the invalid_pdfs directory exists
+    if not os.path.exists(invalid_pdfs_dir):
+        print(f"Directory '{invalid_pdfs_dir}' does not exist. No files marked as downloadable is invalid.")
+        return df  # Return the original DataFrame if the directory doesn't exist
+
     # Get a list of invalid file names (without .pdf extension)
     invalid_files = {os.path.splitext(file)[0] for file in os.listdir(invalid_pdfs_dir)}
 
     # Update 'downloadable' column based on whether the file is in the invalid directory
     df['downloadable'] = df['Paper Id of new reference article found'].apply(lambda x: 'no' if x in invalid_files else 'yes')
-    delete_folder('invalid_pdfs')
-    return df
 
+    # Optionally, delete the folder after processing
+    delete_folder(invalid_pdfs_dir)
+
+    return df
 
 #clear doc folder
 

@@ -12,7 +12,6 @@ from semantic_chunking import *
 def process_new_pdfs_to_mongodb(files_directory, collection1, collection2):
     load_dotenv()
     uri = os.getenv("uri_mongo")
-    client = MongoClient(uri)
     db = 'data'
     
     directory = 'doc'  # Fixed directory
@@ -23,7 +22,7 @@ def process_new_pdfs_to_mongodb(files_directory, collection1, collection2):
     # Process and save PDFs
     process_invalid_pdfs(pdf_list)
     pdf_list = read_pdf_file_list(files_directory)
-    print(pdf_list)
+    #print(pdf_list)
     process_and_save_pdfs(pdf_list, directory)
     filenames= get_txt_names(files_directory)
 
