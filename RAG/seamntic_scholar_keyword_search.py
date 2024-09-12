@@ -24,12 +24,14 @@ uri = os.getenv("uri_mongo")
 client = MongoClient(uri)
 db = client['data']  
 database = 'data'
-collection = db['find_ref']
-collection1 ='new_ref_found' #meta data database
+# collection = db['find_ref']
+# collection1 ='new_ref_found' #meta data database
 
 
 
-def main():
+def search_and_retrieve_keyword(collection_name, collection1_name):
+    collection=db[collection_name]
+    collection1=collection1_name
     documents = list(collection.find({}, {'_id': 1, 'reference article name': 1, 'Reference text in main article': 1, 'Reference identified by gpt4o in chunk': 1, 'Chunk': 1, 'Date': 1 }))
     df = pd.DataFrame(documents)
     nametextdate=[]
@@ -101,9 +103,3 @@ def main():
     print("Sending data to MongoDB Atlas...")
     replace_database_collection(uri, database, collection1, records)
 
-    
-if __name__ == "__main__":
-    main()
-
-#row 5 , 18 and 8 yellow
-#11 red

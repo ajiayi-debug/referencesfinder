@@ -224,3 +224,37 @@ def keyword_search(text):
         return response.choices[0].message.content
 
     return retry_on_exception(func)
+
+
+#Provide a summary for each subdocument to allow for quicker search
+def summarise_subdocument(text):
+    def func():
+        query='Provide a summary of the text.'
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            temperature=0,
+            messages=[
+                {"role": "system", "content": query},
+                {"role": "user", "content": [{"type": "text", "text": f"Text:{text}"}]}
+            ]
+        )
+        return response.choices[0].message.content
+
+    return retry_on_exception(func)
+
+#locate subdocument where ref is most likely found in
+def locate_subdoc(summary, ref):
+    def func():
+        # query = "You are a reference fact checker. You check if the reference can be found in the abstract of the article in terms of semantic meaning. If yes, you highlight the information in the abstract of the article exactly as it is (Don't summarise or change anything). Output the semantically similar information only."
+        query='You are a relation checker. Output yes if the Summary and Reference is related. Output no otherwise'
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            temperature=0,
+            messages=[
+                {"role": "system", "content": query},
+                {"role": "user", "content": [{"type": "text", "text": f"Summary: {summary}, Reference: {ref}"}]}
+            ]
+        )
+        return response.choices[0].message.content
+
+    return retry_on_exception(func)
