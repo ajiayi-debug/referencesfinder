@@ -33,6 +33,7 @@ def get_txt_names_exactly(directory):
     txt_files = [f for f in os.listdir(directory) if f.endswith('.txt')]
     return txt_files
 
+
 def extract_text_from_pdf_specific(pdf_path):
     """
     Extract text from each page of a PDF file using PyMuPDF.
@@ -59,20 +60,23 @@ def extract_text_from_pdf_specific(pdf_path):
         return None
     
 
-def move_invalid_pdf(pdf_path, invalid_pdfs_dir):
+
+def invalid_pdf(pdf_path):
+    text_list = extract_text_from_pdf_specific(pdf_path)
+    invalid_pdfs_dir='invalid_pdfs'
+    if text_list is None:
+        # Move the invalid PDF if extraction failed
+        move_invalid_pdf(pdf_path, invalid_pdfs_dir)
+
+def process_invalid_pdfs(pdf_list):
     """
-    Move the invalid PDF file to the specified directory.
+    Process each PDF file in the list and move invalid ones.
     
     Args:
-    - pdf_path (str): Path to the invalid PDF file.
-    - invalid_pdfs_dir (str): Directory to move the invalid PDF file.
+    - pdf_list (list): List of PDF file paths.
     """
-    if not os.path.exists(invalid_pdfs_dir):
-        os.makedirs(invalid_pdfs_dir)
-    shutil.move(pdf_path, os.path.join(invalid_pdfs_dir, os.path.basename(pdf_path)))
-    print(f"Moved invalid PDF {pdf_path} to {invalid_pdfs_dir}")
-
-
+    for pdf_path in pdf_list:
+        invalid_pdf(pdf_path)
 
 def save_text(text_list, filename, output_dir):
     """
@@ -128,9 +132,11 @@ def process_and_save_pdfs(pdf_list, output_dir):
     for i, pdf_path in enumerate(pdf_list):
         # Process the PDF and get the processed text
         file_content = full_cycle_specific(pdf_path, filename=str(i), output_dir=output_dir)
-        
+
         # Optionally, you can print the content or do additional processing here
-        
+
+
+
         
 
 def read_processed_texts(directory,filenames):
@@ -220,6 +226,7 @@ def save_text_to_file(text_list, output_file):
         for page_number, text in enumerate(text_list):
             text_file.write(f"Text on page {page_number + 1}:\n{text}\n\n")
 
+
 def read_text_file(file_path):
     """
     Reads the contents of a text file and returns as a string.
@@ -299,12 +306,11 @@ def update_downloadable_status(df: pd.DataFrame, pdf_folder: str) -> pd.DataFram
 
 
 
-#not moving, but copying pdf files if valid, invalids deleted. (this is used for external pdfs found, so like when external pdf is valid, will be transferred to main folder)
+#move ext files to papers
 
-def move_pdf_files(source_folder: str, destination_folder: str, invalid_pdf_folder: str):
-    # Create destination and invalid PDF folders if they don't exist
+def move_pdf_files(source_folder: str, destination_folder: str):
+    # Create destination folder if it doesn't exist
     os.makedirs(destination_folder, exist_ok=True)
-    os.makedirs(invalid_pdf_folder, exist_ok=True)
 
     # Loop through all files in the source folder
     for filename in os.listdir(source_folder):
@@ -315,16 +321,40 @@ def move_pdf_files(source_folder: str, destination_folder: str, invalid_pdf_fold
             if validate_pdf(source_path):
                 # If the PDF is valid, move it to the destination folder
                 shutil.copy2(source_path, destination_path)
+                print(f"Moved valid external PDF: {filename}")
+            else:
+                # If the PDF is invalid, you can choose to ignore it
+                print(f"Ignored invalid PDF: {filename}")
+
+
+def move_pdf_files_completedly(source_folder: str, destination_folder: str, invalid_folder: str):
+    """
+    Move PDF files from the source folder to the destination folder or invalid folder based on their validity.
+    
+    Args:
+    - source_folder (str): Directory containing the source PDF files.
+    - destination_folder (str): Directory to move the valid PDF files.
+    - invalid_folder (str): Directory to move invalid PDF files.
+    """
+    # Create destination folders if they don't exist
+    os.makedirs(destination_folder, exist_ok=True)
+    os.makedirs(invalid_folder, exist_ok=True)
+
+    # Loop through all files in the source folder
+    for filename in os.listdir(source_folder):
+        if filename.endswith('.pdf'):
+            source_path = os.path.join(source_folder, filename)
+            if validate_pdf(source_path):
+                # Move the PDF to the destination folder, overwriting if it exists
+                destination_path = os.path.join(destination_folder, filename)
+                shutil.move(source_path, destination_path)
                 print(f"Moved valid PDF: {filename}")
             else:
-                # If the PDF is invalid, move it to the invalid PDF folder
-                invalid_pdf_path = os.path.join(invalid_pdf_folder, filename)
-                shutil.copy2(source_path, invalid_pdf_path)
+                # Move the invalid PDF to the invalid folder
+                invalid_path = os.path.join(invalid_folder, filename)
+                shutil.move(source_path, invalid_path)
                 print(f"Moved invalid PDF to invalid folder: {filename}")
-                
-                # Delete the invalid PDF
-                os.remove(invalid_pdf_path)
-                print(f"Deleted invalid PDF: {filename}")
+
 
 #check if each iteration same
 def validate_pdf(file_path):
@@ -450,7 +480,7 @@ def update_downloadable_status_invalid(df):
 
     # Update 'downloadable' column based on whether the file is in the invalid directory
     df['downloadable'] = df['Paper Id of new reference article found'].apply(lambda x: 'no' if x in invalid_files else 'yes')
-
+    delete_folder('invalid_pdfs')
     return df
 
 
@@ -508,3 +538,56 @@ def replace_pdf_file_with_title(df, df_found):
     df['PDF File'] = df['PDF File'].map(id_to_title).fillna(df['PDF File'])
     
     return df
+
+
+def delete_folder(folder_path):
+    """
+    Deletes the specified folder and all of its contents.
+    
+    Parameters:
+        folder_path (str): The path to the folder to delete.
+    """
+    if os.path.exists(folder_path):
+        try:
+            shutil.rmtree(folder_path)
+            print(f"Successfully deleted folder: {folder_path}")
+        except Exception as e:
+            print(f"Error deleting folder {folder_path}: {e}")
+    else:
+        print(f"Folder does not exist: {folder_path}")
+
+#save text without page number
+def save_text_to_file_no_page(text_list, output_file):
+    """
+    Save extracted text to a .txt file.
+    
+    Args:
+    - text_list (list): List containing text from each page.
+    - output_file (str): Path to the output .txt file.
+    """
+    with open(output_file, 'w', encoding='utf-8') as text_file:
+        for page_number, text in enumerate(text_list):
+            text_file.write(f"{text}")
+
+
+#save text with no page number
+def full_cycle_no_page(pdf,filename):
+    filename=filename+".txt"
+    p=extract_text_from_pdf(pdf)
+    save_text_to_file_no_page(p,filename)
+    filename=read_text_file(filename)
+
+    return filename
+
+#split text according to paragraphs and output as a list
+
+def split_by_paragraph(text):
+    return re.split(r'\n\n', text)
+
+
+
+# clean text directly as it is
+
+def clean_text(text):
+    cleaned_text = ''.join(char for char in text if unicodedata.category(char)[0] != 'C')
+    return cleaned_text

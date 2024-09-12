@@ -10,7 +10,7 @@ import requests
 import time
 from typing import AsyncGenerator, Generator, Iterable, TypeVar, Union, List, Dict, Any, Optional 
 
-def search_papers_by_keywords(keywords: str, year: int = None, fields: str = 'paperId,title,year,externalIds,openAccessPdf,isOpenAccess') -> dict:
+def search_papers_by_keywords(keywords: str, year: int = None, exclude_name: str = None, fields: str = 'paperId,title,year,externalIds,openAccessPdf,isOpenAccess') -> dict:
     url = 'https://api.semanticscholar.org/graph/v1/paper/search'
     query_params = {'query': keywords, 'fields': fields}
     api_key = os.getenv('x-api-key')
@@ -34,12 +34,23 @@ def search_papers_by_keywords(keywords: str, year: int = None, fields: str = 'pa
             response_data = response.json()
 
             # Filter papers by year if provided
+            # if year:
+            #     filtered_papers = [
+            #         paper for paper in response_data.get('data', [])
+            #         if 'year' in paper and paper['year'] >= year
+            #     ]
+                # response_data['data'] = filtered_papers
             if year:
-                filtered_papers = [
+                response_data['data'] = [
                     paper for paper in response_data.get('data', [])
-                    if 'year' in paper and paper['year'] > year
+                    if 'year' in paper and paper['year'] >= year
                 ]
-                response_data['data'] = filtered_papers
+            if exclude_name:
+                response_data['data'] = [
+                    paper for paper in response_data.get('data', [])
+                    if exclude_name.lower() not in paper.get('title', '').lower()
+                ]
+
 
             return response_data
 
@@ -50,7 +61,7 @@ def search_papers_by_keywords(keywords: str, year: int = None, fields: str = 'pa
     print("Max retries exceeded.")
     return None
 
-def total_search_by_keywords(keywords: str, year: int = None, fields: str = 'paperId,title,year,externalIds,openAccessPdf,isOpenAccess'):
+def total_search_by_keywords(keywords: str, year: int = None, exclude_name: str = None, fields: str = 'paperId,title,year,externalIds,openAccessPdf,isOpenAccess'):
     """
     Search for papers based on keywords and optionally filter results by publication year,
     then return a list of paper dictionaries from the search results.
@@ -61,7 +72,7 @@ def total_search_by_keywords(keywords: str, year: int = None, fields: str = 'pap
     :return: A list of dictionaries containing paper metadata.
     """
     # Perform the search
-    data = search_papers_by_keywords(keywords, year, fields)
+    data = search_papers_by_keywords(keywords, year, exclude_name, fields)
     
     # Extract paper list
     paper_list = []
