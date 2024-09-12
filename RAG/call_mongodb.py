@@ -1,4 +1,5 @@
 from pymongo import UpdateOne, MongoClient
+import certifi
 
 def upsert_database_and_collection(uri, db_name, collection_name, records):
     """
@@ -11,7 +12,7 @@ def upsert_database_and_collection(uri, db_name, collection_name, records):
         collection_name (str): Name of the collection.
         records (list): List of dictionaries to be inserted or updated.
     """
-    client = MongoClient(uri)
+    client = MongoClient(uri, tls=True, tlsCAFile=certifi.where())
     db = client[db_name]
     collection = db[collection_name]
 
@@ -50,7 +51,7 @@ def replace_database_collection(uri, db_name, collection_name, records):
         collection_name (str): Name of the collection.
         records (list): List of dictionaries to be inserted.
     """
-    client = MongoClient(uri)
+    client = MongoClient(uri, tls=True, tlsCAFile=certifi.where())
     db = client[db_name]
     collection = db[collection_name]
 

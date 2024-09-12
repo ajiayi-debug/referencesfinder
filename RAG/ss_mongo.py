@@ -1,4 +1,5 @@
 import requests
+import certifi
 import os
 from pymongo import MongoClient
 from dotenv import load_dotenv
@@ -41,7 +42,7 @@ def fetch_all_papers(query, api_key, max_results=100):
 
 # Connect to MongoDB Atlas
 uri = os.getenv("uri_mongo")
-client = MongoClient(uri)
+client = MongoClient(uri, tls=True, tlsCAFile=certifi.where())
 db = client['data']  
 
 collection= db['semantic scholar'] 

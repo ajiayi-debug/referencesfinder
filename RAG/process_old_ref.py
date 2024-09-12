@@ -7,12 +7,13 @@ from dotenv import load_dotenv
 from pymongo import MongoClient
 from call_mongodb import *
 from tqdm import tqdm
+import certifi
 
 load_dotenv()
 #main pdf
 pdf_to_check = os.getenv("PDF")
 uri = os.getenv("uri_mongo")
-client = MongoClient(uri)
+client = MongoClient(uri, tls=True, tlsCAFile=certifi.where())
 db = client['data']
 
 #chunked and embedded original refs database, new database name to store output
