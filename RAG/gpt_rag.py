@@ -76,7 +76,7 @@ def read_text_file(file_path):
     return content
 
 
-
+#Replaces the numeric naming of files to the actual names of files using gpt 4o
 def get_names(processed_texts,directory):
     def split_text_if_necessary(text, token_limit):
         tokens = text.split()

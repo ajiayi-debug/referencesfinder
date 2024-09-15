@@ -8,6 +8,7 @@ import tiktoken
 import numpy as np
 import re
 from num2words import num2words
+from tqdm import tqdm
 
 
 load_dotenv()
@@ -59,14 +60,19 @@ def split_text_by_page_marker(text: str):
 
 """ call this function to split the text as well as normalize them """
 def splitting(df, title):
-    df[title]=df[title].apply(lambda x : normalize_text(x))
+    # Initialize tqdm for pandas inside the function
+    tqdm.pandas(desc="Splitting and Normalizing text")
+    
+    # Use progress_apply to display the progress bar
+    df[title] = df[title].progress_apply(lambda x: normalize_text(x))
     return df
 
 #df['Text Content']= df["Text Content"].apply(lambda x : normalize_text(x))
 
 """ Call this function to tokenize content  """
 def tokenize(df, title):
-    df['n_tokens']=df[title].apply(lambda x: len(tokenizer.encode(x)))
+    tqdm.pandas(desc='Tokenizing chunks')
+    df['n_tokens']=df[title].progress_apply(lambda x: len(tokenizer.encode(x)))
     return df
 
 # tokenizer = tiktoken.get_encoding("cl100k_base")
@@ -84,9 +90,10 @@ def chunk_text(text, max_tokens):
 
 """ Call this function to chunk the text according to tokenizer number (recco 8190 tokens) """
 def chunking(df, title, tokens):
-    df['Text Chunks'] = df[title].apply(lambda x: chunk_text(x, tokens))
+    tqdm.pandas(desc='chunking text for token limit')
+    df['Text Chunks'] = df[title].progress_apply(lambda x: chunk_text(x, tokens))
     df = df.explode('Text Chunks').reset_index(drop=True)
-    df['n_tokens'] = df["Text Chunks"].apply(lambda x: len(tokenizer.encode(x)))
+    df['n_tokens'] = df["Text Chunks"].progress_apply(lambda x: len(tokenizer.encode(x)))
     return df
 
 
@@ -101,7 +108,8 @@ def generate_embeddings(text, model=os.getenv("embed_model")): # model = "deploy
     return embed
 """ Call this function to generate embeddings """
 def embed(df):
-    df['embed_v3'] = df["Text Chunks"].apply(lambda x : generate_embeddings (x, model = os.getenv("embed_model")))
+    tqdm.pandas(desc="Generating embeddings")
+    df['embed_v3'] = df["Text Chunks"].progress_apply(lambda x : generate_embeddings (x, model = os.getenv("embed_model")))
     #df['embed_name']=df['PDF File'].apply(lambda x : generate_embeddings (x, model = os.getenv("embed_model")))
     return df
 
