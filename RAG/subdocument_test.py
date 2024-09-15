@@ -3,6 +3,7 @@ from gpt_rag import *
 from semantic_chunking import *
 import pandas as pd
 from embedding import *
+import ast
 
 text=full_cycle('text/heyman.pdf', 'heyman_test')
 text=clean_text(text)
@@ -55,12 +56,13 @@ final_df = merged_df.drop(columns=['Summary'])
 final_df['Contains reference'] = final_df['Contains reference'].str.lower()
 
 focus_df = final_df[final_df['Contains reference'] == 'yes']
-
-similar=retrieve_similar_text_threshold_text_only(focus_df, ref, 10, 0.5)
-
+dfs = []
+similiar=retrieve_similar_text_threshold_text_only(focus_df, ref, 10, 0.5)
+print(similiar)
+print(similiar==True)
 
 send_excel(final_df, 'RAG', 'subdocument_yes_no.xlsx')
 
 send_excel(focus_df, 'RAG', 'subdocument_yes.xlsx')
 
-send_excel(similar, 'RAG', 'subdocument_output.xlsx')
+send_excel(similiar, 'RAG', 'subdocument_output.xlsx')

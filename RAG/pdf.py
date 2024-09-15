@@ -13,7 +13,7 @@ import shutil
 from typing import AsyncGenerator, Generator, Iterable, TypeVar, Union, List, Dict, Any, Optional
 load_dotenv()
 
-
+#get list of pdf file location in the directory
 def read_pdf_file_list(directory):
     abs_directory = os.path.abspath(directory)
     if not os.path.exists(abs_directory):
@@ -22,7 +22,7 @@ def read_pdf_file_list(directory):
     pdf_files = glob.glob(os.path.join(abs_directory, "*.pdf"))
     return pdf_files
 
-
+#rename the files according to numbers for further processing
 def get_txt_names(directory):
     pdf_list = read_pdf_file_list(directory)
     doc_files = [f"{i}.txt" for i in range(len(pdf_list))]
@@ -141,7 +141,7 @@ def process_and_save_pdfs(pdf_list, output_dir):
 
 def read_processed_texts(directory,filenames):
     """
-    Read the processed content from text files and return a list of cleaned texts.
+    Read the processed content from text files and return a list of cleaned texts (each element comes from 1 .txt file).
     Args:
         directory (str): The directory where the text files are stored.
 
