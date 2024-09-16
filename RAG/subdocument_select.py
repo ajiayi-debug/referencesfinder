@@ -91,6 +91,7 @@ def main():
     replace_database_collection(uri, db, extraction, code_record)
     print(f"Data sent to MongoDB Atlas for collection: {extraction}")
 
+    delete_folder(directory)
 
 
 if __name__ == "__main__":
