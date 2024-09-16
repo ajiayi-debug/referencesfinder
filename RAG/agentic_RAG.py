@@ -24,7 +24,7 @@ from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain_openai import AzureChatOpenAI
 
 from langgraph.prebuilt import tools_condition
-
+from langchain_community.document_loaders import PyPDFLoader
 
 from langgraph.graph import END, StateGraph, START
 from langgraph.prebuilt import ToolNode
@@ -49,14 +49,24 @@ os.environ['AZURE_OPENAI_API_KEY'] = token
 embedding_model=os.getenv('embed_model')
 
 
-urls = [
-    "https://lilianweng.github.io/posts/2023-06-23-agent/",
-    "https://lilianweng.github.io/posts/2023-03-15-prompt-engineering/",
-    "https://lilianweng.github.io/posts/2023-10-25-adv-attack-llm/",
-]
+# urls = [
+#     "https://lilianweng.github.io/posts/2023-06-23-agent/",
+#     "https://lilianweng.github.io/posts/2023-03-15-prompt-engineering/",
+#     "https://lilianweng.github.io/posts/2023-10-25-adv-attack-llm/",
+# ]
 
-docs = [WebBaseLoader(url).load() for url in urls]
+# docs = [WebBaseLoader(url).load() for url in urls]
+# docs_list = [item for sublist in docs for item in sublist]
+
+directory='text'
+pdf_paths = [os.path.join(directory, file) for file in os.listdir(directory) if file.endswith('.pdf')]
+
+# Load documents from each PDF
+docs = [PyPDFLoader(pdf_path).load() for pdf_path in pdf_paths]
+
+# Flatten the list of documents
 docs_list = [item for sublist in docs for item in sublist]
+
 
 text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
     chunk_size=100, chunk_overlap=50
@@ -77,7 +87,7 @@ from langchain.tools.retriever import create_retriever_tool
 retriever_tool = create_retriever_tool(
     retriever,
     "retrieve_blog_posts",
-    "Search and return information about Lilian Weng blog posts on LLM agents, prompt engineering, and adversarial attacks on LLMs.",
+    "Search and return information about Lactose intolerance.",
 )
 
 tools = [retriever_tool]
@@ -288,7 +298,7 @@ graph = workflow.compile()
 
 inputs = {
     "messages": [
-        ("user", "What does Lilian Weng say about the types of agent memory?"),
+        ("user", "Is there any information about: A proportion of the world’s population is able to tolerate lactose as they have a genetic variation that ensures they continue to produce sufficient quantities of the enzyme lactase after childhood."),
     ]
 }
 for output in graph.stream(inputs):
