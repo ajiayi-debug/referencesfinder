@@ -48,11 +48,10 @@ def main():
     code_df=pd.DataFrame(codable, columns=col)
 
     dfs=[]
-    for code in tqdm(codable, desc='Retrieivng by summary for each ref text and their respective articles'):
+    for code in tqdm(codable, desc='Retrieving by summary for each ref text and their respective articles'):
         pdf=retrieve_pdf(df,code)
         pdf.loc[:, 'Reference'] = code[0]
         
-
 
         tqdm.pandas(desc='Determining which summary to retrieve')
         pdf['Contains Reference'] = pdf.progress_apply(lambda row: locate_subdoc(row['Summary'], row['Reference']), axis=1)

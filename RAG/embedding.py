@@ -187,7 +187,7 @@ def search_docs_text_threshold(df, user_query, top_n, threshold, to_print=True):
     if filtered_df.empty:
         # If no document has a similarity above the threshold, return the top similarity
         top_similarity = df["similarities_text"].max()
-        res = pd.DataFrame({'top_similarity': [top_similarity]})
+        res = df[df["similarities_text"] == top_similarity]
     else:
         # Otherwise, return the top N documents above the threshold
         res = (
