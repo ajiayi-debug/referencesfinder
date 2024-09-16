@@ -42,13 +42,15 @@ def main():
     token_df = tokenize(split_df, 'Text Chunks')
     chunki = chunking(token_df, 'Text Chunks', 8190)
     emb = embed(chunki)
+
     
     # Initialize list to store DataFrames
     dfs = []
     # Iterate over 'codable' with progress bar
     for code in tqdm(codable, desc='Calculating cosine similarity for each reference with selected subdocument'):
         # Calculate cosine similarity
-        similar = retrieve_similar_text_threshold(emb, code, 10, 0.5)
+        pdf=retrieve_pdf(emb,code)
+        similar = retrieve_similar_text_threshold(pdf, code, 10, 0.5)
         temp_dfs = []
         for index, row in similar.iterrows():
             textchunk = row['Text Chunks']
@@ -62,7 +64,7 @@ def main():
                     'Subdocument': [subdoc],
                     'Summary': [summary],
                     'Cosine Similarity': [cossim],
-                    'Date': [code[2]]
+                    'Year': [code[2]]
                 })
             temp_dfs.append(newrow)
         if temp_dfs:
