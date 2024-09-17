@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 import os
 import requests
 import time
-from typing import List, Dict, Union
+from typing import List, Dict, Union, Tuple
 load_dotenv()
 
 import os
@@ -85,7 +85,7 @@ def total_search_by_keywords(keywords: str, year: int = None, exclude_name: str 
 
 
 
-def preprocess_paper_metadata(paper_metadata_list: List[Dict[str, Union[str, bool, dict]]]) -> (List[List[str]], List[Dict[str, Union[str, bool, dict]]]):
+def preprocess_paper_metadata(paper_metadata_list: List[Dict[str, Union[str, bool, dict]]]) -> Tuple[List[List[str]], List[Dict[str, Union[str, bool, dict]]]]:
     """
     Preprocess the paper metadata to find papers with an external ID but no open access or downloadable PDF,
     and exclude those papers from the original list.
