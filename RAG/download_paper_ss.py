@@ -7,7 +7,7 @@ import argparse
 import asyncio
 from itertools import islice
 import os
-from typing import AsyncGenerator, Generator, Iterable, TypeVar, Union, List, Dict, Any, Optional
+from typing import AsyncGenerator, Generator, Iterable, TypeVar, Union, List, Dict, Any, Optional, Tuple
 from tqdm.asyncio import tqdm as tqdm_asyncio
 from bs4 import BeautifulSoup
 
@@ -137,7 +137,7 @@ async def download_papers(paper_ids: list[str], directory: str, batch_size: int 
                 # Yield the paper ID and the exception if an error occurs
                 yield paper_id, e
 
-async def download(metadata_list: List[Dict[str, Any]], directory: str, batch_size: int = 500, user_agent: str = 'aiohttp/3.0.0') -> (List[Dict[str, str]], List[Dict[str, str]]):
+async def download(metadata_list: List[Dict[str, Any]], directory: str, batch_size: int = 500, user_agent: str = 'aiohttp/3.0.0') -> Tuple[List[Dict[str, str]], List[Dict[str, str]]]:
     paper_ids = extract_paper_ids(metadata_list)
     total_papers = len(paper_ids)
     
