@@ -258,3 +258,39 @@ def locate_subdoc(summary, ref):
         return response.choices[0].message.content
 
     return retry_on_exception(func)
+
+
+
+
+#retrieve chunks of the document that are semantically similar to text (agentic retriever)
+def retriever(chunk, ref):
+    def func():
+        # query = "You are a reference fact checker. You check if the reference can be found in the abstract of the article in terms of semantic meaning. If yes, you highlight the information in the abstract of the article exactly as it is (Don't summarise or change anything). Output the semantically similar information only."
+        query="Compare the Text to the Reference. Analyze whether they convey a similar meaning or are semantically related. If they are semantically similar, respond with ‘yes’; otherwise, respond with ‘no’. "
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            temperature=0,
+            messages=[
+                {"role": "system", "content": query},
+                {"role": "user", "content": [{"type": "text", "text": f"Text: {chunk}, Reference: {ref}"}]}
+            ]
+        )
+        return response.choices[0].message.content
+
+    return retry_on_exception(func)
+
+def siever(chunk, ref):
+    def func():
+        # query = "You are a reference fact checker. You check if the reference can be found in the abstract of the article in terms of semantic meaning. If yes, you highlight the information in the abstract of the article exactly as it is (Don't summarise or change anything). Output the semantically similar information only."
+        query="Sieve out the texts in the Text that supports the Reference. For example: Text: 'Bacterial fermenta-tion of lactose results in production of gasses including hydrogen (H2), carbon dioxide (CO2), methane (CH4) and short chain fatty acids (SCFA) that have effects on GI function (figure 1).Lactose intoleranceLactose malabsorption (LM) is a necessary precondition for lactose intolerance (LI).However, the two must not be confused and the causes of symptoms must be considered separately.Many individuals with LM have no symptoms after ingestion of a standard serving of dairy products (table 1) whereas others develop symptoms (‘intolerance’) such as abdominal pain, borborygmi (rumbling tummy) and bloating after lactose intake (figure 1).' Reference: 'The bacteria in the large intestine ferment the lactose, resulting in gas formation which can cause symptoms such as bloating and flatulence after lactose ingestion.' output: 'Bacterial fermenta-tion of lactose results in production of gasses including hydrogen (H2), carbon dioxide (CO2), methane (CH4) and short chain fatty acids (SCFA) that have effects on GI function (figure 1).Many individuals with LM have no symptoms after ingestion of a standard serving of dairy products (table 1) whereas others develop symptoms (‘intolerance’) such as abdominal pain, borborygmi (rumbling tummy) and bloating after lactose intake (figure 1).' "
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            temperature=0,
+            messages=[
+                {"role": "system", "content": query},
+                {"role": "user", "content": [{"type": "text", "text": f"Text: {chunk}, Reference: {ref}"}]}
+            ]
+        )
+        return response.choices[0].message.content
+
+    return retry_on_exception(func)
