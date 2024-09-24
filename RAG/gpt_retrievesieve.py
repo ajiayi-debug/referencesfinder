@@ -38,14 +38,14 @@ def retrieve_sieve(df, code):
             'Date': [code[2]]
         })
         # Append to appropriate list based on the answer
-        if ans.lower() not in ['no', 'no.']:
+        if ans.lower() not in ["'no'", "'no.'", "'"+ref.lower()+"'","no","no."]:
             valid_dfs.append(newrow)
         else:
             no_dfs.append(newrow)
     
     # Concatenate valid rows
     valid_output_df = pd.concat(valid_dfs, ignore_index=True) if valid_dfs else pd.DataFrame()
-    
+    print(valid_output_df['Sieving by gpt 4o'])
     # Concatenate non-valid rows if no valid chunks found
     if not valid_dfs and df.empty:
         non_valid_row = pd.DataFrame({
