@@ -63,7 +63,7 @@ def retrieve_sieve(df, code):
     return valid_output_df, non_valid_output_df, no_df
 
 
-def retrieve_sieve_references(collection_processed_name, collection_name):
+def retrieve_sieve_references(collection_processed_name, valid_collection_name, invalid_collection_name):
     output_directory = 'RAG'  # Fixed output directory
     pdf_to_check = os.getenv("PDF")
     
@@ -105,21 +105,25 @@ def retrieve_sieve_references(collection_processed_name, collection_name):
         if not no_df.empty:
             not_dfs.append(no_df)
 
-    # Concatenate valid results
-    if valid_dfs:
-        valid_output_df = pd.concat(valid_dfs, ignore_index=True)
-        send_excel(valid_output_df, 'RAG', 'gpt_retrieve_sieve_valid_test8.xlsx')
-
     # Concatenate non-valid results
     if non_valid_dfs:
         non_valid_output_df = pd.concat(non_valid_dfs, ignore_index=True)
-        send_excel(non_valid_output_df, 'RAG', 'gpt_retrieve_sieve_non_valid_test8.xlsx')
+        non_valid=invalid_collection_name+'.xlsx'
+        send_excel(non_valid_output_df, 'RAG', non_valid)
+        records = non_valid_output_df.to_dict(orient='records')
+        replace_database_collection(uri, db.name, invalid_collection_name, records)
     if not_dfs:
         not_df=pd.concat(not_dfs, ignore_index=True)
-        send_excel(not_df, 'RAG', 'gpt_retrieve_sieve_rejected_test8.xlsx')
+        send_excel(not_df, 'RAG', 'gpt_retrieve_sieve_rejected.xlsx')
     # Send valid results to MongoDB
     if valid_dfs:
+        valid_output_df = pd.concat(valid_dfs, ignore_index=True)
+        valid=valid_collection_name+'.xlsx'
+        send_excel(valid_output_df, 'RAG', valid)
+
+        # Convert to records and send to MongoDB
         records = valid_output_df.to_dict(orient='records')
-        replace_database_collection(uri, db.name, collection_name, records)
+        replace_database_collection(uri, db.name, valid_collection_name, records)
+        
 
     print("Process completed and data sent to MongoDB.")

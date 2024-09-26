@@ -33,7 +33,7 @@ database = 'data'
 def search_and_retrieve_keyword(collection_name, collection1_name):
     collection=db[collection_name]
     collection1=collection1_name
-    documents = list(collection.find({}, {'_id': 1, 'reference article name': 1, 'Reference text in main article': 1, 'Reference identified by gpt4o in chunk': 1, 'Chunk': 1, 'Date': 1 }))
+    documents = list(collection.find({}, {'_id': 1, 'reference article name': 1, 'Reference text in main article': 1, 'Date': 1 }))
     df = pd.DataFrame(documents)
     nametextdate=[]
     field = 'paperId,title,year,externalIds,openAccessPdf,isOpenAccess'
