@@ -43,7 +43,7 @@ def search_papers_by_keywords(keywords: str, year: int = None, exclude_name: str
             if year:
                 response_data['data'] = [
                     paper for paper in response_data.get('data', [])
-                    if 'year' in paper and paper['year'] >= year
+                    if 'year' in paper and int(paper['year']) >= int(year)
                 ]
             if exclude_name:
                 response_data['data'] = [

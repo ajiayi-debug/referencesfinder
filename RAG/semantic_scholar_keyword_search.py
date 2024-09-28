@@ -33,12 +33,12 @@ database = 'data'
 def search_and_retrieve_keyword(collection_name, collection1_name):
     collection=db[collection_name]
     collection1=collection1_name
-    documents = list(collection.find({}, {'_id': 1, 'reference article name': 1, 'Reference text in main article': 1, 'Date': 1 }))
+    documents = list(collection.find({}, {'_id': 1, 'Reference article name': 1, 'Reference text in main article': 1, 'Date': 1 }))
     df = pd.DataFrame(documents)
     nametextdate=[]
     field = 'paperId,title,year,externalIds,openAccessPdf,isOpenAccess'
     for index, row in tqdm(df.iterrows(), desc="Processing DataFrame rows", total=len(df)):
-        name=row['reference article name']
+        name=row['Reference article name']
         text=row['Reference text in main article']
         date=row['Date']
         if [name,text,date] not in nametextdate:
