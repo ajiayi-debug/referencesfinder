@@ -450,13 +450,29 @@ def add_pdf_url_column(df: pd.DataFrame, metadata_list: List[Dict[str, Any]]) ->
 
 def move_invalid_pdf(pdf_path, invalid_directory):
     """
-    Moves the given PDF file to the invalid directory.
+    Moves the given PDF file to the invalid directory, renaming it if a file with the same name already exists.
+    
+    Args:
+    - pdf_path (str): Path to the PDF file to be moved.
+    - invalid_directory (str): Directory to move the invalid PDF to.
     """
     if not os.path.exists(invalid_directory):
         os.makedirs(invalid_directory)
+
+    # Construct the destination path
+    destination_path = os.path.join(invalid_directory, os.path.basename(pdf_path))
+
+    # Check if the destination file already exists and handle renaming
+    if os.path.exists(destination_path):
+        base, extension = os.path.splitext(destination_path)
+        i = 1
+        while os.path.exists(destination_path):
+            destination_path = f"{base}_{i}{extension}"
+            i += 1
+
     try:
-        shutil.move(pdf_path, invalid_directory)
-        print(f"Moved invalid PDF to {invalid_directory}: {pdf_path}")
+        shutil.move(pdf_path, destination_path)
+        print(f"Moved invalid PDF to {destination_path}")
     except Exception as e:
         print(f"Failed to move invalid PDF {pdf_path}: {e}")
 

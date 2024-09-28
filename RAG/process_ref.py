@@ -54,7 +54,7 @@ def process_old_references(collection_processed_name, collection_name):
             
             # Create a DataFrame for the current row
             newrow = pd.DataFrame({
-                'reference article name': [code[1]], 
+                'Reference article name': [code[1]], 
                 'Reference text in main article': [code[0]], 
                 'Reference identified by gpt4o in chunk': [cleanans], 
                 'Chunk': [textcontent], 
@@ -138,7 +138,7 @@ def process_new_references(collection_processed_name, new_collection_name, colle
                     
                     # Create DataFrame for each row
                     newrow = pd.DataFrame({
-                        'reference article name': [code[1]], 
+                        'Reference article name': [code[1]], 
                         'Reference text in main article': [code[0]], 
                         'Reference identified by gpt4o in chunk': [cleanans], 
                         'Chunk': [textcontent], 
