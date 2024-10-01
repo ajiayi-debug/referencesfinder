@@ -288,22 +288,14 @@ def clean_away_nonsemantic(text):
 def keyword_search(text):
     kws1="What are the keywords in the Text? Take note these keywords will be used for a graph search in semantic scholar. Output the keywords ONLY."
     kws2= f"""
-    Given the following text, identify the primary topics, key concepts, and any relevant terms that should be used as search keywords. Break down the text into concise and precise terms that capture the essence of the content. Include any synonymous phrases or related concepts that could enhance the search coverage.
-
-    Text: "{text}"
-
-    Output Requirements:
-    1. Extract and list key terms that represent the main topics.
-    2. Include synonymous phrases or alternative expressions.
-    3. Identify related terms or broader concepts.
-    4. Format the keywords as a single string with each keyword separated by 'OR' for search flexibility.
+    What are the main topics in the Text? Take note that these topics will be used as keywords for keyword searching. Output the topics as keywords and ONLY output the keywords with them being separated by commas if there are more than one keyword.
     """
     def func():
         response = client.chat.completions.create(
             model="gpt-4o",
             temperature=0,
             messages=[
-                {"role": "system", "content": kws1},
+                {"role": "system", "content": kws2},
                 {"role": "user", "content": [{"type": "text", "text": f"Text:{text}" }]}
                 #{"role": "user", "content": [{"type": "text", "text": kws2}]}
             ]
