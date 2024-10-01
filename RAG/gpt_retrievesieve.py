@@ -8,6 +8,7 @@ from pymongo import MongoClient
 from call_mongodb import *
 from tqdm import tqdm
 import certifi
+import time
 
 load_dotenv()
 #main pdf
@@ -44,6 +45,7 @@ def retrieve_sieve(df, code):
             valid_dfs.append(newrow)
         else:
             no_dfs.append(newrow)
+        time.sleep(1)
     
     # Concatenate valid rows
     valid_output_df = pd.concat(valid_dfs, ignore_index=True) if valid_dfs else pd.DataFrame()
