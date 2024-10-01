@@ -283,7 +283,31 @@ def clean_away_nonsemantic(text):
         return response.choices[0].message.content
 
     return retry_on_exception(func)
-
+get_search="""Generate searches for the Text. Output the searches as a list of differing searches."""
+get_keywords="""What are the main topics in each search in the list? Take note that these topics will be used as keywords for keyword searching. Output the topics as keywords and ONLY output the keywords with them being separated by commas if there are more than one keyword."""
+def text_to_search_to_keyword(text):
+    def func():
+        response1 = client.chat.completions.create(
+            model="gpt-4o",
+            temperature=0,
+            messages=[
+                {"role": "system", "content": get_search},
+                {"role": "user", "content": [{"type": "text", "text": f"Text:{text}" }]}
+                #{"role": "user", "content": [{"type": "text", "text": kws2}]}
+            ]
+        )
+        searches=response1.choices[0].message.content
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            temperature=0,
+            messages=[
+                {"role": "system", "content": get_keywords},
+                {"role": "user", "content": [{"type": "text", "text": f"Text:{searches}" }]}
+                #{"role": "user", "content": [{"type": "text", "text": kws2}]}
+            ]
+        )
+        return response.choices[0].message.content
+    return retry_on_exception(func)
 
 def keyword_search(text):
     kws1="What are the keywords in the Text? Take note these keywords will be used for a graph search in semantic scholar. Output the keywords ONLY."
