@@ -49,7 +49,9 @@ def search_and_retrieve_keyword(collection_name, collection1_name):
         n=ntd[0]
         t=ntd[1]
         d=ntd[2]
-        keyword=keyword_search(t)
+        #keyword=keyword_search(t)
+        keyword=text_to_search_to_keyword(t)
+        print(keyword)
         ntd.append(keyword)
         papers = total_search_by_keywords(keyword, year=d, exclude_name=n, fields=field)
         external_id_list, filtered_metadata_list = preprocess_paper_metadata(papers)
