@@ -35,9 +35,24 @@ def search_and_retrieve_keyword(collection_name, collection1_name):
     collection1=collection1_name
     documents = list(collection.find({}, {'_id': 1, 'Reference article name': 1, 'Reference text in main article': 1, 'Date': 1 }))
     df = pd.DataFrame(documents)
+    """Keep only latest date"""
+    # Convert 'Date' column to numeric to enable comparison
+    df['Date'] = pd.to_numeric(df['Date'], errors='coerce')
+
+    # Drop rows where 'Date' is NaN (if conversion fails for some entries)
+    df = df.dropna(subset=['Date'])
+
+    # Sort by 'Reference article name', 'Reference text in main article', and 'Date' in descending order
+    df = df.sort_values(by=['Reference article name', 'Reference text in main article', 'Date'], ascending=[True, True, False])
+
+    # Drop duplicates, keeping only the first (latest) entry for each unique combination
+    df_latest = df.drop_duplicates(subset=['Reference article name', 'Reference text in main article'], keep='first')
+
+    # Reset index for cleanliness (optional)
+    df_latest.reset_index(drop=True, inplace=True)
     nametextdate=[]
     field = 'paperId,title,year,externalIds,openAccessPdf,isOpenAccess'
-    for index, row in tqdm(df.iterrows(), desc="Processing DataFrame rows", total=len(df)):
+    for index, row in tqdm(df_latest.iterrows(), desc="Processing DataFrame rows", total=len(df)):
         name=row['Reference article name']
         text=row['Reference text in main article']
         date=row['Date']
@@ -49,11 +64,13 @@ def search_and_retrieve_keyword(collection_name, collection1_name):
         n=ntd[0]
         t=ntd[1]
         d=ntd[2]
-        #keyword=keyword_search(t)
-        keyword=text_to_search_to_keyword(t)
+        keyword=keyword_search(t)
+        #keyword=text_to_search_to_keyword(t)
+        print(t)
         print(keyword)
         ntd.append(keyword)
-        papers = total_search_by_keywords(keyword, year=d, exclude_name=n, fields=field)
+        #papers = total_search_by_keywords(keyword, year=d, exclude_name=n, fields=field)
+        papers=total_search_by_grouped_keywords(keyword, year=d, exclude_name=n, fields=field)
         external_id_list, filtered_metadata_list = preprocess_paper_metadata(papers)
         for data in filtered_metadata_list:
             download.append(data)
