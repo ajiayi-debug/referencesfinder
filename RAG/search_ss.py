@@ -2,13 +2,10 @@ from dotenv import load_dotenv
 import os
 import requests
 import time
-from typing import List, Dict, Union, Tuple
+from typing import AsyncGenerator, Generator, Iterable, TypeVar, Union, List, Dict, Any, Optional, Tuple
+import ast
 load_dotenv()
 
-import os
-import requests
-import time
-from typing import AsyncGenerator, Generator, Iterable, TypeVar, Union, List, Dict, Any, Optional 
 
 def search_papers_by_keywords(keywords: str, year: int = None, exclude_name: str = None, fields: str = 'paperId,title,year,externalIds,openAccessPdf,isOpenAccess') -> dict:
     url = 'https://api.semanticscholar.org/graph/v1/paper/search'
@@ -33,17 +30,10 @@ def search_papers_by_keywords(keywords: str, year: int = None, exclude_name: str
 
             response_data = response.json()
 
-            # Filter papers by year if provided
-            # if year:
-            #     filtered_papers = [
-            #         paper for paper in response_data.get('data', [])
-            #         if 'year' in paper and paper['year'] >= year
-            #     ]
-                # response_data['data'] = filtered_papers
             if year:
                 response_data['data'] = [
                     paper for paper in response_data.get('data', [])
-                    if 'year' in paper and int(paper['year']) >= int(year)
+                    if 'year' in paper and paper['year'] and str(paper['year']).isdigit() and int(paper['year']) >= int(year)
                 ]
             if exclude_name:
                 response_data['data'] = [
@@ -80,6 +70,30 @@ def total_search_by_keywords(keywords: str, year: int = None, exclude_name: str 
         for paper in data.get('data', []):
             paper_list.append(paper)
     
+    return paper_list
+
+def total_search_by_grouped_keywords(keywords: str, year: int = None, exclude_name: str = None, fields: str = 'paperId,title,year,externalIds,openAccessPdf,isOpenAccess'):
+    """
+    Search for papers based on keywords and optionally filter results by publication year,
+    then return a list of paper dictionaries from the search results.
+    
+    :param keywords: The search query for finding papers.
+    :param year: Optional filter to include papers published after the specified year.
+    :param fields: Comma-separated list of fields to be returned in the response.
+    :return: A list of dictionaries containing paper metadata.
+    """
+    # Split the str version of list of grouped keywords into groups
+    group_keyword=ast.literal_eval(keywords)
+    paper_list=[]
+    for kw in group_keyword:
+        # Perform the search
+        data = search_papers_by_keywords(kw, year, exclude_name, fields)
+        
+        # Extract paper list
+        if data:
+            for paper in data.get('data', []):
+                paper_list.append(paper)
+        
     return paper_list
 
 

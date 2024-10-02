@@ -310,16 +310,28 @@ def text_to_search_to_keyword(text):
     return retry_on_exception(func)
 
 def keyword_search(text):
+    #original
     kws1="What are the keywords in the Text? Take note these keywords will be used for a graph search in semantic scholar. Output the keywords ONLY."
+    #Making keywords a focus on main topic - idea is to narrow down focus - more accurate papers returned
     kws2= f"""
     What are the main topics in the Text? Take note that these topics will be used as keywords for keyword searching. Output the topics as keywords and ONLY output the keywords with them being separated by commas if there are more than one keyword.
+    """
+    kws3="""What are the main topics in the text? The topics should be used as keywords for keyword searching. Output the topics as keywords and only output the keywords as a list. If certain topics are closely related, group them together as a single string inside the main list.
+
+    Rules:
+
+    1. Group closely related topics (e.g., "prebiotics" and "probiotics") into a single string like 'prebiotics, probiotics'.
+    2. If a topic stands on its own (e.g., "lactose tolerance"), list it separately.
+    3. Always format the output as a single list of strings.
+    Example: Text: "A proportion of the world’s population is able to tolerate lactose as they have a genetic variation that ensures they continue to produce sufficient quantities of the enzyme lactase after childhood."
+    Output: ['lactose tolerance', 'genetic variation, enzyme lactase', 'lactose tolerance, childhood']
     """
     def func():
         response = client.chat.completions.create(
             model="gpt-4o",
             temperature=0,
             messages=[
-                {"role": "system", "content": kws2},
+                {"role": "system", "content": kws3},
                 {"role": "user", "content": [{"type": "text", "text": f"Text:{text}" }]}
                 #{"role": "user", "content": [{"type": "text", "text": kws2}]}
             ]
