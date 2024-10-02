@@ -326,12 +326,16 @@ def keyword_search(text):
     Example: Text: "A proportion of the world’s population is able to tolerate lactose as they have a genetic variation that ensures they continue to produce sufficient quantities of the enzyme lactase after childhood."
     Output: ['lactose tolerance', 'genetic variation, enzyme lactase', 'lactose tolerance, childhood']
     """
+    kws4="""
+    What are the keywords in terms of topics for the Text? Use the keywords to write keyword searches based on the keywords identified from the Text. Combine keywords if you think they relate to each other. 
+    Output the keyword searches as a list of strings ONLY in the format: ['lactase activity restoration', 'lactase activity recovery', ...]
+    """
     def func():
         response = client.chat.completions.create(
             model="gpt-4o",
             temperature=0,
             messages=[
-                {"role": "system", "content": kws3},
+                {"role": "system", "content": kws4},
                 {"role": "user", "content": [{"type": "text", "text": f"Text:{text}" }]}
                 #{"role": "user", "content": [{"type": "text", "text": kws2}]}
             ]
