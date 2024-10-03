@@ -28,7 +28,7 @@ def process_pdfs_to_mongodb(files_directory, collection1, collection2):
 
     data = {'PDF File': processed_name, 'Text Content': processed_texts}
     df = pd.DataFrame(data)
-    tqdm.pandas(desc="Processing Rows")
+    tqdm.pandas(desc="Processing Documents for Chunking")
     df['text_chunks'] = df['Text Content'].apply(semantic_chunk)
     
     df_exploded = df.explode('text_chunks').drop(columns=['Text Content'])
@@ -88,7 +88,7 @@ def process_new_pdfs_to_mongodb(files_directory, collection1, collection2):
 
     data = {'PDF File': processed_name, 'Text Content': processed_texts}
     df = pd.DataFrame(data)
-    tqdm.pandas(desc="Processing Rows")
+    tqdm.pandas(desc="Processing Documents for Chunking")
     df['text_chunks'] = df['Text Content'].apply(semantic_chunk)
     
     df_exploded = df.explode('text_chunks').drop(columns=['Text Content'])
@@ -141,7 +141,7 @@ def process_pdfs_to_mongodb_noembed(files_directory, collection1):
 
     data = {'PDF File': processed_name, 'Text Content': processed_texts}
     df = pd.DataFrame(data)
-    tqdm.pandas(desc="Processing Rows")
+    tqdm.pandas(desc="Processing Documents for Chunking")
     df['text_chunks'] = df['Text Content'].apply(semantic_chunk)
     
     df_exploded = df.explode('text_chunks').drop(columns=['Text Content'])
@@ -192,7 +192,7 @@ def process_pdfs_to_mongodb_noembed_new(files_directory, collection1):
 
     data = {'PDF File': processed_name, 'Text Content': processed_texts}
     df = pd.DataFrame(data)
-    tqdm.pandas(desc="Processing Rows")
+    tqdm.pandas(desc="Processing Documents for Chunking")
     df['text_chunks'] = df['Text Content'].progress_apply(semantic_chunk)
     
     df_exploded = df.explode('text_chunks').drop(columns=['Text Content'])

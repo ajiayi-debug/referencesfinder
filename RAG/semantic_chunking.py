@@ -84,6 +84,7 @@ def retry_on_exception(func, *args, max_retries=3, retry_delay=2, **kwargs):
                 refresh_token_if_needed()
             attempt += 1
             logging.error(f"Attempt {attempt} failed with error: {e}. Retrying in {retry_delay} seconds...")
+            time.sleep(1)  # Small delay before retrying
             time.sleep(retry_delay)
     logging.error(f"All {max_retries} attempts failed for {func.__name__}.")
     return None
@@ -124,6 +125,8 @@ def semantic_chunk(content):
             c = chunk.splits
             k = ''.join(c)
             chunked.append(k)
+        time.sleep(1)
+        logging.info("Chunking completed for one document. Added a 1-second delay before next operation.")
         return chunked
 
     return retry_on_exception(func)
