@@ -309,6 +309,12 @@ def update_downloadable_status(df: pd.DataFrame, pdf_folder: str) -> pd.DataFram
 #move ext files to papers
 
 def move_pdf_files(source_folder: str, destination_folder: str):
+    # Check if the source folder exists
+    if not os.path.exists(source_folder):
+        print(f"Source folder '{source_folder}' does not exist. Creating the folder.")
+        os.makedirs(source_folder)
+        return
+
     # Create destination folder if it doesn't exist
     os.makedirs(destination_folder, exist_ok=True)
 
@@ -325,7 +331,6 @@ def move_pdf_files(source_folder: str, destination_folder: str):
             else:
                 # If the PDF is invalid, you can choose to ignore it
                 print(f"Ignored invalid PDF: {filename}")
-
 
 def move_pdf_files_completedly(source_folder: str, destination_folder: str, invalid_folder: str):
     """
