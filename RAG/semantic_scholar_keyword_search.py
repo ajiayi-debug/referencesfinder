@@ -66,7 +66,6 @@ def search_and_retrieve_keyword(collection_name, collection1_name):
         t=ntd[1]
         d=ntd[2]
         keyword=keyword_search(t)
-        #keyword=text_to_search_to_keyword(t)
         print(t)
         print(keyword)
         ntd.append(keyword)
@@ -162,7 +161,6 @@ def test_search_and_retrieve_keyword(collection_name, collection1_name, test):
         t=ntd[1]
         d=ntd[2]
         keyword=keyword_search(t)
-        #keyword=text_to_search_to_keyword(t)
         print(t)
         print(keyword)
         ntd.append(keyword)
