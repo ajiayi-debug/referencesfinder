@@ -101,21 +101,44 @@ initialize_client()
 
 # Function to retry operations with token refresh on Unauthorized error
 def retry_on_exception(func, *args, max_retries=3, retry_delay=2, **kwargs):
-    attempt = 0
+    attempt = 0  # Initialize the attempt counter
+    current_delay = retry_delay  # Use a separate variable to keep track of the current delay
+
     while attempt < max_retries:
         try:
-            logging.info(f"Attempting {func.__name__} (Attempt {attempt + 1}/{max_retries})...")
-            refresh_token_if_needed()  # Ensure the token is refreshed before each attempt
+            logging.info(f"Attempting {func.__name__} (Attempt {attempt + 1}/{max_retries}) with delay {current_delay}s...")
+            
+            # Refresh token if needed before each attempt
+            refresh_token_if_needed()
+            
+            # Try executing the function
             return func(*args, **kwargs)
+
         except Exception as e:
-            if "401" in str(e) or "Unauthorized" in str(e):
+            error_message = str(e)  # Capture the error message
+            logging.error(f"Error encountered: {error_message}")
+
+            # Check for specific errors that might need token refresh or longer delays
+            if "401" in error_message or "Unauthorized" in error_message:
                 logging.warning("Unauthorized error detected. Refreshing access token and retrying...")
                 refresh_token_if_needed()
-                initialize_client()  # Reinitialize client with new token
+            elif "429" in error_message or "Too Many Requests" in error_message:
+                logging.warning("Rate limit error detected. Consider increasing delay or reducing request frequency.")
+                
+            # Increment the attempt count
             attempt += 1
-            logging.error(f"Attempt {attempt} failed with error: {e}. Retrying in {retry_delay} seconds...")
-            time.sleep(retry_delay)
-    logging.error(f"All {max_retries} attempts failed for {func.__name__}.")
+
+            # Log the retry information
+            logging.error(f"Attempt {attempt} failed with error: {e}. Retrying in {current_delay} seconds...")
+
+            # Wait for the current delay duration before retrying
+            time.sleep(current_delay)
+
+            # Increase the delay for the next attempt (exponential backoff)
+            current_delay *= 2
+
+    # If all retries fail, log the final failure
+    logging.error(f"All {max_retries} attempts failed for {func.__name__}. Returning None.")
     return None
 
 
@@ -469,88 +492,6 @@ def retriever_and_siever(chunk, ref):
         
         Output ONLY the extraction. (the quoted texts after Output: in examples shown)
         """
-
-        prot = f"""
-        Compare the 'Reference Article Text' (which is a chunk of the reference article) to the 'Text Referencing The Reference Article' (which cites the reference article). Identify which parts of the 'Reference Article Text' are being cited or referenced by the 'Text Referencing The Reference Article.'
-
-        By 'citing,' we mean that the 'Text Referencing The Reference Article' refers to or aligns with the information, facts, or concepts in the 'Reference Article Text.' The match can be direct, paraphrased, or conceptually similar.
-
-        Guidelines:
-        - Extract ALL relevant parts of the 'Reference Article Text' (chunk) that is being referenced in the 'Text Referencing The Reference Article.'
-        - The match does not need to be exact; it can be a paraphrased or conceptually aligned statement.
-        - Consider not only direct references, but also cases where the 'Text Referencing The Reference Article' discusses related facts or concepts in different wording.
-        - If no part of the 'Reference Article Text' is cited, respond with 'no'.
-
-        Important Note:
-        There might be cases where the phrasing between the 'Reference Article Text' and the 'Text Referencing The Reference Article' differs, but the underlying concepts are aligned. For example, if the 'Reference Article Text' discusses gas production due to bacterial fermentation of lactose and the 'Text Referencing The Reference Article' discusses bloating and flatulence after lactose ingestion, these are conceptually aligned, and the relevant portion from the 'Reference Article Text' should be extracted.
-
-        Example of Matching Case:
-
-        Input:
-        'Reference Article Text: Bacterial fermentation of lactose results in production of gases including hydrogen (H2), carbon dioxide (CO2), methane (CH4), and short-chain fatty acids (SCFA) that have effects on GI function (figure 1). Lactose intolerance. Lactose malabsorption (LM) is a necessary precondition for lactose intolerance (LI). However, the two must not be confused and the causes of symptoms must be considered separately. Many individuals with LM have no symptoms after ingestion of a standard serving of dairy products (table 1), whereas others develop symptoms (‘intolerance’) such as abdominal pain, borborygmi (rumbling tummy), and bloating after lactose intake (figure 1).
-
-        Text Referencing The Reference Article: The bacteria in the large intestine ferment lactose, resulting in gas formation, which can cause symptoms such as bloating and flatulence after lactose ingestion.'
-
-        Output:
-        'Bacterial fermentation of lactose results in production of gases including hydrogen (H2), carbon dioxide (CO2), methane (CH4), and short-chain fatty acids (SCFA) that have effects on GI function (figure 1). Many individuals with LM have no symptoms after ingestion of a standard serving of dairy products (table 1), whereas others develop symptoms (‘intolerance’) such as abdominal pain, borborygmi (rumbling tummy), and bloating after lactose intake (figure 1).'
-
-        Example of Non-Matching Case (When to Respond with 'No'):
-
-        Input:
-        'Reference Article Text: Lactase persistence is common among populations of Northern European descent. The LCT −13’910:C/C genotype is associated with the ability to digest lactose in adulthood.
-
-        Text Referencing The Reference Article: The bacteria in the large intestine ferment lactose, resulting in gas formation, which can cause symptoms such as bloating and flatulence after lactose ingestion.'
-
-        Output:
-        'no'
-
-        Why this case results in 'no':
-        In this case, the 'Reference Article Text' discusses lactase persistence and a genetic factor related to lactose digestion, while the 'Text Referencing The Reference Article' discusses gas formation due to bacterial fermentation of lactose. These are different concepts, and no alignment exists between the two texts. Therefore, the correct response is 'no.'
-        
-        Input:
-        Reference Article Text: {chunk}
-        Text Referencing The Reference Article: {ref}
-
-        Output:
-
-        """
-        query = """
-        Compare the 'Reference Article Text' (which is a chunk of the reference article) to the 'Text Referencing The Reference Article' (which cites the reference article). Identify which parts of the 'Reference Article Text' are being cited or referenced by the 'Text Referencing The Reference Article.'
-
-        By 'citing,' we mean that the 'Text Referencing The Reference Article' refers to or aligns with the information, facts, or concepts in the 'Reference Article Text.' The match can be direct, paraphrased, or conceptually similar.
-
-        Guidelines:
-        - Extract the part of the 'Reference Article Text' (chunk) that is being referenced in the 'Text Referencing The Reference Article.'
-        - The match does not need to be exact; it can be a paraphrased or conceptually aligned statement.
-        - Consider not only direct references, but also cases where the 'Text Referencing The Reference Article' discusses related facts or concepts in different wording.
-        - If no part of the 'Reference Article Text' is cited, respond with 'no'.
-
-        Important Note:
-        There might be cases where the phrasing between the 'Reference Article Text' and the 'Text Referencing The Reference Article' differs, but the underlying concepts are aligned. For example, if the 'Reference Article Text' discusses gas production due to bacterial fermentation of lactose and the 'Text Referencing The Reference Article' discusses bloating and flatulence after lactose ingestion, these are conceptually aligned, and the relevant portion from the 'Reference Article Text' should be extracted.
-        
-        Example of Matching Case:
-
-        Input:
-        'Reference Article Text: Bacterial fermentation of lactose results in production of gases including hydrogen (H2), carbon dioxide (CO2), methane (CH4), and short-chain fatty acids (SCFA) that have effects on GI function (figure 1). Lactose intolerance. Lactose malabsorption (LM) is a necessary precondition for lactose intolerance (LI). However, the two must not be confused and the causes of symptoms must be considered separately. Many individuals with LM have no symptoms after ingestion of a standard serving of dairy products (table 1), whereas others develop symptoms (‘intolerance’) such as abdominal pain, borborygmi (rumbling tummy), and bloating after lactose intake (figure 1).
-
-        Text Referencing The Reference Article: The bacteria in the large intestine ferment lactose, resulting in gas formation, which can cause symptoms such as bloating and flatulence after lactose ingestion.'
-
-        Output:
-        'Bacterial fermentation of lactose results in production of gases including hydrogen (H2), carbon dioxide (CO2), methane (CH4), and short-chain fatty acids (SCFA) that have effects on GI function (figure 1). Many individuals with LM have no symptoms after ingestion of a standard serving of dairy products (table 1), whereas others develop symptoms (‘intolerance’) such as abdominal pain, borborygmi (rumbling tummy), and bloating after lactose intake (figure 1).'
-
-        Example of Non-Matching Case (When to Respond with 'No'):
-
-        Input:
-        'Reference Article Text: Lactase persistence is common among populations of Northern European descent. The LCT −13’910:C/C genotype is associated with the ability to digest lactose in adulthood.
-
-        Text Referencing The Reference Article: The bacteria in the large intestine ferment lactose, resulting in gas formation, which can cause symptoms such as bloating and flatulence after lactose ingestion.'
-
-        Output:
-        'no'
-
-        Why this case results in 'no':
-        In this case, the 'Reference Article Text' discusses lactase persistence and a genetic factor related to lactose digestion, while the 'Text Referencing The Reference Article' discusses gas formation due to bacterial fermentation of lactose. These are different concepts, and no alignment exists between the two texts. Therefore, the correct response is 'no.'
-        """
         response = client.chat.completions.create(
             model="gpt-4o",
             temperature=0,
@@ -562,3 +503,90 @@ def retriever_and_siever(chunk, ref):
         return response.choices[0].message.content
 
     return retry_on_exception(func)
+
+
+
+
+
+"""Prompts:"""
+# prot = f"""
+#         Compare the 'Reference Article Text' (which is a chunk of the reference article) to the 'Text Referencing The Reference Article' (which cites the reference article). Identify which parts of the 'Reference Article Text' are being cited or referenced by the 'Text Referencing The Reference Article.'
+
+#         By 'citing,' we mean that the 'Text Referencing The Reference Article' refers to or aligns with the information, facts, or concepts in the 'Reference Article Text.' The match can be direct, paraphrased, or conceptually similar.
+
+#         Guidelines:
+#         - Extract ALL relevant parts of the 'Reference Article Text' (chunk) that is being referenced in the 'Text Referencing The Reference Article.'
+#         - The match does not need to be exact; it can be a paraphrased or conceptually aligned statement.
+#         - Consider not only direct references, but also cases where the 'Text Referencing The Reference Article' discusses related facts or concepts in different wording.
+#         - If no part of the 'Reference Article Text' is cited, respond with 'no'.
+
+#         Important Note:
+#         There might be cases where the phrasing between the 'Reference Article Text' and the 'Text Referencing The Reference Article' differs, but the underlying concepts are aligned. For example, if the 'Reference Article Text' discusses gas production due to bacterial fermentation of lactose and the 'Text Referencing The Reference Article' discusses bloating and flatulence after lactose ingestion, these are conceptually aligned, and the relevant portion from the 'Reference Article Text' should be extracted.
+
+#         Example of Matching Case:
+
+#         Input:
+#         'Reference Article Text: Bacterial fermentation of lactose results in production of gases including hydrogen (H2), carbon dioxide (CO2), methane (CH4), and short-chain fatty acids (SCFA) that have effects on GI function (figure 1). Lactose intolerance. Lactose malabsorption (LM) is a necessary precondition for lactose intolerance (LI). However, the two must not be confused and the causes of symptoms must be considered separately. Many individuals with LM have no symptoms after ingestion of a standard serving of dairy products (table 1), whereas others develop symptoms (‘intolerance’) such as abdominal pain, borborygmi (rumbling tummy), and bloating after lactose intake (figure 1).
+
+#         Text Referencing The Reference Article: The bacteria in the large intestine ferment lactose, resulting in gas formation, which can cause symptoms such as bloating and flatulence after lactose ingestion.'
+
+#         Output:
+#         'Bacterial fermentation of lactose results in production of gases including hydrogen (H2), carbon dioxide (CO2), methane (CH4), and short-chain fatty acids (SCFA) that have effects on GI function (figure 1). Many individuals with LM have no symptoms after ingestion of a standard serving of dairy products (table 1), whereas others develop symptoms (‘intolerance’) such as abdominal pain, borborygmi (rumbling tummy), and bloating after lactose intake (figure 1).'
+
+#         Example of Non-Matching Case (When to Respond with 'No'):
+
+#         Input:
+#         'Reference Article Text: Lactase persistence is common among populations of Northern European descent. The LCT −13’910:C/C genotype is associated with the ability to digest lactose in adulthood.
+
+#         Text Referencing The Reference Article: The bacteria in the large intestine ferment lactose, resulting in gas formation, which can cause symptoms such as bloating and flatulence after lactose ingestion.'
+
+#         Output:
+#         'no'
+
+#         Why this case results in 'no':
+#         In this case, the 'Reference Article Text' discusses lactase persistence and a genetic factor related to lactose digestion, while the 'Text Referencing The Reference Article' discusses gas formation due to bacterial fermentation of lactose. These are different concepts, and no alignment exists between the two texts. Therefore, the correct response is 'no.'
+        
+#         Input:
+#         Reference Article Text: {chunk}
+#         Text Referencing The Reference Article: {ref}
+
+#         Output:
+
+#         """
+# query = """
+#         Compare the 'Reference Article Text' (which is a chunk of the reference article) to the 'Text Referencing The Reference Article' (which cites the reference article). Identify which parts of the 'Reference Article Text' are being cited or referenced by the 'Text Referencing The Reference Article.'
+
+#         By 'citing,' we mean that the 'Text Referencing The Reference Article' refers to or aligns with the information, facts, or concepts in the 'Reference Article Text.' The match can be direct, paraphrased, or conceptually similar.
+
+#         Guidelines:
+#         - Extract the part of the 'Reference Article Text' (chunk) that is being referenced in the 'Text Referencing The Reference Article.'
+#         - The match does not need to be exact; it can be a paraphrased or conceptually aligned statement.
+#         - Consider not only direct references, but also cases where the 'Text Referencing The Reference Article' discusses related facts or concepts in different wording.
+#         - If no part of the 'Reference Article Text' is cited, respond with 'no'.
+
+#         Important Note:
+#         There might be cases where the phrasing between the 'Reference Article Text' and the 'Text Referencing The Reference Article' differs, but the underlying concepts are aligned. For example, if the 'Reference Article Text' discusses gas production due to bacterial fermentation of lactose and the 'Text Referencing The Reference Article' discusses bloating and flatulence after lactose ingestion, these are conceptually aligned, and the relevant portion from the 'Reference Article Text' should be extracted.
+        
+#         Example of Matching Case:
+
+#         Input:
+#         'Reference Article Text: Bacterial fermentation of lactose results in production of gases including hydrogen (H2), carbon dioxide (CO2), methane (CH4), and short-chain fatty acids (SCFA) that have effects on GI function (figure 1). Lactose intolerance. Lactose malabsorption (LM) is a necessary precondition for lactose intolerance (LI). However, the two must not be confused and the causes of symptoms must be considered separately. Many individuals with LM have no symptoms after ingestion of a standard serving of dairy products (table 1), whereas others develop symptoms (‘intolerance’) such as abdominal pain, borborygmi (rumbling tummy), and bloating after lactose intake (figure 1).
+
+#         Text Referencing The Reference Article: The bacteria in the large intestine ferment lactose, resulting in gas formation, which can cause symptoms such as bloating and flatulence after lactose ingestion.'
+
+#         Output:
+#         'Bacterial fermentation of lactose results in production of gases including hydrogen (H2), carbon dioxide (CO2), methane (CH4), and short-chain fatty acids (SCFA) that have effects on GI function (figure 1). Many individuals with LM have no symptoms after ingestion of a standard serving of dairy products (table 1), whereas others develop symptoms (‘intolerance’) such as abdominal pain, borborygmi (rumbling tummy), and bloating after lactose intake (figure 1).'
+
+#         Example of Non-Matching Case (When to Respond with 'No'):
+
+#         Input:
+#         'Reference Article Text: Lactase persistence is common among populations of Northern European descent. The LCT −13’910:C/C genotype is associated with the ability to digest lactose in adulthood.
+
+#         Text Referencing The Reference Article: The bacteria in the large intestine ferment lactose, resulting in gas formation, which can cause symptoms such as bloating and flatulence after lactose ingestion.'
+
+#         Output:
+#         'no'
+
+#         Why this case results in 'no':
+#         In this case, the 'Reference Article Text' discusses lactase persistence and a genetic factor related to lactose digestion, while the 'Text Referencing The Reference Article' discusses gas formation due to bacterial fermentation of lactose. These are different concepts, and no alignment exists between the two texts. Therefore, the correct response is 'no.'
+#         """

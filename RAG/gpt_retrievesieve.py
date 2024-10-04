@@ -9,6 +9,10 @@ from call_mongodb import *
 from tqdm import tqdm
 import certifi
 import time
+from gpt_rag_asyncio import *
+import asyncio
+import aiohttp
+from tqdm.asyncio import tqdm_asyncio
 
 load_dotenv()
 #main pdf
@@ -17,54 +21,54 @@ uri = os.getenv("uri_mongo")
 client = MongoClient(uri, tls=True, tlsCAFile=certifi.where())
 db = client['data']
 
-def retrieve_sieve(df, code):
-    ref = code[0]
-    valid_dfs = []
-    non_valid_dfs = []
-    no_dfs = []
+# def retrieve_sieve(df, code):
+#     ref = code[0]
+#     valid_dfs = []
+#     non_valid_dfs = []
+#     no_dfs = []
     
-    # Iterate through the dataframe rows
-    for index, row in tqdm(df.iterrows(), desc='Retrieving chunks then sieving using GPT-4o as an agent'):
-        chunk = row['Text Content']
-        ans = retriever_and_siever(chunk, ref)
-        if ans is not None:
-            ans=ans.lower()
-        else:
-            ans='api error'
+#     # Iterate through the dataframe rows
+#     for index, row in tqdm(df.iterrows(), desc='Retrieving chunks then sieving using GPT-4o as an agent'):
+#         chunk = row['Text Content']
+#         ans = retriever_and_siever(chunk, ref)
+#         if ans is not None:
+#             ans=ans.lower()
+#         else:
+#             ans='api error'
 
-        # Create a new row regardless of the answer
-        newrow = pd.DataFrame({
-            'Reference article name': [code[1]], 
-            'Reference text in main article': [code[0]], 
-            'Sieving by gpt 4o': [ans],
-            'Chunk': [chunk], 
-            'Date': [code[2]]
-        })
-        # Append to appropriate list based on the answer
-        if ans not in ["'no'", "'no.'", "'"+ref.lower()+"'","no","no.", 'api error']:
-            valid_dfs.append(newrow)
-        else:
-            no_dfs.append(newrow)
-        time.sleep(1)
+#         # Create a new row regardless of the answer
+#         newrow = pd.DataFrame({
+#             'Reference article name': [code[1]], 
+#             'Reference text in main article': [code[0]], 
+#             'Sieving by gpt 4o': [ans],
+#             'Chunk': [chunk], 
+#             'Date': [code[2]]
+#         })
+#         # Append to appropriate list based on the answer
+#         if ans not in ["'no'", "'no.'", "'"+ref.lower()+"'","no","no.", 'api error']:
+#             valid_dfs.append(newrow)
+#         else:
+#             no_dfs.append(newrow)
+#         time.sleep(1)
     
-    # Concatenate valid rows
-    valid_output_df = pd.concat(valid_dfs, ignore_index=True) if valid_dfs else pd.DataFrame()
+#     # Concatenate valid rows
+#     valid_output_df = pd.concat(valid_dfs, ignore_index=True) if valid_dfs else pd.DataFrame()
     
-    # Concatenate non-valid rows if no valid chunks found
-    if not valid_dfs and df.empty:
-        non_valid_row = pd.DataFrame({
-            'Reference article name': [code[1]], 
-            'Reference text in main article': [code[0]], 
-            'Date': [code[2]]
-        })
-        non_valid_dfs.append(non_valid_row)
+#     # Concatenate non-valid rows if no valid chunks found
+#     if not valid_dfs and df.empty:
+#         non_valid_row = pd.DataFrame({
+#             'Reference article name': [code[1]], 
+#             'Reference text in main article': [code[0]], 
+#             'Date': [code[2]]
+#         })
+#         non_valid_dfs.append(non_valid_row)
     
-    non_valid_output_df = pd.concat(non_valid_dfs, ignore_index=True) if non_valid_dfs else pd.DataFrame()
+#     non_valid_output_df = pd.concat(non_valid_dfs, ignore_index=True) if non_valid_dfs else pd.DataFrame()
     
-    # Concatenate no rows
-    no_df = pd.concat(no_dfs, ignore_index=True) if no_dfs else pd.DataFrame()
+#     # Concatenate no rows
+#     no_df = pd.concat(no_dfs, ignore_index=True) if no_dfs else pd.DataFrame()
 
-    return valid_output_df, non_valid_output_df, no_df
+#     return valid_output_df, non_valid_output_df, no_df
 
 
 def retrieve_sieve_references(collection_processed_name, valid_collection_name, invalid_collection_name):
@@ -94,14 +98,16 @@ def retrieve_sieve_references(collection_processed_name, valid_collection_name, 
     non_valid_dfs = []
     not_dfs=[]
     for code in tqdm(codable, desc="Retrieving and Sieving with an agent"):
+        # Retrieve the corresponding PDF for the code
         pdf = retrieve_pdf(df, code)
         if pdf.empty:
             print(f"No PDF found for code: {code}")
             continue
 
-        # Retrieve and sieve
-        valid, non_valid ,no_df= retrieve_sieve(pdf, code)
+        # Call the wrapper function to retrieve and sieve
+        valid, non_valid, no_df = retrieve_sieve(pdf, code)
 
+        # Append the results to the corresponding lists
         if not valid.empty:
             valid_dfs.append(valid)
         if not non_valid.empty:
@@ -131,6 +137,78 @@ def retrieve_sieve_references(collection_processed_name, valid_collection_name, 
         
 
     print("Process completed and data sent to MongoDB.")
+
+loop = asyncio.get_event_loop()
+
+
+async def process_row_async(row, code):
+    """Async function to process each row in the DataFrame using the async Azure OpenAI call."""
+    chunk = row['Text Content']
+    ref = code[0]
+    
+    # Use the async wrapper to call the GPT service with retry logic
+    ans = await call_retrieve_sieve_with_async(chunk, ref)
+    
+    # Create a new row regardless of the answer
+    new_row = pd.DataFrame({
+        'Reference article name': [code[1]],
+        'Reference text in main article': [code[0]],
+        'Sieving by gpt 4o': [ans],
+        'Chunk': [chunk],
+        'Date': [code[2]]
+    })
+    
+    # Determine which category the result falls into
+    if ans not in ["'no'", "'no.'", "'"+ref.lower()+"'", "no", "no.", 'api error']:
+        return 'valid', new_row
+    else:
+        return 'no', new_row
+
+
+async def retrieve_sieve_async(df, code):
+    """Main function to run the parallelized process using asyncio and the async OpenAI client."""
+    valid_dfs = []
+    non_valid_dfs = []  # Initialize the non-valid list
+    no_dfs = []
+
+    # Process each row asynchronously using the process_row_async function
+    tasks = [process_row_async(row, code) for _, row in df.iterrows()]
+    
+    # Use tqdm_asyncio to track progress of async tasks
+    for result_type, new_row in await tqdm_asyncio.gather(*tasks, desc='Processing rows in parallel'):
+        if result_type == 'valid':
+            valid_dfs.append(new_row)
+        elif result_type == 'no':
+            no_dfs.append(new_row)
+        else:
+            non_valid_dfs.append(new_row)  # Collect non-valid rows if the result is not 'valid' or 'no'
+
+    # Concatenate valid rows
+    valid_output_df = pd.concat(valid_dfs, ignore_index=True) if valid_dfs else pd.DataFrame()
+
+    # Concatenate non-valid rows if no valid chunks found
+    non_valid_output_df = pd.concat(non_valid_dfs, ignore_index=True) if non_valid_dfs else pd.DataFrame()
+
+    # Concatenate no rows
+    no_df = pd.concat(no_dfs, ignore_index=True) if no_dfs else pd.DataFrame()
+
+    return valid_output_df, non_valid_output_df, no_df
+
+
+def retrieve_sieve(df, code):
+    """Synchronous wrapper function for calling async operations."""
+    global loop
+
+    # Check if the event loop is already running
+    if loop.is_running():
+        # Use asyncio.run_coroutine_threadsafe to submit async work to the existing loop
+        return asyncio.run_coroutine_threadsafe(retrieve_sieve_async(df, code), loop).result()
+    else:
+        # Otherwise, create and run a new event loop
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        return loop.run_until_complete(retrieve_sieve_async(df, code))
+
 
 
 def retrieve_sieve_references_new(collection_processed_name, new_ref_collection, valid_collection_name, invalid_collection_name, not_match):
@@ -177,6 +255,7 @@ def retrieve_sieve_references_new(collection_processed_name, new_ref_collection,
             non_valid_dfs.append(non_valid)
         if not no_df.empty:
             not_dfs.append(no_df)
+        
 
     # Concatenate non-valid results
     if non_valid_dfs:
@@ -204,3 +283,5 @@ def retrieve_sieve_references_new(collection_processed_name, new_ref_collection,
         
 
     print("Process completed and data sent to MongoDB.")
+
+
