@@ -192,8 +192,7 @@ def process_pdfs_to_mongodb_noembed_new(files_directory, collection1):
 
     data = {'PDF File': processed_name, 'Text Content': processed_texts}
     df = pd.DataFrame(data)
-    tqdm.pandas(desc="Processing Documents for Chunking")
-    df['text_chunks'] = df['Text Content'].progress_apply(semantic_chunk)
+    df=process_dataframe_sc(df)
     
     df_exploded = df.explode('text_chunks').drop(columns=['Text Content'])
     
@@ -206,7 +205,7 @@ def process_pdfs_to_mongodb_noembed_new(files_directory, collection1):
 
     # Save data to MongoDB
     print("Sending data to MongoDB Atlas...")
-
+    send_excel(df_exploded,'RAG','test_async_chunk.xlsx')
     # Send all records at once for collection1
     replace_database_collection(uri, db, collection1, records1)
     print(f"Data sent to MongoDB Atlas for collection: {collection1}")
