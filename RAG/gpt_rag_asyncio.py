@@ -28,6 +28,17 @@ token_expiry_time = None
 token_lock = asyncio.Lock()
 async_client= None
 
+iteration_count = 0  # Keeps track of the number of iterations
+max_iterations_before_reset = 50  # Adjust this number based on your observations and use case
+
+async def check_and_reset_client():
+    global iteration_count
+
+    if iteration_count >= max_iterations_before_reset:
+        logging.info("Resetting client due to high number of iterations to prevent resource leaks.")
+        await initialize_client()  # Re-initialize the client
+        iteration_count = 0 
+
 # Function to get Azure access token using Azure CLI
 def get_azure_access_token():
     try:
@@ -55,10 +66,10 @@ async def refresh_token_if_needed():
     global access_token, token_expiry_time, async_client
 
     # Acquire the token lock to ensure only one process is refreshing the token at a time
-    async with token_lock:  # Use 'async with' for asyncio.Lock()
+    async with token_lock:
         # Check if the token has expired or is not set
-        if access_token is None or time.time() > token_expiry_time:
-            logging.info("Access token has expired or not set. Refreshing token...")
+        if access_token is None or time.time() > token_expiry_time - 300:  # Refresh 5 mins before expiry
+            logging.info("Access token has expired or is about to expire. Refreshing token...")
 
             # Fetch a new access token
             new_token = get_azure_access_token()
@@ -130,20 +141,8 @@ def extract_retry_after(exception):
 
 
 # Asynchronous retry function for async functions
-async def async_retry_on_exception(func, *args, max_retries=3, retry_delay=2, **kwargs):
-    """
-    Retry an asynchronous function on exception up to a maximum number of retries.
-
-    Args:
-        func (coroutine): The asynchronous function to be executed.
-        *args: Positional arguments for the function.
-        max_retries (int): Maximum number of retries allowed.
-        retry_delay (int): Initial delay between retries in seconds.
-        **kwargs: Keyword arguments for the function.
-
-    Returns:
-        Any: The result of the function if successful, or None if all retries fail.
-    """
+async def async_retry_on_exception(func, *args, max_retries=3, retry_delay=30, **kwargs):
+    global iteration_count
     attempt = 0
     current_delay = retry_delay
 
@@ -151,21 +150,31 @@ async def async_retry_on_exception(func, *args, max_retries=3, retry_delay=2, **
         try:
             logging.info(f"Attempting {func.__name__} (Attempt {attempt + 1}/{max_retries}) with delay {current_delay}s...")
             await refresh_token_if_needed()  # Refresh token if needed before each attempt
-
+            
+            # Reset client if too many iterations have been reached
+            await check_and_reset_client()
+            
             # Try executing the async function
-            return await func(*args, **kwargs)
+            result = await func(*args, **kwargs)
+            
+            # Increment iteration count on successful execution
+            iteration_count += 1
+            return result
 
         except Exception as e:
             error_message = str(e)
             logging.error(f"Error encountered: {error_message}")
 
+            # Handle 401 errors specifically
             if "401" in error_message or "Unauthorized" in error_message:
                 logging.warning("Unauthorized error detected. Refreshing access token and retrying...")
                 await refresh_token_if_needed()
                 await initialize_client()
+                current_delay = retry_delay  # Reset delay after re-authentication
+            # Handle rate limits (429 errors)
             elif "429" in error_message or "Too Many Requests" in error_message:
-                logging.warning("Rate limit error detected. Checking for Retry-After header...")
-                retry_after = extract_retry_after(e)  # Extract the Retry-After delay
+                logging.warning("Rate limit error detected. Applying exponential backoff...")
+                retry_after = extract_retry_after(e)
                 if retry_after:
                     logging.info(f"Retrying after {retry_after} seconds as specified by the server.")
                     current_delay = retry_after
@@ -175,11 +184,13 @@ async def async_retry_on_exception(func, *args, max_retries=3, retry_delay=2, **
             # Increment attempt counter and increase delay
             attempt += 1
             logging.error(f"Attempt {attempt} failed with error: {e}. Retrying in {current_delay} seconds...")
-            await asyncio.sleep(current_delay)  # Non-blocking wait
+            await asyncio.sleep(current_delay)
             current_delay *= 2  # Exponential backoff if no Retry-After header was found
 
     logging.error(f"All {max_retries} attempts failed for {func.__name__}. Returning None.")
     return None
+
+
 
 # Asynchronous function to get responses from the Azure OpenAI API
 async def retriever_and_siever_async(chunk, ref):
@@ -241,10 +252,54 @@ async def retriever_and_siever_async(chunk, ref):
         logging.error(f"Exception during API call: {e}")
         return 'api error'
 
-async def call_retrieve_sieve_with_async(chunk,ref):
+async def call_retrieve_sieve_with_async(chunk, ref):
     await initialize_client()  # Initialize the async client first
-
+    
     result = await async_retry_on_exception(retriever_and_siever_async, chunk, ref)
     return result
 
 
+
+async def keyword_search_async(text):
+    try:
+        #original
+        kws1="What are the keywords in the Text? Take note these keywords will be used for a graph search in semantic scholar. Output the keywords ONLY."
+        #Making keywords a focus on main topic - idea is to narrow down focus - more accurate papers returned
+        kws2= f"""
+        What are the main topics in the Text? Take note that these topics will be used as keywords for keyword searching. Output the topics as keywords and ONLY output the keywords with them being separated by commas if there are more than one keyword.
+        """
+        kws3="""What are the main topics in the text? The topics should be used as keywords for keyword searching. Output the topics as keywords and only output the keywords as a list. If certain topics are closely related, group them together as a single string inside the main list.
+
+        Rules:
+
+        1. Group closely related topics (e.g., "prebiotics" and "probiotics") into a single string like 'prebiotics, probiotics'.
+        2. If a topic stands on its own (e.g., "lactose tolerance"), list it separately.
+        3. Always format the output as a single list of strings.
+        Example: Text: "A proportion of the world’s population is able to tolerate lactose as they have a genetic variation that ensures they continue to produce sufficient quantities of the enzyme lactase after childhood."
+        Output: ['lactose tolerance', 'genetic variation, enzyme lactase', 'lactose tolerance, childhood']
+        """
+        kws4="""
+        What are the keywords in terms of topics for the Text? Use the keywords to write keyword searches based on the keywords identified from the Text. Combine keywords if you think they relate to each other. 
+        Output the keyword searches as a list of strings ONLY in the format: ['lactase activity restoration', 'lactase activity recovery', ...]
+        """
+        data={
+            "model":"gpt-4o",
+            "messages":[
+                {"role": "system", "content": kws3},
+                {"role": "user", "content": [{"type": "text", "text": f"Text:{text}" }]}
+                #{"role": "user", "content": [{"type": "text", "text": kws2}]}
+            ],
+            "temperature":0
+        }
+        response = await async_client.chat.completions.create(**data)
+        return response.choices[0].message.content.lower()
+
+    except Exception as e:
+        logging.error(f"Exception during API call: {e}")
+        return 'api error'
+
+async def call_keyword_search_async(text):
+    await initialize_client()  # Initialize the async client first
+    
+    result = await async_retry_on_exception(keyword_search_async, text)
+    return result

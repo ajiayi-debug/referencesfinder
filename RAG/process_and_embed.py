@@ -8,6 +8,7 @@ from gpt_rag import *
 from embedding import *
 from call_mongodb import *
 from semantic_chunking import *
+from semantic_chunker_retry_itself import *
 
 def process_pdfs_to_mongodb(files_directory, collection1, collection2):
     load_dotenv()
@@ -192,7 +193,9 @@ def process_pdfs_to_mongodb_noembed_new(files_directory, collection1):
 
     data = {'PDF File': processed_name, 'Text Content': processed_texts}
     df = pd.DataFrame(data)
-    df=process_dataframe_sc(df)
+    df=process_dataframe_sc1(df)
+
+    #df = process_dataframe_into_chunks(df)
     
     df_exploded = df.explode('text_chunks').drop(columns=['Text Content'])
     

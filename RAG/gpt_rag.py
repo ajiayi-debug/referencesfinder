@@ -334,7 +334,7 @@ def keyword_search(text):
             model="gpt-4o",
             temperature=0,
             messages=[
-                {"role": "system", "content": kws4},
+                {"role": "system", "content": kws3},
                 {"role": "user", "content": [{"type": "text", "text": f"Text:{text}" }]}
                 #{"role": "user", "content": [{"type": "text", "text": kws2}]}
             ]

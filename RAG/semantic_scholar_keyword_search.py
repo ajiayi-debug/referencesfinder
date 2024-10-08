@@ -5,6 +5,7 @@ from gpt_rag import *
 from pdf import *
 from gpt_rag import *
 from embedding import *
+from gpt_rag_asyncio import *
 import argparse
 import os
 from requests import Session
@@ -27,6 +28,27 @@ db = client['data']
 database = 'data'
 # collection = db['find_ref']
 # collection1 ='new_ref_found' #meta data database
+
+async def process_row_async(t):
+    """Async function to process each row in the DataFrame using the async Azure OpenAI call."""
+    
+    
+    # Use the async wrapper to call the GPT service with retry logic
+    ans = await call_keyword_search_async(t)
+    print(ans)
+    return ans
+
+
+async def async_process_dataframe(df_latest):
+    """Helper function to process the DataFrame asynchronously."""
+    tasks = []
+    for index, row in df_latest.iterrows():
+        text = row['Reference text in main article']
+        tasks.append(process_row_async(text))
+    # Gather all results
+    results = await asyncio.gather(*tasks)
+    return results
+
 
 
 
@@ -51,38 +73,49 @@ def search_and_retrieve_keyword(collection_name, collection1_name):
 
     # Reset index for cleanliness (optional)
     df_latest.reset_index(drop=True, inplace=True)
-    nametextdate=[]
+    print("Running async process on dataframe rows...")
+    keywords = asyncio.run(async_process_dataframe(df_latest))
+
+    # Create a list of tuples to integrate keywords with existing data
+    nametextdate = []
+    for index, row in df_latest.iterrows():
+        name = row['Reference article name']
+        text = row['Reference text in main article']
+        date = row['Date']
+        keyword = keywords[index]  # Use the corresponding keyword returned from async function
+        nametextdate.append([name, text, date, keyword])
+
+    download = []
+    ext_id = []
     field = 'paperId,title,year,externalIds,openAccessPdf,isOpenAccess'
-    for index, row in tqdm(df_latest.iterrows(), desc="Processing DataFrame rows", total=len(df_latest)):
-        name=row['Reference article name']
-        text=row['Reference text in main article']
-        date=row['Date']
-        if [name,text,date] not in nametextdate:
-            nametextdate.append([name,text,date])
-    download=[]
-    ext_id=[]
+    
+    # Continue with the existing logic using the `nametextdate` that now includes keywords
     for ntd in tqdm(nametextdate, desc="Processing references"):
-        n=ntd[0]
-        t=ntd[1]
-        d=ntd[2]
-        keyword=keyword_search(t)
-        print(t)
-        print(keyword)
-        ntd.append(keyword)
-        #papers = total_search_by_keywords(keyword, year=d, exclude_name=n, fields=field)
-        papers=total_search_by_grouped_keywords(keyword, year=d, exclude_name=n, fields=field)
+        n = ntd[0]
+        t = ntd[1]
+        d = ntd[2]
+        keyword = ntd[3]
+        
+        # Proceed with further logic using `keyword` instead of calling `process_row_async` again
+        papers = total_search_by_grouped_keywords(keyword, year=d, exclude_name=n, fields=field)
         external_id_list, filtered_metadata_list = preprocess_paper_metadata(papers)
+        
         for data in filtered_metadata_list:
             download.append(data)
-        total=papers
-        # print(total)
-        paper_ids=extract_paper_ids(total)
-        title=extract_title(total)
-        year=extract_year(total)
-        paperidandtitleandyear=[]
+        
+        total = papers
+        paper_ids = extract_paper_ids(total)
+        title = extract_title(total)
+        year = extract_year(total)
+        
+        paperidandtitleandyear = []
         for k in range(len(paper_ids)):
-            paperidandtitleandyear.append([paper_ids[k],title[k],year[k]])
+            paperidandtitleandyear.append([paper_ids[k], title[k], year[k]])
+        
+        # Append the paper ID and title information to `ntd`
         ntd.append(paperidandtitleandyear)
+        
+        # Collect external IDs for tracking purposes
         for j in external_id_list:
             ext_id.append(j)
     # print(nametextdate)
@@ -146,38 +179,49 @@ def test_search_and_retrieve_keyword(collection_name, collection1_name, test):
     # Reset index for cleanliness (optional)
     df_latest.reset_index(drop=True, inplace=True)
     df_top5=df_latest.head(test)
-    nametextdate=[]
+    print("Running async process on dataframe rows...")
+    keywords = asyncio.run(async_process_dataframe(df_top5))
+
+    # Create a list of tuples to integrate keywords with existing data
+    nametextdate = []
+    for index, row in df_latest.iterrows():
+        name = row['Reference article name']
+        text = row['Reference text in main article']
+        date = row['Date']
+        keyword = keywords[index]  # Use the corresponding keyword returned from async function
+        nametextdate.append([name, text, date, keyword])
+
+    download = []
+    ext_id = []
     field = 'paperId,title,year,externalIds,openAccessPdf,isOpenAccess'
-    for index, row in tqdm(df_top5.iterrows(), desc="Processing DataFrame rows", total=len(df_top5)):
-        name=row['Reference article name']
-        text=row['Reference text in main article']
-        date=row['Date']
-        if [name,text,date] not in nametextdate:
-            nametextdate.append([name,text,date])
-    download=[]
-    ext_id=[]
+    
+    # Continue with the existing logic using the `nametextdate` that now includes keywords
     for ntd in tqdm(nametextdate, desc="Processing references"):
-        n=ntd[0]
-        t=ntd[1]
-        d=ntd[2]
-        keyword=keyword_search(t)
-        print(t)
-        print(keyword)
-        ntd.append(keyword)
-        #papers = total_search_by_keywords(keyword, year=d, exclude_name=n, fields=field)
-        papers=total_search_by_grouped_keywords(keyword, year=d, exclude_name=n, fields=field)
+        n = ntd[0]
+        t = ntd[1]
+        d = ntd[2]
+        keyword = ntd[3]
+        
+        # Proceed with further logic using `keyword` instead of calling `process_row_async` again
+        papers = total_search_by_grouped_keywords(keyword, year=d, exclude_name=n, fields=field)
         external_id_list, filtered_metadata_list = preprocess_paper_metadata(papers)
+        
         for data in filtered_metadata_list:
             download.append(data)
-        total=papers
-        # print(total)
-        paper_ids=extract_paper_ids(total)
-        title=extract_title(total)
-        year=extract_year(total)
-        paperidandtitleandyear=[]
+        
+        total = papers
+        paper_ids = extract_paper_ids(total)
+        title = extract_title(total)
+        year = extract_year(total)
+        
+        paperidandtitleandyear = []
         for k in range(len(paper_ids)):
-            paperidandtitleandyear.append([paper_ids[k],title[k],year[k]])
+            paperidandtitleandyear.append([paper_ids[k], title[k], year[k]])
+        
+        # Append the paper ID and title information to `ntd`
         ntd.append(paperidandtitleandyear)
+        
+        # Collect external IDs for tracking purposes
         for j in external_id_list:
             ext_id.append(j)
     # print(nametextdate)

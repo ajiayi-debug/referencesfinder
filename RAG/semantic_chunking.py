@@ -11,6 +11,10 @@ from tqdm.asyncio import tqdm_asyncio
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+import httpx
+import random
+import openai
+from openai import AuthenticationError
 
 
 # Load environment variables from .env file
@@ -31,24 +35,37 @@ token_expiry_time = None
 token_lock = asyncio.Lock()
 encoder = None
 
+#Loading bar so you wont wait blindly
+async def async_delay_with_loading_bar(delay_seconds):
+    """
+    Asynchronously delay for a given number of seconds while displaying a loading bar.
+
+    Args:
+        delay_seconds (int): Number of seconds to wait with the loading bar.
+    """
+    for _ in tqdm_asyncio(range(delay_seconds), desc=f"Waiting for {delay_seconds} seconds", unit="s"):
+        await asyncio.sleep(1)
+
 # Function to get Azure access token using Azure CLI
-def get_azure_access_token():
+# Convert subprocess call to asynchronous version
+async def get_azure_access_token_async():
     try:
         logging.info("Fetching Azure OpenAI access token...")
-        # Run the Azure CLI command to get access token
-        result = subprocess.run(
-            [az_path, 'account', 'get-access-token', '--resource', 'https://cognitiveservices.azure.com', '--query', 'accessToken', '-o', 'tsv'],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
+        # Use asyncio's subprocess for non-blocking execution
+        proc = await asyncio.create_subprocess_exec(
+            az_path, 'account', 'get-access-token', '--resource', 'https://cognitiveservices.azure.com', '--query', 'accessToken', '-o', 'tsv',
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
         )
+        stdout, stderr = await proc.communicate()
 
         # Check if the command was successful
-        if result.returncode != 0:
-            logging.error(f"Failed to fetch access token. Error: {result.stderr.decode('utf-8')}")
+        if proc.returncode != 0:
+            logging.error(f"Failed to fetch access token. Error: {stderr.decode('utf-8')}")
             return None
 
         # Retrieve the token
-        token = result.stdout.decode('utf-8').strip()
+        token = stdout.decode('utf-8').strip()
         if not token:
             logging.error("No access token received. Ensure your Azure CLI is configured correctly.")
             return None
@@ -68,11 +85,11 @@ async def refresh_token_if_needed():
         if access_token is None or time.time() > token_expiry_time:
             logging.info("Access token has expired or not set. Refreshing token...")
 
-            # Fetch a new access token
-            new_token = get_azure_access_token()
+            # Fetch a new access token using the async version of the function
+            new_token = await get_azure_access_token_async()
             if new_token:
                 access_token = new_token
-                token_lifetime = 1800  # Token lifetime in seconds (Adjust to actual lifetime)
+                token_lifetime = 1500  # Token lifetime in seconds (e.g., 25 minutes)
                 token_expiry_time = time.time() + token_lifetime
 
                 # Update the environment variable with the new token
@@ -97,23 +114,73 @@ async def refresh_token_if_needed():
                 return False
     return True
 
-# Function to retry operations with token refresh on Unauthorized error
-async def retry_on_exception(func, *args, max_retries=3, retry_delay=2, **kwargs):
+
+def extract_retry_after(exception):
+    """
+    Extracts the Retry-After delay from an exception or response headers.
+    Args:
+        exception (Exception): The exception that contains the error details.
+    Returns:
+        int: The retry delay in seconds if found, otherwise None.
+    """
+    if hasattr(exception, 'response') and exception.response is not None:
+        retry_after = exception.response.headers.get('Retry-After')
+        if retry_after:
+            try:
+                return int(retry_after)  # Convert to integer seconds
+            except ValueError:
+                logging.warning(f"Retry-After header is not an integer: {retry_after}. Using default delay.")
+                return None
+    return None
+
+
+#Function to retry operations with token refresh on Unauthorized error
+async def retry_on_exception(func, *args, max_retries=3, retry_delay=30, **kwargs):
     attempt = 0
+    base_delay = retry_delay
     while attempt < max_retries:
         try:
             logging.info(f"Attempting {func.__name__} (Attempt {attempt + 1}/{max_retries})...")
-            await refresh_token_if_needed()  # Ensure the token is refreshed before each attempt
-            return await func(*args, **kwargs)
-        except Exception as e:
-            if "401" in str(e) or "Unauthorized" in str(e):
+            await refresh_token_if_needed()  # Ensure the access token is valid before each attempt
+            return await func(*args, **kwargs)  # Call the async function
+        
+        except AuthenticationError as auth_err:
+            logging.error(f"Authentication error occurred: {auth_err}")
+            if 'statusCode' in auth_err.error and auth_err.error['statusCode'] == 401:
                 logging.warning("Unauthorized error detected. Refreshing access token and retrying...")
                 await refresh_token_if_needed()
-            attempt += 1
-            logging.error(f"Attempt {attempt} failed with error: {e}. Retrying in {retry_delay} seconds...")
-            await asyncio.sleep(retry_delay)
-    logging.error(f"All {max_retries} attempts failed for {func.__name__}.")
+                await initialize_encoder()
+
+        except Exception as e:
+            error_message = str(e)
+            logging.error(f"Error encountered: {error_message}")
+
+            if "401" in error_message or "Unauthorized" in error_message:
+                logging.warning("Unauthorized error detected. Refreshing access token and retrying...")
+                await refresh_token_if_needed()
+                await initialize_encoder()
+            elif "429" in error_message or "Too Many Requests" in error_message:
+                logging.warning("Rate limit error detected. Checking for Retry-After header...")
+                retry_after = extract_retry_after(e)  # Extract the Retry-After delay if available
+                if retry_after:
+                    logging.info(f"Retrying after {retry_after} seconds as specified by the server.")
+                    await asyncio.sleep(retry_after)
+                else:
+                    # Apply exponential backoff with jitter
+                    delay = base_delay * (2 ** attempt) + random.uniform(0, 1)
+                    logging.warning(f"No Retry-After header found. Retrying in {delay:.2f} seconds.")
+                    await asyncio.sleep(delay)
+            else:
+                attempt += 1
+                delay = base_delay * (2 ** attempt) + random.uniform(0, 1)
+                logging.error(f"Attempt {attempt} failed. Retrying in {delay:.2f} seconds...")
+                await asyncio.sleep(delay)  # Exponential backoff with jitter
+
+    logging.error(f"All {max_retries} attempts failed for {func.__name__}. Returning None.")
     return None
+
+
+
 
 async def initialize_encoder():
     global encoder
@@ -138,7 +205,7 @@ async def semantic_chunk(content):
     if encoder is None:
         await initialize_encoder()
     chunker = StatisticalChunker(encoder=encoder)
-    chunks_async = await chunker.acall(docs=[content])
+    chunks_async = chunker(docs=[content])
 
     # Process and return the chunked content
     chunked = []
@@ -146,8 +213,7 @@ async def semantic_chunk(content):
         c = chunk.splits
         k = ''.join(c)
         chunked.append(k)
-    await asyncio.sleep(1)  # Add a 1-second delay
-    logging.info("Chunking completed for one document. Added a 1-second delay before next operation.")
+    logging.info("Chunking completed for one document.")
     return chunked
 
 MAX_RETRIES = 3
@@ -155,7 +221,7 @@ MAX_RETRIES = 3
 # Wrapper async function for semantic chunking with error handling
 async def semanchunk(text, doc_index, failed_docs, retries=0):
     try:
-        return await semantic_chunk(text)  # Call the async semantic_chunk function
+        return await retry_on_exception(semantic_chunk, text)  # Call the async semantic_chunk function
     except Exception as e:
         logging.error(f"Error in semanchunk for document index {doc_index}: {e}")
         
@@ -169,19 +235,22 @@ async def semanchunk(text, doc_index, failed_docs, retries=0):
 # Async function to process each batch of the DataFrame
 async def process_batch(batch_df, semaphore, failed_docs):
     async with semaphore:
-        # Use tqdm_asyncio to track progress within a batch
+        # Process all rows in the batch concurrently using gather
         tasks = [semanchunk(row['Text Content'], idx, failed_docs) for idx, row in batch_df.iterrows()]
         return await tqdm_asyncio.gather(*tasks, desc="Processing Rows in Batch", leave=False)
+    
 
 # Async function to process the DataFrame in batches
-async def process_dataframe_in_batches_async(df, batch_size=10, batch_delay=2):
-    # Split the DataFrame into batches
+async def process_dataframe_in_batches_async(df, batch_size=5, batch_delay=15):
+    """
+    Process the DataFrame in batches asynchronously.
+    """
     num_batches = int(np.ceil(len(df) / batch_size))
-    batch_dfs = [df[i*batch_size:(i+1)*batch_size] for i in range(num_batches)]
+    batch_dfs = [df[i * batch_size:(i + 1) * batch_size] for i in range(num_batches)]
 
     all_results = [None] * len(df)  # Placeholder for storing results in the correct order
     failed_docs = []  # List to keep track of failed documents for retry
-    semaphore = asyncio.Semaphore(5)  # Limit the number of concurrent batches processed
+    semaphore = asyncio.Semaphore(3)  # Limit the number of concurrent batches processed
 
     # Use standard tqdm for processing batches
     for i, batch in enumerate(tqdm(batch_dfs, desc="Processing Batches", unit="batch", total=num_batches)):
@@ -189,8 +258,9 @@ async def process_dataframe_in_batches_async(df, batch_size=10, batch_delay=2):
         # Store results in the original DataFrame's order
         for idx, result in zip(batch.index, batch_results):
             all_results[idx] = result
-        await asyncio.sleep(batch_delay)  # Add a delay between batches to avoid hitting rate limits
-
+        logging.info(f"Chunking completed for one batch. Added a {batch_delay}-second delay before next operation.")
+        await async_delay_with_loading_bar(batch_delay)
+        
     # Retry failed documents after processing all batches
     await retry_failed_documents(failed_docs, all_results)
 
@@ -219,9 +289,47 @@ async def retry_failed_documents(failed_docs, all_results):
         retry_count += 1
 
 # Synchronous wrapper function to process the DataFrame
-def process_dataframe_sc(df, batch_size=10, batch_delay=2):
+def process_dataframe_sc(df, batch_size=5, batch_delay=15):
     # Run the async function synchronously
     results = asyncio.run(process_dataframe_in_batches_async(df, batch_size=batch_size, batch_delay=batch_delay))
     # Assign results back to the DataFrame
     df['text_chunks'] = results
     return df
+
+
+# # Updated function to process the DataFrame one by one
+# async def process_dataframe_sequentially(df, delay_between_requests=2):
+#     """
+#     Processes the DataFrame sequentially, one document at a time.
+#     :param df: DataFrame containing text content to be chunked.
+#     :param delay_between_requests: Time in seconds to wait between each request.
+#     :return: List of chunked results for each document.
+#     """
+#     all_results = [None] * len(df)  # Placeholder for storing results in the correct order
+#     failed_docs = []  # List to keep track of failed documents for retry
+
+#     # Iterate through each row in the DataFrame
+#     for idx, row in tqdm(df.iterrows(), desc="Processing Documents Sequentially", total=len(df)):
+#         # Call the chunking function for each document one-by-one
+#         result = await semanchunk(row['Text Content'], idx, failed_docs)
+#         all_results[idx] = result  # Store result
+#         await asyncio.sleep(delay_between_requests)  # Add a delay between requests
+
+#     # Retry failed documents if any
+#     await retry_failed_documents(failed_docs, all_results)
+
+#     return all_results
+
+# # Synchronous wrapper function to process the DataFrame sequentially
+# def process_dataframe_sequentially_sc(df, delay_between_requests=2):
+#     """
+#     Synchronous wrapper function for sequential document processing.
+#     :param df: DataFrame containing text content to be chunked.
+#     :param delay_between_requests: Time in seconds to wait between each request.
+#     :return: DataFrame with chunked text results.
+#     """
+#     results = asyncio.run(process_dataframe_sequentially(df, delay_between_requests=delay_between_requests))
+#     df['text_chunks'] = results
+#     return df
+
+
