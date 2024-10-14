@@ -195,7 +195,7 @@ def get_names(processed_texts,directory):
 
 
 
-system_prompt="In the following text, what are the full texts of each reference (can be multiple sentences), the name of the reference articles and the year articles were publiched? Format your response in this manner:[['The lactase activity is usually fully or partially restored during recovery of the intestinal mucosa.','Lactose intolerance in infants, children, and adolescents','2006' ],...]"
+system_prompt="In the following text, what are the full texts of each reference (can be multiple sentences), the name of the reference articles, the year the articles were published and the author(s) of the articles? Format your response in this manner:[['The lactase activity is usually fully or partially restored during recovery of the intestinal mucosa.','Lactose intolerance in infants, children, and adolescents','2006','Heyman M.B' ],...]"
 
 
 # Get the references and the cited articles' names in the main article
