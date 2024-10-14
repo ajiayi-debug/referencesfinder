@@ -25,3 +25,5 @@ langchain-text-splitters
 python-dotenv
 num2words
 pymongo
+fuzzywuzzy
+python-Levenshtein
