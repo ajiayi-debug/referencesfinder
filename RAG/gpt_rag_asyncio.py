@@ -141,7 +141,7 @@ def extract_retry_after(exception):
 
 
 # Asynchronous retry function for async functions
-async def async_retry_on_exception(func, *args, max_retries=3, retry_delay=30, **kwargs):
+async def async_retry_on_exception(func, *args, max_retries=3, retry_delay=10, **kwargs):
     global iteration_count
     attempt = 0
     current_delay = retry_delay
