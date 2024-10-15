@@ -35,7 +35,6 @@ async def process_row_async(t):
     
     # Use the async wrapper to call the GPT service with retry logic
     ans = await call_keyword_search_async(t)
-    print(ans)
     return ans
 
 

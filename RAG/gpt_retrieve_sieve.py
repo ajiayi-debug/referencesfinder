@@ -18,9 +18,9 @@ import asyncio
 
 """Finding new references and checking them"""
 """make keywords from statements then do keyword search and download"""
-logging.info('Searching for new references using statements')
-search_and_retrieve_keyword('Agentic_sieved_RAG_original', 'new_ref_found_Agentic_3')
-asyncio.run(asyncio.sleep(60))
+# logging.info('Searching for new references using statements')
+# search_and_retrieve_keyword('Agentic_sieved_RAG_original', 'new_ref_found_Agentic_3')
+# asyncio.run(asyncio.sleep(60))
 
 """Process (no embedding)"""
 logging.info('Chunking new reference articles')
