@@ -234,11 +234,63 @@ async def retriever_and_siever_async(chunk, ref):
         
         Output ONLY the extraction. (the quoted texts after Output: in examples shown).
         """
+        pro_notpro="""
+        Compare the ‘Reference Article Text’ (which is a chunk of the reference article) to the ‘Text Referencing The Reference Article’ (which cites the reference article). Identify which parts of the ‘Reference Article Text’ are being cited, referenced, or opposed by the ‘Text Referencing The Reference Article.’
 
+        By ‘citing’ or ‘referencing,’ we mean that the ‘Text Referencing The Reference Article’ refers to, aligns with, or supports the information, facts, or concepts in the ‘Reference Article Text.’ The match can be direct, paraphrased, or conceptually similar.
+
+        By ‘opposing,’ we mean that the ‘Text Referencing The Reference Article’ provides a viewpoint or information that contradicts or challenges the information in the ‘Reference Article Text.’
+
+        Guidelines:
+
+            •	For cited or referenced parts: Extract ALL relevant parts of the ‘Reference Article Text’ (chunk) that is being referenced in the ‘Text Referencing The Reference Article.’ You may output the whole ‘Reference Article Text’ (chunk) if the whole chunk is relevant. Start the output with 'Support:' if the ‘Text Referencing The Reference Article’ supports or references the ‘Reference Article Text.’
+            •	For opposing parts: Extract ALL relevant parts of the ‘Reference Article Text’ that are being opposed by the ‘Text Referencing The Reference Article.’ Focus on portions where the concepts or facts contradict the information provided. Start the output with 'Oppose:' if the ‘Text Referencing The Reference Article’ opposes the ‘Reference Article Text.’
+            •	The match or opposition does not need to be exact; it can be a paraphrased or conceptually aligned or opposing statement.
+            •	Consider not only direct references but also cases where the ‘Text Referencing The Reference Article’ discusses related facts or concepts in different wording.
+            •	If no part of the ‘Reference Article Text’ is cited or opposed, respond with ‘no.’
+
+        Important Note:
+        There might be cases where the phrasing between the ‘Reference Article Text’ and the ‘Text Referencing The Reference Article’ differs, but the underlying concepts are aligned (for references) or contradictory (for opposition). For example:
+
+            •	If the ‘Reference Article Text’ discusses gas production due to bacterial fermentation of lactose and the ‘Text Referencing The Reference Article’ discusses bloating and flatulence after lactose ingestion, these are conceptually aligned, and the relevant portion from the ‘Reference Article Text’ should be extracted, starting with 'Support:'
+            •	If the ‘Reference Article Text’ supports the idea that lactose intolerance causes significant symptoms, but the ‘Text Referencing The Reference Article’ argues that lactose intolerance is not as widespread or impactful, then the opposing portion should be extracted, starting with 'Oppose:'
+
+        Example of Supporting Case:
+
+        Input:
+        ’Reference Article Text: Bacterial fermentation of lactose results in production of gases including hydrogen (H2), carbon dioxide (CO2), methane (CH4), and short-chain fatty acids (SCFA) that have effects on GI function (figure 1). Lactose intolerance. Lactose malabsorption (LM) is a necessary precondition for lactose intolerance (LI). However, the two must not be confused, and the causes of symptoms must be considered separately. Many individuals with LM have no symptoms after ingestion of a standard serving of dairy products (table 1), whereas others develop symptoms (‘intolerance’) such as abdominal pain, borborygmi (rumbling tummy), and bloating after lactose intake (figure 1).
+
+        Text Referencing The Reference Article: The bacteria in the large intestine ferment lactose, resulting in gas formation, which can cause symptoms such as bloating and flatulence after lactose ingestion.’
+
+        Output:
+        'Support: Bacterial fermentation of lactose results in production of gases including hydrogen (H2), carbon dioxide (CO2), methane (CH4), and short-chain fatty acids (SCFA) that have effects on GI function (figure 1). Many individuals with LM have no symptoms after ingestion of a standard serving of dairy products (table 1), whereas others develop symptoms (‘intolerance’) such as abdominal pain, borborygmi (rumbling tummy), and bloating after lactose intake (figure 1).’
+
+        Example of Opposing Case:
+
+        Input:
+        ’Reference Article Text: Lactose intolerance affects a significant portion of the global population, causing a range of digestive issues that reduce quality of life for those affected.
+
+        Text Referencing The Reference Article: Recent studies show that lactose intolerance may be overdiagnosed, and many people who believe they are lactose intolerant can consume dairy without significant symptoms.’
+
+        Output:
+        'Oppose: Lactose intolerance affects a significant portion of the global population, causing a range of digestive issues that reduce quality of life for those affected.’
+
+        Example of Non-Matching Case (When to Respond with ‘No’):
+
+        Input:
+        ’Reference Article Text: Lactase persistence is common among populations of Northern European descent. The LCT −13’910:C/C genotype is associated with the ability to digest lactose in adulthood.
+
+        Text Referencing The Reference Article: The bacteria in the large intestine ferment lactose, resulting in gas formation, which can cause symptoms such as bloating and flatulence after lactose ingestion.’
+
+        Output:
+        ‘no’
+
+        Output ONLY the quoted texts after Output: in examples shown.
+        """
         data = {
             "model": "gpt-4o",
             "messages": [
-                {"role": "system", "content": pro},
+                {"role": "system", "content": pro_notpro},
                 {"role": "user", "content": f"Reference Article Text: {chunk}, Text Referencing The Reference Article: {ref}"}
             ],
             "temperature": 0
@@ -268,6 +320,7 @@ async def keyword_search_async(text):
         kws2= f"""
         What are the main topics in the Text? Take note that these topics will be used as keywords for keyword searching. Output the topics as keywords and ONLY output the keywords with them being separated by commas if there are more than one keyword.
         """
+        #Approach 2
         kws3="""What are the main topics in the text? The topics should be used as keywords for keyword searching. Output the topics as keywords and only output the keywords as a list. If certain topics are closely related, group them together as a single string inside the main list.
 
         Rules:
@@ -278,6 +331,7 @@ async def keyword_search_async(text):
         Example: Text: "A proportion of the world’s population is able to tolerate lactose as they have a genetic variation that ensures they continue to produce sufficient quantities of the enzyme lactase after childhood."
         Output: ['lactose tolerance', 'genetic variation, enzyme lactase', 'lactose tolerance, childhood']
         """
+        #Approach 3
         kws4="""
         What are the keywords in terms of topics for the Text? Use the keywords to write keyword searches based on the keywords identified from the Text. Combine keywords if you think they relate to each other. 
         Output the keyword searches as a list of strings ONLY in the format: ['lactase activity restoration', 'lactase activity recovery', ...]
@@ -285,7 +339,7 @@ async def keyword_search_async(text):
         data={
             "model":"gpt-4o",
             "messages":[
-                {"role": "system", "content": kws3},
+                {"role": "system", "content": kws4},
                 {"role": "user", "content": [{"type": "text", "text": f"Text:{text}" }]}
                 #{"role": "user", "content": [{"type": "text", "text": kws2}]}
             ],
