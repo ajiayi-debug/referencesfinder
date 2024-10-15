@@ -135,7 +135,7 @@ def extract_retry_after(exception):
 
 
 #Function to retry operations with token refresh on Unauthorized error
-async def retry_on_exception(func, *args, max_retries=3, retry_delay=30, **kwargs):
+async def retry_on_exception(func, *args, max_retries=3, retry_delay=10, **kwargs):
     attempt = 0
     base_delay = retry_delay
     while attempt < max_retries:
@@ -172,7 +172,8 @@ async def retry_on_exception(func, *args, max_retries=3, retry_delay=30, **kwarg
                     await asyncio.sleep(delay)
             else:
                 attempt += 1
-                delay = base_delay * (2 ** attempt) + random.uniform(0, 1)
+                # delay = base_delay * (2 * attempt) + random.uniform(0, 1)
+                delay = base_delay*attempt + random.uniform(0, 1)
                 logging.error(f"Attempt {attempt} failed. Retrying in {delay:.2f} seconds...")
                 await asyncio.sleep(delay)  # Exponential backoff with jitter
 

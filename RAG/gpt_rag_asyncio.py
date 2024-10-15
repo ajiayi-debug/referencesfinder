@@ -268,9 +268,9 @@ async def retriever_and_siever_async(chunk, ref):
         Example of Opposing Case:
 
         Input:
-        ’Reference Article Text: Lactose intolerance affects a significant portion of the global population, causing a range of digestive issues that reduce quality of life for those affected.
+        ’Reference Article Text: Lactose intolerance affects around 70 percent of the global population, causing a range of digestive issues that reduce quality of life for those affected.
 
-        Text Referencing The Reference Article: Recent studies show that lactose intolerance may be overdiagnosed, and many people who believe they are lactose intolerant can consume dairy without significant symptoms.’
+        Text Referencing The Reference Article: Recent studies show that lactose intolerance affects only a small proportion of the world, and many people who believe they are lactose intolerant can consume dairy without significant symptoms.’
 
         Output:
         'Oppose: Lactose intolerance affects a significant portion of the global population, causing a range of digestive issues that reduce quality of life for those affected.’
