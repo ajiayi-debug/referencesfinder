@@ -8,7 +8,7 @@ from gpt_rag import *
 from embedding import *
 from call_mongodb import *
 from semantic_chunking import *
-from semantic_chunker_retry_itself import *
+
 
 def process_pdfs_to_mongodb(files_directory, collection1, collection2):
     load_dotenv()
