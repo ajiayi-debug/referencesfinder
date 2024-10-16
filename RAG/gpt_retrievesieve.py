@@ -228,7 +228,6 @@ def retrieve_sieve_references_new(collection_processed_name, new_ref_collection,
         
     # Send valid results to MongoDB
     if valid_dfs:
-        print(valid_dfs.head(5))
         valid_output_df = pd.concat(valid_dfs, ignore_index=True)
         valid=valid_collection_name+'.xlsx'
         send_excel(valid_output_df, 'RAG', valid)
