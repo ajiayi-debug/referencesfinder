@@ -23,9 +23,9 @@ import asyncio
 # asyncio.run(asyncio.sleep(60))
 
 """Process (no embedding)"""
-logging.info('Chunking new reference articles')
-process_pdfs_to_mongodb_noembed_new(files_directory='papers', collection1='new_chunked_noembed_3')
-asyncio.run(asyncio.sleep(60))
+# logging.info('Chunking new reference articles')
+# process_pdfs_to_mongodb_noembed_new(files_directory='papers', collection1='new_chunked_noembed_3')
+# asyncio.run(asyncio.sleep(60))
 
 """retrieve and sieve using gpt 4o"""
 logging.info("Comparing chunks with statements used to find the chunks' reference article")

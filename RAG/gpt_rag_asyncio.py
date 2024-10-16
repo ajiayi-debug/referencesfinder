@@ -5,192 +5,171 @@ import logging
 import time
 from dotenv import load_dotenv
 from openai import AsyncAzureOpenAI
+from openai import AuthenticationError
+import httpx
 
 # Load environment variables
 load_dotenv()
-
-# Configure logging to display information
 logging.basicConfig(level=logging.INFO)
 
-# Load environment variables for Azure configuration
-az_path = os.getenv("az_path")  # Azure CLI path
-endpoint = os.getenv("endpoint")  # Azure endpoint
-api_version = os.getenv("ver")  # Azure API version
+# Azure configuration
+endpoint = os.getenv("endpoint")
+api_version = os.getenv("ver")
 
-# Log environment variables for debugging
-logging.info(f"az_path: {az_path}")
-logging.info(f"endpoint: {endpoint}")
-logging.info(f"api_version: {api_version}")
-
-# Global variables to keep track of access token and its expiry
+# Global state and synchronization tools
 access_token = None
 token_expiry_time = None
-token_lock = asyncio.Lock()
-async_client= None
+async_client = None
+token_lock = asyncio.Lock()  # Lock to prevent concurrent refreshes
+refresh_in_progress = asyncio.Event()  # To block other tasks during refresh
+global_pause_event = asyncio.Event()  # To pause all tasks during 401 handling
+global_pause_event.set()  # Initially unpaused
 
-iteration_count = 0  # Keeps track of the number of iterations
-max_iterations_before_reset = 50  # Adjust this number based on your observations and use case
+iteration_count = 0
+max_iterations_before_reset = 50
 
-async def check_and_reset_client():
-    global iteration_count
-
-    if iteration_count >= max_iterations_before_reset:
-        logging.info("Resetting client due to high number of iterations to prevent resource leaks.")
-        await initialize_client()  # Re-initialize the client
-        iteration_count = 0 
-
-# Function to get Azure access token using Azure CLI
+# Function to get Azure access token
 def get_azure_access_token():
     try:
-        logging.info("Fetching Azure OpenAI access token using Azure CLI...")
+        logging.info("Fetching Azure OpenAI access token...")
         result = subprocess.run(
-            ['az', 'account', 'get-access-token', '--resource', 'https://cognitiveservices.azure.com', '--query', 'accessToken', '-o', 'tsv'],
+            ['az', 'account', 'get-access-token', '--resource', 
+             'https://cognitiveservices.azure.com', '--query', 'accessToken', '-o', 'tsv'],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
         )
         if result.returncode != 0:
-            logging.error(f"Failed to fetch access token. Error: {result.stderr.decode('utf-8')}")
+            logging.error(f"Failed to fetch access token: {result.stderr.decode('utf-8')}")
             return None
-        token = result.stdout.decode('utf-8').strip()
-        if not token:
-            logging.error("No access token received. Ensure your Azure CLI is configured correctly.")
-            return None
-        logging.info("Access token retrieved successfully.")
-        return token
+        return result.stdout.decode('utf-8').strip()
     except Exception as e:
-        logging.error(f"Exception occurred while fetching access token: {e}")
+        logging.error(f"Error fetching access token: {e}")
         return None
 
-# Function to refresh the token if it has expired or is not set
-async def refresh_token_if_needed():
+# Refresh the token and client, blocking all tasks during the refresh
+async def refresh_token_and_client():
     global access_token, token_expiry_time, async_client
 
-    # Acquire the token lock to ensure only one process is refreshing the token at a time
-    async with token_lock:
-        # Check if the token has expired or is not set
-        if access_token is None or time.time() > token_expiry_time - 300:  # Refresh 5 mins before expiry
-            logging.info("Access token has expired or is about to expire. Refreshing token...")
+    async with token_lock:  # Ensure only one refresh happens at a time
+        if refresh_in_progress.is_set():
+            logging.info("Refresh already in progress. Waiting...")
+            await refresh_in_progress.wait()  # Wait if refresh is in progress
+            return
 
-            # Fetch a new access token
+        refresh_in_progress.set()  # Mark refresh in progress
+        global_pause_event.clear()  # Pause all tasks
+
+        try:
+            logging.info("Refreshing token and client...")
             new_token = get_azure_access_token()
             if new_token:
                 access_token = new_token
-
-                # Set token lifetime (e.g., 25 minutes for a 30-minute token) to leave buffer time
-                token_lifetime = 1500  # Token lifetime in seconds (e.g., 25 minutes)
-                token_expiry_time = time.time() + token_lifetime
-
-                # Update the environment variable with the new token
+                token_expiry_time = time.time() + 1500  # Set expiry with buffer
                 os.environ['AZURE_OPENAI_API_KEY'] = access_token
-                logging.info(f"Access token refreshed successfully. New token expires at {time.ctime(token_expiry_time)}.")
 
-                # Re-initialize the async client with the new token
+                # Reinitialize the async client
                 async_client = AsyncAzureOpenAI(
                     azure_endpoint=endpoint,
-                    api_key=access_token,  # Use the refreshed token here
+                    api_key=access_token,
                     api_version=api_version
                 )
-                logging.info("Async Azure OpenAI client re-initialized successfully after token refresh.")
+                logging.info("Token refreshed and client re-initialized.")
             else:
                 logging.error("Failed to refresh access token.")
-                return False
-    return True
+        finally:
+            refresh_in_progress.clear()  # Clear refresh flag
+            global_pause_event.set()  # Resume all tasks
 
+# Ensure the token is valid before making a call
+async def ensure_valid_token():
+    if access_token is None or time.time() > token_expiry_time - 300:
+        logging.info("Token expired or near expiry. Triggering refresh...")
+        await refresh_token_and_client()
 
-# Async client initialization
-async_client = None
+# Initialize the async client
 async def initialize_client():
-    global async_client
-    try:
-        await refresh_token_if_needed()  # Ensure token is valid before initializing
-        async_client = AsyncAzureOpenAI(
-            azure_endpoint=endpoint,
-            api_key=access_token,  # Use the refreshed token here
-            api_version=api_version
-        )
-        logging.info("Async Azure OpenAI client initialized successfully.")
-    except Exception as e:
-        logging.error(f"Failed to initialize Azure OpenAI client: {e}")
-        exit(1)
+    await ensure_valid_token()  # Ensure token is valid
+    logging.info("Async Azure OpenAI client initialized.")
 
+# Reset client after too many iterations
+async def check_and_reset_client():
+    global iteration_count
+    if iteration_count >= max_iterations_before_reset:
+        logging.info("Resetting client after max iterations.")
+        await refresh_token_and_client()
+        iteration_count = 0
+
+# Extract Retry-After delay from exception
 def extract_retry_after(exception):
-    """
-    Extracts the Retry-After delay from an exception or response headers.
-
-    Args:
-        exception (Exception): The exception that contains the error details.
-
-    Returns:
-        int: The retry delay in seconds if found, otherwise None.
-    """
-    # Check if the exception has a response attribute (usually HTTP exceptions)
     if hasattr(exception, 'response') and exception.response is not None:
-        # Try to get the Retry-After header from the response
         retry_after = exception.response.headers.get('Retry-After')
         if retry_after:
             try:
-                # Retry-After header can be a number of seconds or a date string
-                # Convert to integer seconds if possible
                 return int(retry_after)
             except ValueError:
-                # If it's not an integer, it might be a date string. Parse it if needed.
-                logging.warning(f"Retry-After header is not an integer: {retry_after}. Using default delay.")
-    
-    # If no retry-after header is found, return None
+                logging.warning(f"Retry-After header not an integer: {retry_after}")
     return None
 
-
-# Asynchronous retry function for async functions
+# Asynchronous retry function with global pause on 401 error
 async def async_retry_on_exception(func, *args, max_retries=3, retry_delay=10, **kwargs):
     global iteration_count
     attempt = 0
     current_delay = retry_delay
 
     while attempt < max_retries:
+        await global_pause_event.wait()  # Ensure tasks are not paused
+
         try:
-            logging.info(f"Attempting {func.__name__} (Attempt {attempt + 1}/{max_retries}) with delay {current_delay}s...")
-            await refresh_token_if_needed()  # Refresh token if needed before each attempt
-            
-            # Reset client if too many iterations have been reached
-            await check_and_reset_client()
-            
-            # Try executing the async function
+            logging.info(f"Attempt {attempt + 1}/{max_retries} for {func.__name__}...")
+            await ensure_valid_token()  # Ensure token is valid
+            await check_and_reset_client()  # Reset client if needed
+
+            # Execute the function
             result = await func(*args, **kwargs)
-            
-            # Increment iteration count on successful execution
-            iteration_count += 1
+            iteration_count += 1  # Increment iteration count on success
             return result
 
+        except AuthenticationError as auth_err:
+            logging.error(f"Authentication error: {auth_err}")
+            logging.warning("Pausing all tasks to refresh token and client...")
+            await refresh_token_and_client()  # Refresh token and client
+
+        except httpx.HTTPStatusError as http_err:
+            if http_err.response.status_code == 401:
+                logging.warning("401 Unauthorized error detected. Pausing tasks to refresh...")
+                await refresh_token_and_client()  # Refresh and block tasks
+            elif http_err.response.status_code == 429:
+                logging.warning("Rate limit hit. Applying backoff...")
+                retry_after = extract_retry_after(http_err)
+                current_delay = retry_after if retry_after else current_delay * 2
+
         except Exception as e:
-            error_message = str(e)
-            logging.error(f"Error encountered: {error_message}")
-
-            # Handle 401 errors specifically
-            if "401" in error_message or "Unauthorized" in error_message:
-                logging.warning("Unauthorized error detected. Refreshing access token and retrying...")
-                await refresh_token_if_needed()
-                await initialize_client()
-                current_delay = retry_delay  # Reset delay after re-authentication
-            # Handle rate limits (429 errors)
-            elif "429" in error_message or "Too Many Requests" in error_message:
-                logging.warning("Rate limit error detected. Applying exponential backoff...")
+            logging.error(f"Unexpected error: {e}")
+            if "401" in str(e) or "Unauthorized" in str(e):
+                logging.warning("Unauthorized error detected. Pausing tasks to refresh...")
+                await refresh_token_and_client()  # Refresh and block tasks
+                current_delay = retry_delay  # Reset delay after refresh
+            elif "429" in str(e) or "Too Many Requests" in str(e):
+                logging.warning("Rate limit detected. Applying backoff...")
                 retry_after = extract_retry_after(e)
-                if retry_after:
-                    logging.info(f"Retrying after {retry_after} seconds as specified by the server.")
-                    current_delay = retry_after
-                else:
-                    logging.warning(f"No Retry-After header found. Using exponential backoff delay of {current_delay}s.")
+                current_delay = retry_after if retry_after else current_delay * 2
 
-            # Increment attempt counter and increase delay
-            attempt += 1
-            logging.error(f"Attempt {attempt} failed with error: {e}. Retrying in {current_delay} seconds...")
-            await asyncio.sleep(current_delay)
-            current_delay *= 2  # Exponential backoff if no Retry-After header was found
+        attempt += 1
+        logging.warning(f"Retrying in {current_delay} seconds...")
+        await asyncio.sleep(current_delay)
 
-    logging.error(f"All {max_retries} attempts failed for {func.__name__}. Returning None.")
+    logging.error(f"All {max_retries} attempts failed for {func.__name__}.")
     return None
 
-
+# Example function call with retry logic
+async def call_retrieve_sieve_with_async(chunk, ref):
+    await initialize_client()  # Ensure client is initialized
+    return await async_retry_on_exception(retriever_and_siever_async, chunk, ref)
+async def call_keyword_search_async(text):
+    await initialize_client()  # Initialize the async client first
+    
+    result = await async_retry_on_exception(keyword_search_async, text)
+    return result
 
 # Asynchronous function to get responses from the Azure OpenAI API
 async def retriever_and_siever_async(chunk, ref):
@@ -304,12 +283,6 @@ async def retriever_and_siever_async(chunk, ref):
         logging.error(f"Exception during API call: {e}")
         return 'api error'
 
-async def call_retrieve_sieve_with_async(chunk, ref):
-    await initialize_client()  # Initialize the async client first
-    
-    result = await async_retry_on_exception(retriever_and_siever_async, chunk, ref)
-    return result
-
 
 
 async def keyword_search_async(text):
@@ -352,8 +325,3 @@ async def keyword_search_async(text):
         logging.error(f"Exception during API call: {e}")
         return 'api error'
 
-async def call_keyword_search_async(text):
-    await initialize_client()  # Initialize the async client first
-    
-    result = await async_retry_on_exception(keyword_search_async, text)
-    return result

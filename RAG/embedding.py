@@ -67,16 +67,11 @@ def splitting(df, title):
     df[title] = df[title].progress_apply(lambda x: normalize_text(x))
     return df
 
-#df['Text Content']= df["Text Content"].apply(lambda x : normalize_text(x))
-
 """ Call this function to tokenize content  """
 def tokenize(df, title):
     tqdm.pandas(desc='Tokenizing chunks')
     df['n_tokens']=df[title].progress_apply(lambda x: len(tokenizer.encode(x)))
     return df
-
-# tokenizer = tiktoken.get_encoding("cl100k_base")
-# df['n_tokens'] = df["Text Content"].apply(lambda x: len(tokenizer.encode(x)))
 
 # helper function
 def chunk_text(text, max_tokens):
