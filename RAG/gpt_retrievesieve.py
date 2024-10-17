@@ -43,7 +43,7 @@ async def process_row_async(row, code):
     })
     
     # Determine which category the result falls into
-    if ans not in ["'no'", "'no.'", "'"+ref.lower()+"'", "no", "no.", 'api error']:
+    if ans not in ["'no'", "'no.'", "'"+ref.lower()+"'", "no", "no.", '']:
         return 'valid', new_row
     else:
         return 'no', new_row
