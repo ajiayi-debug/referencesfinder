@@ -245,3 +245,115 @@ def get_title_by_title(title, api_key=os.getenv('x-api-key')):
         return None
 
 
+def find_exact_paper_match(title: str, api_key=os.getenv('x-api-key')) -> Optional[Dict[str, Any]]:
+    """
+    Find an exact match for a paper based on the given title from the Semantic Scholar API.
+
+    Args:
+        title (str): The exact title of the paper to search for.
+        api_key (str, optional): The Semantic Scholar API key.
+
+    Returns:
+        dict: The metadata of the paper if an exact match is found, otherwise None.
+    """
+    # Base URL for Semantic Scholar API
+    base_url = "https://api.semanticscholar.org/graph/v1/paper/search"
+
+    # Prepare the request headers
+    headers = {
+        "Accept": "application/json",
+        "x-api-key": api_key or os.getenv("SEMANTIC_SCHOLAR_API_KEY")
+    }
+
+    # Prepare the query parameters
+    params = {
+        "query": title,
+        "fields": "paperId,title,year,externalIds,openAccessPdf,isOpenAccess",
+        "limit": 10  # Retrieve more results for comparison
+    }
+
+    # Send the GET request to the Semantic Scholar API
+    response = requests.get(base_url, headers=headers, params=params)
+
+    # Check if the request was successful
+    if response.status_code == 200:
+        data = response.json()
+        for paper in data.get('data', []):
+            # Perform an exact, case-insensitive match
+            if paper.get('title', '').strip().lower() == title.strip().lower():
+                return paper  # Return the exact match
+
+        print("No exact match found for the given title.")
+        return None
+    else:
+        print(f"Error: {response.status_code}, {response.text}")
+        return None
+    
+
+
+
+def search_papers(keywords: str, year: int = None, exclude_name: str = None, fields: str = 'paperId,title,year,externalIds,openAccessPdf,isOpenAccess') -> dict:
+    url = 'https://api.semanticscholar.org/graph/v1/paper/search'
+    query_params = {'query': keywords, 'fields': fields}
+    api_key = os.getenv('x-api-key')
+    headers = {'x-api-key': api_key}
+    
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(url, params=query_params, headers=headers)
+
+            # Check for rate limits and other errors
+            if response.status_code == 429:
+                print(f"Rate limit exceeded. Retrying in 60 seconds... Attempt {attempt + 1}/{max_retries}")
+                time.sleep(60)
+                continue
+            elif response.status_code != 200:
+                print(f"Request failed with status code {response.status_code}. Retrying in 60 seconds... Attempt {attempt + 1}/{max_retries}")
+                time.sleep(60)
+                continue
+
+            response_data = response.json()
+
+            if year:
+                response_data['data'] = [
+                    paper for paper in response_data.get('data', [])
+                    if 'year' in paper and paper['year'] and str(paper['year']).isdigit() and int(paper['year']) == int(year)
+                ]
+            if exclude_name:
+                response_data['data'] = [
+                    paper for paper in response_data.get('data', [])
+                    if exclude_name.lower() not in paper.get('title', '').lower()
+                ]
+
+
+            return response_data
+
+        except requests.exceptions.RequestException as e:
+            print(f"Request exception occurred: {e}. Retrying in 60 seconds... Attempt {attempt + 1}/{max_retries}")
+            time.sleep(60)
+
+    print("Max retries exceeded.")
+    return None
+
+
+def search_exact(keywords: str, year: int = None, exclude_name: str = None, fields: str = 'paperId,title,year,externalIds,openAccessPdf,isOpenAccess'):
+    """
+    Search for papers exactly based on title and optionally filter results by publication year,
+    then return a list of paper dictionaries from the search results.
+    
+    :param keywords: The search query for finding papers.
+    :param year: Optional filter to include papers published after the specified year.
+    :param fields: Comma-separated list of fields to be returned in the response.
+    :return: A list of dictionaries containing paper metadata.
+    """
+    # Perform the search
+    data = search_papers(keywords, year, exclude_name, fields)
+    
+    # Extract paper list
+    paper_list = []
+    if data:
+        for paper in data.get('data', []):
+            paper_list.append(paper)
+    
+    return paper_list

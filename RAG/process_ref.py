@@ -8,6 +8,8 @@ from pymongo import MongoClient
 from call_mongodb import *
 from tqdm import tqdm
 import certifi
+from gpt_rag_asyncio import *
+import asyncio
 
 load_dotenv()
 #main pdf
@@ -171,3 +173,44 @@ def process_new_references(collection_processed_name, new_collection_name, colle
     replace_database_collection(uri, db.name, new_collection_name, records)
 
     print("Data sent to MongoDB Atlas.")
+
+def get_statements():
+    # Wrapper to call async function from sync function
+    async def _get_statements_async():
+        text = process_main_file('extracted')
+        output = await call_get_ref_async(text)
+        codable=ast.literal_eval(output)
+        dfs=[]
+        for code in codable:
+            maintext=code[0]
+            refname=code[1]
+            date=code[2]
+            author=code[3]
+            newrow = pd.DataFrame({
+                        'Reference article name': [refname], 
+                        'Reference text in main article': [maintext], 
+                        'Date': [date],
+                        'Name of authors': [author]
+                    })
+            dfs.append(newrow)
+        df=pd.concat(dfs,ignore_index=True)
+        print(df)
+        
+        records = df.to_dict(orient='records')
+        replace_database_collection(uri, db.name, 'collated_statements_and_citations', records)
+        print("Data sent to MongoDB Atlas.")
+    # Use asyncio.run to execute the async function
+    return asyncio.run(_get_statements_async())
+
+def existing():
+    files_directory='text_download'
+    directory='doc'
+    pdf_list = read_pdf_file_list(files_directory)
+    
+    # Process and save PDFs
+    process_and_save_pdfs(pdf_list, directory)
+    filenames = get_txt_names(files_directory)
+
+    processed_texts = read_processed_texts(directory, filenames)
+    processed_name = get_names(filenames, directory)
+    
