@@ -9,4 +9,5 @@ test.py
 *.xlsx
 doc/
 text/
+text_download/
 .DS_store
