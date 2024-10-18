@@ -178,6 +178,11 @@ async def call_get_ref_async(text):
     result = await async_retry_on_exception(get_references_async, text)
     return result
 
+async def call_rerank_async(ref,chunk):
+    await initialize_client()
+    result = await async_retry_on_exception(rerank_async, ref,chunk)
+    return result
+
 # Asynchronous function to get responses from the Azure OpenAI API
 async def retriever_and_siever_async(chunk, ref):
     pro = """
@@ -216,7 +221,7 @@ async def retriever_and_siever_async(chunk, ref):
 
     Why this case results in 'no':
     In this case, the 'Reference Article Text' discusses lactase persistence and a genetic factor related to lactose digestion, while the 'Text Referencing The Reference Article' discusses gas formation due to bacterial fermentation of lactose. These are different concepts, and no alignment exists between the two texts. Therefore, the correct response is 'no.'
-    
+
     Output ONLY the extraction. (the quoted texts after Output: in examples shown).
     """
     pro_notpro="""
@@ -335,6 +340,22 @@ async def get_references_async(text):
         "messages":[
             {"role": "system", "content": ref_prompt},
             {"role": "user", "content": [{"type": "text", "text": text }]}
+        ],
+        "temperature":0
+    }
+    response = await async_client.chat.completions.create(**data)
+    return response.choices[0].message.content
+
+
+
+
+rerank=''
+async def rerank_async(list_of_list):
+    data={
+        "model":"gpt-4o",
+        "messages":[
+            {"role": "system", "content": rerank},
+            {"role": "user", "content": [{"type": "text", "text": f"list{list_of_list}"}]}
         ],
         "temperature":0
     }
