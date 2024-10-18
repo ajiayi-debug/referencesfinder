@@ -173,6 +173,10 @@ async def call_keyword_search_async(text):
     result = await async_retry_on_exception(keyword_search_async, text)
     return result
 
+async def call_get_ref_async(text):
+    await initialize_client()
+    result = await async_retry_on_exception(get_references_async, text)
+    return result
 
 # Asynchronous function to get responses from the Azure OpenAI API
 async def retriever_and_siever_async(chunk, ref):
@@ -320,3 +324,19 @@ async def keyword_search_async(text):
     response = await async_client.chat.completions.create(**data)
     return response.choices[0].message.content.lower()
 
+
+
+
+# Get the references and the cited articles' names in the main article
+async def get_references_async(text):
+    ref_prompt="In the following text, what are the full texts of each reference (can be multiple sentences), the name of the reference articles, the year the articles were published and the author(s) of the articles? Format your response in this manner:[['The lactase activity is usually fully or partially restored during recovery of the intestinal mucosa.','Lactose intolerance in infants, children, and adolescents','2006','Heyman M.B' ],...]"
+    data={
+        "model":"gpt-4o",
+        "messages":[
+            {"role": "system", "content": ref_prompt},
+            {"role": "user", "content": [{"type": "text", "text": text }]}
+        ],
+        "temperature":0
+    }
+    response = await async_client.chat.completions.create(**data)
+    return response.choices[0].message.content

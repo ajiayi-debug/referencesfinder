@@ -95,7 +95,6 @@ def retrieve_sieve(df, code):
 
 def retrieve_sieve_references(collection_processed_name, valid_collection_name, invalid_collection_name):
     output_directory = 'RAG'  # Fixed output directory
-    pdf_to_check = os.getenv("PDF")
     
     # Get collections from MongoDB
     collection_processed = db[collection_processed_name]
@@ -110,11 +109,26 @@ def retrieve_sieve_references(collection_processed_name, valid_collection_name, 
         return
     
     df = pd.DataFrame(documents)
+    codable_collection=db['collated_statements_and_citations']
+    codable_df = list(
+    codable_collection.find(
+                {},  # No filter, retrieve all documents
+                {
+                    '_id': 1,
+                    'Reference article name': 1,
+                    'Reference text in main article': 1,
+                    'Date': 1,
+                    'Name of authors': 1
+                }
+            )
+        )
+    codable_df = pd.DataFrame(codable_df, columns=[ 'Reference text in main article', 'Reference article name','Date', 'Name of authors'])
     
+    codable=codable_df.values.tolist()
     # Perform full cycle and get references
-    text = full_cycle(pdf_to_check, filename="extracted")
-    output = get_references(text)
-    codable = ast.literal_eval(output)
+    # text = full_cycle(pdf_to_check, filename="extracted")
+    # output = get_references(text)
+    # codable = ast.literal_eval(output)
     #Check if any paper retracted or corrected. If yes, send to user as an excel file for user to take note (either way we are going to look for more recent papers) and send to mongo db 
     #for us to edit in final paper if the paper cannot be updated (like its the same paper in the final form)
     unique_dict = {item[1]: item for item in codable}
