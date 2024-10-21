@@ -178,9 +178,15 @@ async def call_get_ref_async(text):
     result = await async_retry_on_exception(get_references_async, text)
     return result
 
-async def call_rerank_async(ref,chunk):
+async def call_rerank_support_async(ref,chunk):
     await initialize_client()
-    result = await async_retry_on_exception(rerank_async, ref,chunk)
+    result = await async_retry_on_exception(rerank_support_async, ref,chunk)
+    return result
+
+
+async def call_rerank_oppose_async(ref,chunk):
+    await initialize_client()
+    result = await async_retry_on_exception(rerank_oppose_async, ref,chunk)
     return result
 
 # Asynchronous function to get responses from the Azure OpenAI API
@@ -349,13 +355,30 @@ async def get_references_async(text):
 
 
 
-rerank=''
-async def rerank_async(list_of_list):
+rerank_support="""You are a semantic ranker. You rank the list according to how much the text in the list support the text for comparison. By support, we mean that the Text for comparison refers to, aligns with, or supports the information, facts, or concepts in the text in the list. The match can be direct, paraphrased, or conceptually similar.
+        You output the rank of the list as a list of indexes ONLY."""
+async def rerank_support_async(text,list):
     data={
         "model":"gpt-4o",
         "messages":[
-            {"role": "system", "content": rerank},
-            {"role": "user", "content": [{"type": "text", "text": f"list{list_of_list}"}]}
+            {"role": "system", "content": rerank_support},
+            {"role": "user", "content": [{"type": "text", "text": f"Text for comparison: {text}. List: {list}"}]}
+        ],
+        "temperature":0
+    }
+    response = await async_client.chat.completions.create(**data)
+    return response.choices[0].message.content
+
+
+
+rerank_oppose="""You are a semantic ranker. You rank the list according to how much the text in the list oppose the text for comparison. By support, we mean that the text for comparison provides a viewpoint or information that contradicts or challenges the information in the text in the list.
+        You output the rank of the list as a list of indexes ONLY."""
+async def rerank_oppose_async(text,list):
+    data={
+        "model":"gpt-4o",
+        "messages":[
+            {"role": "system", "content": rerank_oppose},
+            {"role": "user", "content": [{"type": "text", "text": f"Text for comparison: {text}. List: {list}"}]}
         ],
         "temperature":0
     }

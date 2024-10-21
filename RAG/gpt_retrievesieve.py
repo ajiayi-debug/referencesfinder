@@ -26,14 +26,7 @@ db = client['data']
 
 loop = asyncio.get_event_loop()
 
-def extract_classification(response):
-    """Extracts 'support' or 'oppose' from the GPT response using regex."""
-    match = re.match(r"(support|oppose):", response.strip().lower())
-    if match:
-        return match.group(1)  # Return 'support' or 'oppose'
-    else:
-        print(f"Invalid classification: {response}. Defaulting to 'oppose'.")
-        return 'oppose'
+
 
 
 
