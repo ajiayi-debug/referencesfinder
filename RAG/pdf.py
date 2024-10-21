@@ -316,7 +316,7 @@ def update_downloadable_status(df: pd.DataFrame, pdf_folder: str) -> pd.DataFram
         df['downloadable'] = 'no'
 
     # Update 'downloadable' column based on whether the paper ID is in the PDF file set
-    df.loc[df['Paper id'].isin(pdf_file_set), 'downloadable'] = 'yes'
+    df.loc[df['Paper Id of new reference article found'].isin(pdf_file_set), 'downloadable'] = 'yes'
 
     return df
 
@@ -408,7 +408,7 @@ def add_external_id_to_undownloadable_papers(df: pd.DataFrame, id_list: list[lis
 
     # Iterate over the DataFrame rows and update the new column where paper ID matches
     for index, row in df.iterrows():
-        paper_id = row['Paper id']
+        paper_id = row['Paper Id of new reference article found']
 
         # Add the external ID if there's a match in paper_id_to_external_id
         external_id = paper_id_to_external_id.get(paper_id)
@@ -438,7 +438,7 @@ def update_failure_reasons(df: pd.DataFrame, failed_downloads: List[Dict[str, An
         df['reason_for_failure'] = pd.NA
 
     # Update 'reason_for_failure' column based on the failure_dict
-    df['reason_for_failure'] = df['Paper id'].map(failure_dict)
+    df['reason_for_failure'] = df['Paper Id of new reference article found'].map(failure_dict)
 
     return df
 
@@ -465,7 +465,7 @@ def add_pdf_url_column(df: pd.DataFrame, metadata_list: List[Dict[str, Any]]) ->
         df['pdf_url'] = None
 
     # Update the DataFrame with PDF URLs
-    df['pdf_url'] = df['Paper id'].map(pdf_url_dict)
+    df['pdf_url'] = df['Paper Id of new reference article found'].map(pdf_url_dict)
 
     return df
 

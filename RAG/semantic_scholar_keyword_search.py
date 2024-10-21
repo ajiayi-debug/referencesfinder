@@ -135,11 +135,10 @@ def search_and_retrieve_keyword(collection_name, collection1_name):
             flattened_data.append([name, text, yearoforiginal, keyword, '','', ''])  # Empty cell for paper_id and title
 
 
-    columns=['Title of original reference article', 'Text in main article referencing reference article', 'Year reference article released', 'Keywords for graph paper search','Paper id', 'Title of new reference article found','Year new reference article found published']
+    columns=['Title of original reference article', 'Text in main article referencing reference article', 'Year reference article released', 'Keywords for graph paper search','Paper Id of new reference article found', 'Title of new reference article found','Year new reference article found published']
     df=pd.DataFrame(flattened_data,columns=columns)
     ex_pdf='external_pdfs'
     pdf_folder = 'papers'
-    paper_id_type='Paper Id of new reference article found'
     df= update_downloadable_status(df, pdf_folder)
     df=add_external_id_to_undownloadable_papers(df,ext_id)
     df=update_failure_reasons(df, failed_downloads)
@@ -230,7 +229,7 @@ def search_exact_paper():
             flattened_data.append([name, text, yearoforiginal, author, '','', ''])  # Empty cell for paper_id and title
 
 
-    columns=['Title of reference article', 'Text in main article referencing reference article', 'Year reference article released','Author of reference paper', 'Paper id', 'Title of reference article found','Year reference article found published']
+    columns=['Title of reference article', 'Text in main article referencing reference article', 'Year reference article released','Author of reference paper', 'Paper Id of new reference article found', 'Title of reference article found','Year reference article found published']
     df=pd.DataFrame(flattened_data,columns=columns)
     ex_pdf='external_pdfs'
     pdf_folder = 'papers'
