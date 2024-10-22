@@ -1,5 +1,5 @@
 # Overview of References Finder:
-Using Agentic RAG and semantic chunking to sanity check an article with cross ref and semantic scholar api as well as search for new references and check if they can be used with semantic scholar api.
+Using Agentic RAG and semantic chunking to sanity check an article with cross ref and semantic scholar api as well as search for new references to update the article.
 #### For more details, refer to the wiki of this project
 
 ## Diagram of workflow
