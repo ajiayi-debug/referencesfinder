@@ -65,33 +65,17 @@ uri_mongo=[mongodb]
 
 ```
 ## How to run:
+### Articles to insert and folders to create (for now since frontend not created yet)
+Insert the article you will like to update (main article) into a folder called 'main' which you will create in the main directory (outside [RAG](RAG)).
+Insert the reference articles cited in the main article into a folder called 'text' which you will create in the main directory (outside [RAG](RAG)).
+Insert any new reference you found that you thunk can update the main article into a folder called 'external_pdfs' which you will create in the main directory (outside [RAG](RAG)).
 
 ### RAG (backend)
-#### Fact checking if articles cited in main article is valid
-##### Done to validate existing references and workflow will be recycled to validate new references for updates
-Create a folder called text in the main directory and add all reference articles into it (in PDF format for now).
+#### Currently able to do a sanity check of main article as well as find new references and semantically check if new references can be used for the main article with Agentic RAG
 
-Add the main article (PDF format) into main directory (outside [RAG](RAG) and change the [PDF] relative path to the main article's name (pdfname.pdf) in .env file that you created.
-
-Run [process_and_embed.py](RAG/process_and_embed.py) to: 
-1) Pre-process the reference articles (in pdf format) into .txt files
-2) Use gpt4o to figure out the title of each reference article from their .txt files (if reference article text token length exceeds gpt4o context length (I set to 2000 tokens), split the reference article text into half then process the first half to figure out the name of the article)
-3) Use semantic chunking from the following [chunker](https://github.com/aurelio-labs/semantic-chunkers) to chunk each reference article text according to semantic similiarity using text embedding 3 large. The chunker used was the [Statistical Chunker](https://github.com/aurelio-labs/semantic-chunkers/blob/main/semantic_chunkers/chunkers/statistical.py)
-4) Embed the chunks using text embedding 3 large
-5) Save the chunks and embedded chunks according to reference article title into MongoDB. The collection 'processed' contains reference article title and chunks only while the collection 'processed_and_embed' contains reference article title, chunks and the embedded chunks.
-
-Run [call_after_embed.py](RAG/call_after_embed.py) to:
-1) Pre-process the main article (in pdf format) to .txt 
-2) Use gpt4o to find all cited references and the text that cites these references (will work on chunking main article in future to ensure that articles of all token lengths accepted, but in general as articles are meant for information sharing, will not be too large and most can be accepted)
-3) For each text that cites references, find the reference title it cites, then embed the text using text embedding 3 large and calculate cosine similiarity between embedded text and each embedded chunk of the reference article cited by the text. (Retrieval Augmented Generation)
-4) Return chunks that have cosine similiarity >0.5 (max 10, but usually does not exceed 10), ranked according to cosine similiarity (descendingly).
-5) Use gpt4o to re-rank the chunks according to how semantically similiar text that cites the reference is to the chunk (Found that cosine similiarity not a good ranker in terms of semantic similiarity, but good at sieving out what chunks are semantically similiar and what chunks are not) (reasoning found in wiki)
-6) Obtain top 3 chunks (to get rid of chunks that gpt 4o deems as not semantically similiar at all, ranked last or one of the last - occurs as maybe only a word or so semantically similiar in chunk and appears multiple times in chunk, causing cosine similiarity >0.5 when in actual fact its not semantically similiar to text in main article)
-7) Send output to database in Mongo DB under 'find_ref'
-
-Column names are:
-
-![image](https://github.com/user-attachments/assets/18857146-5502-4c74-92b8-f5a9745ff5b5)
-
-
-
+Run [RAG/gpt_retrieve_sieve.py](RAG/gpt_retrieve_sieve.py) to run the whole process from 
+1) Finding the statements (text that cites reference articles (i.e text(citation)) and their cited reference article name, author and year the reference article is published from the main article uploaded in 'main' folder in main directory and send the infomation to mongo db
+2) Embed then semantically chunk the reference articles uploaded into 'text' folder in the main directory and send the chunks to mongo db. The chunker used was the [Statistical Chunker](https://github.com/aurelio-labs/semantic-chunkers/blob/main/semantic_chunkers/chunkers/statistical.py). The embedding and chunking is done in parallel using async io and threads to reduce waiting time
+3) Retrieve and 'Generate' (in our case we sieve the chunks as we just want to output the exact text/phrase/paragraph from the retrieved chunk of the reference article that was cited the in the main article) using our agent, which in this case is gpt 4o, and send the outputs to mongo DB. (unranked for now). The gpt 4o calls are run in parallel using async io and threads to reduce waiting time. Call crossref api to check for existing reference article retractions or corrections. If any, results will be outputted as an excel file to the user (for now, inside [RAG](RAG)).
+4) Use gpt 4o to generate keywords from statements, which are then inserted into semantic scholar api to return papers. Downloadable papers are then downloaded and stored in a folder called 'papers' in the main directory. Any additional papers in 'external_pdfs' will also be sent to 'papers' for further processing, so make sure you add papers in 'external_pdfs' BEFORE this process starts
+5) 
