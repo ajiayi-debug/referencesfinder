@@ -183,6 +183,12 @@ async def call_get_ref_async(text):
     result = await async_retry_on_exception(get_references_async, text)
     return result
 
+#agent to regenerate prompt for better keyword generation
+async def call_rewritter_async(prompt):
+    await initialize_client()
+    result = await async_retry_on_exception(rewritter, prompt)
+    return result
+
 
 # Asynchronous function to get responses from the Azure OpenAI API
 async def retriever_and_siever_async(chunk, ref):
@@ -305,7 +311,7 @@ async def keyword_search_async(text, prompt=None):
     What are the keywords in terms of topics for the Text? Use the keywords to write keyword searches based on the keywords identified from the Text. Combine keywords if you think they relate to each other. 
     Output the keyword searches as a list of strings ONLY in the format: ['lactase activity restoration', 'lactase activity recovery', ...]
     """
-    if prompt==None:
+    if prompt is None:
         data={
             "model":"gpt-4o",
             "messages":[
@@ -349,3 +355,28 @@ async def get_references_async(text):
 
 
 
+async def rewritter(old_prompt):
+    retry_prompt="""
+    You are an advanced prompt-tuning agent. Your task is to craft a new, improved prompt to extract precise and meaningful keywords from text-based statements. Below is the old prompt I used, which did not perform well:
+    OLD_PROMPT:
+    {old_prompt}
+    Your new prompt should outperform the old one by being clearer, more specific, and more aligned with the task objective. Focus on improving the clarity and specificity, reducing ambiguity, and ensuring that the extracted keywords are concise and representative of the key concepts. Include any necessary constraints, instructions, or formatting rules to improve the output.
+
+    Here are guidelines for the new prompt:
+
+        1.	Goal: The new prompt should ensure keywords capture the essence of the statements, focusing on nouns, named entities, and concepts central to the meaning.
+        2.	Style/Tone: Make it precise and instruction-driven.
+        3.	Constraints: If helpful, specify the number of keywords, exclude generic words, and ensure uniqueness in the results.
+        4.	Output Format: Ensure the keywords are listed or returned in a readable and structured format.
+
+    Your task: Generate the new improved prompt with these improvements in mind. The new prompt should replace or build upon the old one. ONLY OUTPUT THE NEWLY GENERATED PROMPT AND NOTHING ELSE""".format(old_prompt=old_prompt)
+    data={
+        "model":"gpt-4o",
+        "messages":[
+            {"role": "system", "content": 'You are an advanced prompt tuning agent. You output only the tuned prompt and nothing else.'},
+            {"role": "user", "content": [{"type": "text","text": retry_prompt}]}
+        ],
+        "temperature":0
+    }
+    response = await async_client.chat.completions.create(**data)
+    return response.choices[0].message.content

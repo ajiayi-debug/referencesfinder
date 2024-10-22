@@ -406,6 +406,7 @@ def retrieve_sieve_references_new_retry(collection_processed_name, new_ref_colle
             #group by sentiment then rank by score then get top 5. 
             valid[['Sentiment', 'Confidence Score']] = valid['Sieving by gpt 4o'].apply(lambda x: pd.Series(extract_sentiment_and_score(x)))
             valid = top_5_per_sentiment(valid)
+            #if none of the top 5 papers have score >70, we need to retry the statement keyword search
             if top_row_for_support(valid)<70:
                 retry.append(valid)
             else:
