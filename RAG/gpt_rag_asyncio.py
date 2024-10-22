@@ -300,8 +300,7 @@ async def retriever_and_siever_async(chunk, ref):
 
         1.	For cited or referenced parts: Extract ALL relevant parts of the ‘Reference Article Text’ that are referenced. Start with ‘Support ([Confidence Score]):’.
         2.	For opposing parts: Extract ALL relevant parts of the ‘Reference Article Text’ that are opposed. Start with ‘Oppose ([Confidence Score]):’.
-        3.	Provide Justifications: For each confidence score, give a brief reason explaining the score (e.g., strong conceptual alignment, partial overlap, or weak opposition).
-        4.	If no match exists, respond with ‘no’.
+        3.	If no match exists, respond with ‘no’.
 
     Example Outputs with Confidence Scores:
 
@@ -346,7 +345,7 @@ async def retriever_and_siever_async(chunk, ref):
 
 async def retriever_and_siever_async_check(chunk, ref):
     pro = """
-    Compare the 'Reference Article Text' (which is a chunk of the reference article) to the 'Text Referencing The Reference Article' (which cites the reference article). Identify which parts of the 'Reference Article Text' are being cited or referenced by the 'Text Referencing The Reference Article.'
+    Compare the 'Reference Article Text' (which is a chunk of the reference article) to the 'Text Referencing The Reference Article' (which cites the reference article). Identify which parts of the 'Reference Article Text' are being cited or referenced by the 'Text Referencing The Reference Article.' xt Referencing The Reference Article’ (which cites the reference article). Additionally, assign a confidence score (0-100) to each comparison and place it in brackets at the start of the output
 
     By 'citing,' we mean that the 'Text Referencing The Reference Article' refers to or aligns with the information, facts, or concepts in the 'Reference Article Text.' The match can be direct, paraphrased, or conceptually similar.
 
@@ -367,7 +366,7 @@ async def retriever_and_siever_async_check(chunk, ref):
     Text Referencing The Reference Article: The bacteria in the large intestine ferment lactose, resulting in gas formation, which can cause symptoms such as bloating and flatulence after lactose ingestion.'
 
     Output:
-    'Bacterial fermentation of lactose results in production of gases including hydrogen (H2), carbon dioxide (CO2), methane (CH4), and short-chain fatty acids (SCFA) that have effects on GI function (figure 1). Many individuals with LM have no symptoms after ingestion of a standard serving of dairy products (table 1), whereas others develop symptoms (‘intolerance’) such as abdominal pain, borborygmi (rumbling tummy), and bloating after lactose intake (figure 1).'
+    '(90) Bacterial fermentation of lactose results in production of gases including hydrogen (H2), carbon dioxide (CO2), methane (CH4), and short-chain fatty acids (SCFA) that have effects on GI function (figure 1). Many individuals with LM have no symptoms after ingestion of a standard serving of dairy products (table 1), whereas others develop symptoms (‘intolerance’) such as abdominal pain, borborygmi (rumbling tummy), and bloating after lactose intake (figure 1).'
 
     Example of Non-Matching Case (When to Respond with 'No'):
 
