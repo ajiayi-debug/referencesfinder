@@ -173,9 +173,9 @@ async def call_retrieve_sieve_with_async_check(chunk, ref):
     return await async_retry_on_exception(retriever_and_siever_async_check, chunk, ref)
 
 # Keyword search function
-async def call_keyword_search_async(text):
+async def call_keyword_search_async(text, prompt=None):
     await initialize_client()
-    result = await async_retry_on_exception(keyword_search_async, text)
+    result = await async_retry_on_exception(keyword_search_async, text, prompt)
     return result
 #Get the statements, reference article titles, authors of reference articles and year reference articles released
 async def call_get_ref_async(text):
@@ -183,16 +183,6 @@ async def call_get_ref_async(text):
     result = await async_retry_on_exception(get_references_async, text)
     return result
 
-async def call_rerank_support_async(ref,chunk):
-    await initialize_client()
-    result = await async_retry_on_exception(rerank_support_async, ref,chunk)
-    return result
-
-
-async def call_rerank_oppose_async(ref,chunk):
-    await initialize_client()
-    result = await async_retry_on_exception(rerank_oppose_async, ref,chunk)
-    return result
 
 # Asynchronous function to get responses from the Azure OpenAI API
 async def retriever_and_siever_async(chunk, ref):
@@ -307,34 +297,31 @@ async def retriever_and_siever_async_check(chunk, ref):
 
 
 
-async def keyword_search_async(text):
+async def keyword_search_async(text, prompt=None):
 
-    #original
-    kws1="What are the keywords in the Text? Take note these keywords will be used for a graph search in semantic scholar. Output the keywords ONLY."
-    #Making keywords a focus on main topic - idea is to narrow down focus - more accurate papers returned
-    kws2= f"""
-    What are the main topics in the Text? Take note that these topics will be used as keywords for keyword searching. Output the topics as keywords and ONLY output the keywords with them being separated by commas if there are more than one keyword.
-    """
-    #Approach 2
-    kws3="""What are the main topics in the text? The topics should be used as keywords for keyword searching. Output the topics as keywords and only output the keywords as a list. If certain topics are closely related, group them together as a single string inside the main list.
-
-    Rules:
-
-    1. Group closely related topics (e.g., "prebiotics" and "probiotics") into a single string like 'prebiotics, probiotics'.
-    2. If a topic stands on its own (e.g., "lactose tolerance"), list it separately.
-    3. Always format the output as a single list of strings.
-    Example: Text: "A proportion of the world’s population is able to tolerate lactose as they have a genetic variation that ensures they continue to produce sufficient quantities of the enzyme lactase after childhood."
-    Output: ['lactose tolerance', 'genetic variation, enzyme lactase', 'lactose tolerance, childhood']
-    """
+    
     #Approach 3
     kws4="""
     What are the keywords in terms of topics for the Text? Use the keywords to write keyword searches based on the keywords identified from the Text. Combine keywords if you think they relate to each other. 
     Output the keyword searches as a list of strings ONLY in the format: ['lactase activity restoration', 'lactase activity recovery', ...]
     """
-    data={
+    if prompt==None:
+        data={
+            "model":"gpt-4o",
+            "messages":[
+                {"role": "system", "content": kws4},
+                {"role": "user", "content": [{"type": "text", "text": f"Text:{text}" }]}
+                #{"role": "user", "content": [{"type": "text", "text": kws2}]}
+            ],
+            "temperature":0
+        }
+        response = await async_client.chat.completions.create(**data)
+        return response.choices[0].message.content.lower()
+    else:
+        data={
         "model":"gpt-4o",
         "messages":[
-            {"role": "system", "content": kws4},
+            {"role": "system", "content": prompt},
             {"role": "user", "content": [{"type": "text", "text": f"Text:{text}" }]}
             #{"role": "user", "content": [{"type": "text", "text": kws2}]}
         ],
@@ -342,7 +329,6 @@ async def keyword_search_async(text):
     }
     response = await async_client.chat.completions.create(**data)
     return response.choices[0].message.content.lower()
-
 
 
 
@@ -363,32 +349,3 @@ async def get_references_async(text):
 
 
 
-rerank_support="""You are a semantic ranker. You rank the list according to how much the text in the list support the text for comparison. By support, we mean that the Text for comparison refers to, aligns with, or supports the information, facts, or concepts in the text in the list. The match can be direct, paraphrased, or conceptually similar.
-        You output the rank of the list as a list of indexes ONLY."""
-async def rerank_support_async(text,list):
-    data={
-        "model":"gpt-4o",
-        "messages":[
-            {"role": "system", "content": rerank_support},
-            {"role": "user", "content": [{"type": "text", "text": f"Text for comparison: {text}. List: {list}"}]}
-        ],
-        "temperature":0
-    }
-    response = await async_client.chat.completions.create(**data)
-    return response.choices[0].message.content
-
-
-
-rerank_oppose="""You are a semantic ranker. You rank the list according to how much the text in the list oppose the text for comparison. By support, we mean that the text for comparison provides a viewpoint or information that contradicts or challenges the information in the text in the list.
-        You output the rank of the list as a list of indexes ONLY."""
-async def rerank_oppose_async(text,list):
-    data={
-        "model":"gpt-4o",
-        "messages":[
-            {"role": "system", "content": rerank_oppose},
-            {"role": "user", "content": [{"type": "text", "text": f"Text for comparison: {text}. List: {list}"}]}
-        ],
-        "temperature":0
-    }
-    response = await async_client.chat.completions.create(**data)
-    return response.choices[0].message.content
