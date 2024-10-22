@@ -178,6 +178,17 @@ async def call_get_ref_async(text):
     result = await async_retry_on_exception(get_references_async, text)
     return result
 
+async def call_rerank_support_async(ref,chunk):
+    await initialize_client()
+    result = await async_retry_on_exception(rerank_support_async, ref,chunk)
+    return result
+
+
+async def call_rerank_oppose_async(ref,chunk):
+    await initialize_client()
+    result = await async_retry_on_exception(rerank_oppose_async, ref,chunk)
+    return result
+
 # Asynchronous function to get responses from the Azure OpenAI API
 async def retriever_and_siever_async(chunk, ref):
     pro = """
@@ -216,7 +227,7 @@ async def retriever_and_siever_async(chunk, ref):
 
     Why this case results in 'no':
     In this case, the 'Reference Article Text' discusses lactase persistence and a genetic factor related to lactose digestion, while the 'Text Referencing The Reference Article' discusses gas formation due to bacterial fermentation of lactose. These are different concepts, and no alignment exists between the two texts. Therefore, the correct response is 'no.'
-    
+
     Output ONLY the extraction. (the quoted texts after Output: in examples shown).
     """
     pro_notpro="""
@@ -272,10 +283,52 @@ async def retriever_and_siever_async(chunk, ref):
 
     Output ONLY the quoted texts after Output: in examples shown.
     """
+    pro_w_confidence="""
+
+    Compare the ‘Reference Article Text’ (which is a chunk of the reference article) to the ‘Text Referencing The Reference Article’ (which cites the reference article). Identify which parts of the ‘Reference Article Text’ are being cited, referenced, or opposed by the ‘Text Referencing The Reference Article.’ Additionally, assign a confidence score (0-100) to each comparison and place it in brackets next to ‘Support’ or ‘Oppose’ if any part of the text 'Support' or 'Oppose' the ‘Text Referencing The Reference Article’.
+
+    By ‘citing’ or ‘referencing,’ we mean that the ‘Text Referencing The Reference Article’ refers to, aligns with, or supports the information, facts, or concepts in the ‘Reference Article Text.’ The match can be direct, paraphrased, or conceptually similar.
+
+    By ‘opposing,’ we mean that the ‘Text Referencing The Reference Article’ provides a viewpoint or information that contradicts or challenges the information in the ‘Reference Article Text.’
+
+    Guidelines:
+
+        1.	For cited or referenced parts: Extract ALL relevant parts of the ‘Reference Article Text’ that are referenced. Start with ‘Support ([Confidence Score]):’.
+        2.	For opposing parts: Extract ALL relevant parts of the ‘Reference Article Text’ that are opposed. Start with ‘Oppose ([Confidence Score]):’.
+        3.	Provide Justifications: For each confidence score, give a brief reason explaining the score (e.g., strong conceptual alignment, partial overlap, or weak opposition).
+        4.	If no match exists, respond with ‘no’.
+
+    Example Outputs with Confidence Scores:
+
+    Supporting Example:
+    Input:
+    'Reference Article Text: Bacterial fermentation of lactose produces gases like hydrogen, methane, and CO2, impacting GI function.'
+    'Text Referencing The Reference Article: Fermentation of lactose in the gut leads to gas production, causing bloating.'
+    Output:
+    'Support (90): Bacterial fermentation of lactose produces gases like hydrogen, methane, and CO2, impacting GI function.'
+
+
+    Opposing Example:
+    Input:
+    'Reference Article Text: “Lactose intolerance affects around 70 percent of the population.'
+    'Text Referencing The Reference Article: “Recent studies indicate lactose intolerance affects a small proportion of the population.'
+    Output:
+    'Oppose (85): Lactose intolerance affects around 70 percent of the population.'
+
+
+    Non-Matching Case:
+    Input:
+    'Reference Article Text: “Lactase persistence is common among Northern Europeans.'
+    'Text Referencing The Reference Article: “Fermentation of lactose produces gas.'
+    Output:
+    'no'
+
+    Output ONLY the quoted texts after Output: in examples shown.
+    """
     data = {
         "model": "gpt-4o",
         "messages": [
-            {"role": "system", "content": pro_notpro},
+            {"role": "system", "content": pro_w_confidence},
             {"role": "user", "content": f"Reference Article Text: {chunk}, Text Referencing The Reference Article: {ref}"}
         ],
         "temperature": 0
@@ -335,6 +388,39 @@ async def get_references_async(text):
         "messages":[
             {"role": "system", "content": ref_prompt},
             {"role": "user", "content": [{"type": "text", "text": text }]}
+        ],
+        "temperature":0
+    }
+    response = await async_client.chat.completions.create(**data)
+    return response.choices[0].message.content
+
+
+
+
+rerank_support="""You are a semantic ranker. You rank the list according to how much the text in the list support the text for comparison. By support, we mean that the Text for comparison refers to, aligns with, or supports the information, facts, or concepts in the text in the list. The match can be direct, paraphrased, or conceptually similar.
+        You output the rank of the list as a list of indexes ONLY."""
+async def rerank_support_async(text,list):
+    data={
+        "model":"gpt-4o",
+        "messages":[
+            {"role": "system", "content": rerank_support},
+            {"role": "user", "content": [{"type": "text", "text": f"Text for comparison: {text}. List: {list}"}]}
+        ],
+        "temperature":0
+    }
+    response = await async_client.chat.completions.create(**data)
+    return response.choices[0].message.content
+
+
+
+rerank_oppose="""You are a semantic ranker. You rank the list according to how much the text in the list oppose the text for comparison. By support, we mean that the text for comparison provides a viewpoint or information that contradicts or challenges the information in the text in the list.
+        You output the rank of the list as a list of indexes ONLY."""
+async def rerank_oppose_async(text,list):
+    data={
+        "model":"gpt-4o",
+        "messages":[
+            {"role": "system", "content": rerank_oppose},
+            {"role": "user", "content": [{"type": "text", "text": f"Text for comparison: {text}. List: {list}"}]}
         ],
         "temperature":0
     }

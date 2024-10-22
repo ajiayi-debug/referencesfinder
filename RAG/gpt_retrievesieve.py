@@ -14,6 +14,8 @@ import asyncio
 import aiohttp
 from tqdm.asyncio import tqdm_asyncio
 from crossref import *
+import ast
+import re
 
 load_dotenv()
 #main pdf
@@ -25,6 +27,11 @@ db = client['data']
 loop = asyncio.get_event_loop()
 
 
+
+
+
+
+
 async def process_row_async(row, code):
     """Async function to process each row in the DataFrame using the async Azure OpenAI call."""
     chunk = row['Text Content']
@@ -32,6 +39,8 @@ async def process_row_async(row, code):
     
     # Use the async wrapper to call the GPT service with retry logic
     ans = await call_retrieve_sieve_with_async(chunk, ref)
+
+
     
     # Create a new row regardless of the answer
     new_row = pd.DataFrame({
@@ -66,7 +75,7 @@ async def retrieve_sieve_async(df, code):
             no_dfs.append(new_row)
         else:
             non_valid_dfs.append(new_row)  # Collect non-valid rows if the result is not 'valid' or 'no'
-
+    
     # Concatenate valid rows
     valid_output_df = pd.concat(valid_dfs, ignore_index=True) if valid_dfs else pd.DataFrame()
 
@@ -147,7 +156,7 @@ def retrieve_sieve_references(collection_processed_name, valid_collection_name, 
 
         # Call the wrapper function to retrieve and sieve
         valid, non_valid, no_df = retrieve_sieve(pdf, code)
-
+        
         # Append the results to the corresponding lists
         if not valid.empty:
             valid_dfs.append(valid)
@@ -155,6 +164,7 @@ def retrieve_sieve_references(collection_processed_name, valid_collection_name, 
             non_valid_dfs.append(non_valid)
         if not no_df.empty:
             not_dfs.append(no_df)
+        
 
     # Concatenate non-valid results
     if non_valid_dfs:
@@ -196,7 +206,7 @@ def retrieve_sieve_references_new(collection_processed_name, new_ref_collection,
     df=replace_pdf_file_with_title(df, df_found)
     df_found=update_downloadable_status_invalid(df_found)
     df_found = df_found[df_found['downloadable'] != 'no']
-    df_found = df_found[df_found['Paper Id of new reference article found'] != '']
+    df_found = df_found[df_found['Paper id'] != '']
     
 
     codable=[]
@@ -254,3 +264,15 @@ def retrieve_sieve_references_new(collection_processed_name, new_ref_collection,
     print("Process completed and data sent to MongoDB.")
 
 
+
+#re-ranking functions
+def group_data_by_reference(df):
+    """Group DataFrame rows by Reference article name and text, converting each group into a list of lists."""
+    grouped = df.groupby(['Reference article name', 'Reference text in main article'])
+
+    # Convert each group to a list of lists (one list per row)
+    grouped_lists = {
+        key: group[['Chunk', 'Sieving by gpt 4o', 'Date']].values.tolist()
+        for key, group in grouped
+    }
+    return grouped_lists
