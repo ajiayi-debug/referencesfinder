@@ -1,5 +1,6 @@
 # Overview of References Finder:
-Using Agentic RAG and semantic chunking to sanity check an article with cross ref and semantic scholar api as well as search for new references to update the article.
+Automation of article updates (references cited as well as text if necessary) through the use of Agentic RAG and semantic chunking in order to reduce costs (time and money) from sourcing to external vendors and manual effort in reading articles.
+
 #### For more details, refer to the wiki of this project
 
 ## Diagram of workflow
