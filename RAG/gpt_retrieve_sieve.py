@@ -6,14 +6,14 @@ import time
 import logging
 import asyncio
 
-"""Sanity checkinng"""
+"""Sanity checking"""
 """Get the statements and their respective reference articles and send to mongodb"""
 logging.info('Finding initial references')
 get_statements()
 asyncio.run(asyncio.sleep(60))
 """Allow user to add to mongodb for missing statements and their respective references"""
 
-"""process documents as usual (no embedding)"""
+"""process documents, noembed means we are not using embedding in retrieval and generate process but just to semantically chunk"""
 logging.info('Chunking Initial reference articles')
 process_pdfs_to_mongodb_noembed(files_directory='text', collection1='chunked_noembed')
 asyncio.run(asyncio.sleep(60))
@@ -29,7 +29,7 @@ logging.info('Searching for new references using statements')
 search_and_retrieve_keyword('Agentic_sieved_RAG_original', 'new_ref_found_Agentic_3')
 asyncio.run(asyncio.sleep(60))
 
-"""Process (no embedding)"""
+"""Process new documents, noembed means we are not using embedding in retrieval and generate process but just to semantically chunk"""
 logging.info('Chunking new reference articles')
 process_pdfs_to_mongodb_noembed_new(files_directory='papers', collection1='new_chunked_noembed_3')
 asyncio.run(asyncio.sleep(60))
