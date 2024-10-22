@@ -30,7 +30,7 @@ Token will automatically be created when running script while endpoint can be fo
 A frontend will be built soon where you can just upload *1* article into the system.
 
 ## Inserting existing references:
-Currently, users need to create a folder called 'text' in the maindirectory to insert reference articles referenced by the main paper. In future, a front end will be built for users to upload a whole folder / individual papers into the system.
+Currently, users need to create a folder called 'text' in the main directory to insert reference articles referenced by the main paper. In future, a front end will be built for users to upload a whole folder / individual papers into the system.
 
 ## Finding version of api
 Replace [version] with your version of api. This can be found in Azure AI Studios/ Resources and Keys/ Chat playground/ </> View Code 
