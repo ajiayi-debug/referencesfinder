@@ -3,7 +3,7 @@ Using Agentic RAG and semantic chunking to sanity check an article with cross re
 #### For more details, refer to the wiki of this project
 
 ## Diagram of workflow
-<img width="713" alt="flowchart of current workflow 22102024" src="https://github.com/user-attachments/assets/abe4641e-2e93-4e4a-809f-24b57b43fb83">
+<img width="714" alt="flowchart of current workflow 22102024" src="https://github.com/user-attachments/assets/89e7ca03-bdc1-4e56-93b1-b2b0da58055e">
 
 ## Legend
 <img width="698" alt="legend 22102024" src="https://github.com/user-attachments/assets/002a64c0-6640-43b5-b3f6-0d27632c5ba1">
