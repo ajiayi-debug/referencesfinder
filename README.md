@@ -79,4 +79,10 @@ Run [RAG/gpt_retrieve_sieve.py](RAG/gpt_retrieve_sieve.py) to run the whole proc
 3) Retrieve and 'Generate' (in our case we sieve the chunks as we just want to output the exact text/phrase/paragraph from the retrieved chunk of the reference article that was cited the in the main article) using our agent, which in this case is gpt 4o, and send the outputs to mongo DB. (unranked for now). The gpt 4o calls are run in parallel using async io and threads to reduce waiting time. Call crossref api to check for existing reference article retractions or corrections. If any, results will be outputted as an excel file to the user (for now, inside [RAG](RAG)).
 4) Use gpt 4o to generate keywords from statements, which are then inserted into semantic scholar api to return papers. Downloadable papers are then downloaded and stored in a folder called 'papers' in the main directory. Any additional papers in 'external_pdfs' will also be sent to 'papers' for further processing, so make sure you add papers in 'external_pdfs' BEFORE this process starts
 5) Repeat of step 2 for new reference articles found
-6) Repeat of step 3 
+6) Retrieve and 'Generate' (in our case we sieve the chunks as we just want to output the exact text/phrase/paragraph from the retrieved chunk of the reference article that was cited the in the main article as well as label if the sieved portion supports or oppose the statement and finally, give a confidence score on how much the sieved portion supports or oppose the statement. Take note the statement was converted to keywords which are then used to search for the reference articles.) using our agent, which in this case is gpt 4o.  The gpt 4o calls are run in parallel using async io and threads to reduce waiting time. *Next steps will be to only take top 5 results of each statement and new reference article and send to mongo db*
+
+#### Near Future
+1) To run a frontend
+2) To be able to let experts choose which reference to use to update main article
+3) To be able to let expert choose which sieved portions to use to update main article ( by letting gpt 4o created a new statement from the portions ) if necessary (e.g the opposing sieved portions are more increminating)
+4) To output a final .txt or .pdf file with texts
