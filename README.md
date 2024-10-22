@@ -10,6 +10,7 @@ Using Agentic RAG and semantic chunking to sanity check an article with cross re
 
 ## Symbols
 <img width="234" alt="database symbol" src="https://github.com/user-attachments/assets/4b8d4105-09a0-468a-94dd-4a8ed2cdd16f">
+<img width="130" alt="paper symbol" src="https://github.com/user-attachments/assets/41421712-738d-486b-a492-96ff89b27fb3">
 
 # Instructions for project (as of 10/22/2024)
 ## Installing dependencies
