@@ -1,4 +1,4 @@
-# Overview of References Finder:
+# Overview of References Finder (last updated 22/10/2024):
 Automation of article updates (references cited as well as text if necessary) through the use of Agentic RAG and semantic chunking in order to reduce costs (time and money) from sourcing to external vendors and manual effort in reading articles.
 
 #### For more details, refer to the wiki of this project
