@@ -1,8 +1,8 @@
 # Overview of References Finder:
-## For more details, refer to the wiki of this project
-To find the references and related references to update previous references in article OR if latest reference found to debunk previous reference, update article by writing additional texts as well as update the references. 
+Using Agentic RAG and semantic chunking to sanity check an article with cross ref and semantic scholar api as well as search for new references and check if they can be used with semantic scholar api.
+#### For more details, refer to the wiki of this project
 
-# Instructions for project (as of 23/8/2024)
+# Instructions for project (as of 10/22/2024)
 ## Installing dependencies
 To start, install the required packages:
 
@@ -54,13 +54,6 @@ Take note that the prompt format only works for gpt 4 onwards. Replace [model] w
 ## Embedding model
 An embedding model was also used. Replace [embed_model] with your embedding model. For my case, I used "text-embedding-3-large". 
 
-## ~~Getting Google API Key and Google CSE ID~~
-
-~~Go to [Google API Search](https://developers.google.com/custom-search/v1/overview) and request an API key. Replace [google api key] in the .env file with the received key.~~
-
-~~Go to [Google CSE ID Creation](https://programmablesearchengine.google.com/controlpanel/create) and create a CSE ID. Replace [google cse id] in the .env file with the received CSE ID.~~
-
-
 ## Certificate issues
 I personally had no issues with the certificate (I just downloaded the certificate). However, if you do face issues, insert the path to certificate into [path to certificate]
 
@@ -73,7 +66,7 @@ Create your own personal cluster on [mongodb](https://www.mongodb.com/lp/cloud/a
 
 Replace <username> with username of database user, <password> with password of database user and <database> with database name created in cluster
 ## Create .env file
-Replace [endpoint], ~~[google api key]~~, [PDF], [path to certificate], ~~[google cse id]~~, [version], [model], [embed_model], [mongodb] and [az cli] with the respective links and paths
+Replace [endpoint], [PDF], [path to certificate], [version], [model], [embed_model], [mongodb] and [az cli] with the respective links and paths
 
 ```sh
 endpoint = [endpoint]
