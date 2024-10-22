@@ -2,6 +2,9 @@
 Using Agentic RAG and semantic chunking to sanity check an article with cross ref and semantic scholar api as well as search for new references and check if they can be used with semantic scholar api.
 #### For more details, refer to the wiki of this project
 
+## Diagram of workflow
+
+
 # Instructions for project (as of 10/22/2024)
 ## Installing dependencies
 To start, install the required packages:
@@ -15,40 +18,23 @@ pip install -r requirements.txt
 ### Accessing Azure CLI:
 Download Azure CLI from [azure cli](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli-windows?tabs=azure-cli)
 ### Finding Azure CLI:
-#### (If device cannot find path to Azure CLI):
 Go to CMD and type `where az`.
 
-Take note of the path with `./az.cmd`. You will need this path to create your .env file
-
-#### (If device can find path to Azure CLI):
-in [gpt_rag](RAG/gpt_rag.py), line 19-23:
-
-Change 
-
-```
-az_path = os.getenv("az_path")
-
-# Fetch Azure OpenAI access token
-result = subprocess.run([az_path, 'account', 'get-access-token', '--resource', 'https://cognitiveservices.azure.com', '--query', 'accessToken', '-o', 'tsv'], stdout=subprocess.PIPE)
-token = result.stdout.decode('utf-8').strip()
-````
-
-to 
-
-````
-result = subprocess.run(['az', 'account', 'get-access-token', '--resource', 'https://cognitiveservices.azure.com', '--query', 'accessToken', '-o', 'tsv'], stdout=subprocess.PIPE)
-token = result.stdout.decode('utf-8').strip()
-````
+Take note of the path with `./az.cmd`. You will need this path to create your .env file for azure endpoint.
 
 ## Finding token and endpoint
 Token will automatically be created when running script while endpoint can be found in Azure AI Studios/ Resources and Keys/ Resource name/ </> View Code
-## Inserting main PDF files:
-Replace [PDF] in .env file with the name of the main article PDF. Place the main article (.pdf) in main directory.
 
-## Finding version
+## Inserting main PDF files:
+A frontend will be built soon where you can just upload *1* article into the system.
+
+## Inserting existing references:
+Currently, users need to create a folder called 'text' in the maindirectory to insert reference articles referenced by the main paper. In future, a front end will be built for users to upload a whole folder / individual papers into the system.
+
+## Finding version of api
 Replace [version] with your version of api. This can be found in Azure AI Studios/ Resources and Keys/ Chat playground/ </> View Code 
 
-## Chat completion model
+## GPT model (agents, re-naming, keyword generation)
 Take note that the prompt format only works for gpt 4 onwards. Replace [model] with gpt version. In my case, I used "gpt-4o". 
 
 ## Embedding model
@@ -66,14 +52,11 @@ Create your own personal cluster on [mongodb](https://www.mongodb.com/lp/cloud/a
 
 Replace <username> with username of database user, <password> with password of database user and <database> with database name created in cluster
 ## Create .env file
-Replace [endpoint], [PDF], [path to certificate], [version], [model], [embed_model], [mongodb] and [az cli] with the respective links and paths
+Replace [endpoint], [path to certificate], [version], [model], [embed_model], [mongodb] and [az cli] with the respective links and paths
 
 ```sh
 endpoint = [endpoint]
-# googleapikey= [google api key]
 az_path = [az cli]
-PDF= [PDF]
-# googlecseid=[google cse id]
 ver=[version]
 name=[model]
 cert=[path to certificate]
