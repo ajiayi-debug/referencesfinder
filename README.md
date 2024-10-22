@@ -71,11 +71,12 @@ Insert the reference articles cited in the main article into a folder called 'te
 Insert any new reference you found that you thunk can update the main article into a folder called 'external_pdfs' which you will create in the main directory (outside [RAG](RAG)).
 
 ### RAG (backend)
-#### Currently able to do a sanity check of main article as well as find new references and semantically check if new references can be used for the main article with Agentic RAG
+#### Currently able to do a sanity check of main article as well as find new references and semantically check how much the new references support/oppose the statements (text that cites reference articles (i.e text(citation)) in the main article 
 
 Run [RAG/gpt_retrieve_sieve.py](RAG/gpt_retrieve_sieve.py) to run the whole process from 
 1) Finding the statements (text that cites reference articles (i.e text(citation)) and their cited reference article name, author and year the reference article is published from the main article uploaded in 'main' folder in main directory and send the infomation to mongo db
 2) Embed then semantically chunk the reference articles uploaded into 'text' folder in the main directory and send the chunks to mongo db. The chunker used was the [Statistical Chunker](https://github.com/aurelio-labs/semantic-chunkers/blob/main/semantic_chunkers/chunkers/statistical.py). The embedding and chunking is done in parallel using async io and threads to reduce waiting time
 3) Retrieve and 'Generate' (in our case we sieve the chunks as we just want to output the exact text/phrase/paragraph from the retrieved chunk of the reference article that was cited the in the main article) using our agent, which in this case is gpt 4o, and send the outputs to mongo DB. (unranked for now). The gpt 4o calls are run in parallel using async io and threads to reduce waiting time. Call crossref api to check for existing reference article retractions or corrections. If any, results will be outputted as an excel file to the user (for now, inside [RAG](RAG)).
 4) Use gpt 4o to generate keywords from statements, which are then inserted into semantic scholar api to return papers. Downloadable papers are then downloaded and stored in a folder called 'papers' in the main directory. Any additional papers in 'external_pdfs' will also be sent to 'papers' for further processing, so make sure you add papers in 'external_pdfs' BEFORE this process starts
-5) 
+5) Repeat of step 2 for new reference articles found
+6) Repeat of step 3 
