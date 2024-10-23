@@ -1,5 +1,7 @@
 # Overview of References Finder:
-Automation of article updates (references cited as well as text if necessary) through the use of Agentic RAG and semantic chunking in order to reduce costs (time and money) from sourcing to external vendors and manual effort in reading articles.
+### The Agentic part of the project will come at the search, which I can't implement this week due to my azure open ai resource facing some issues
+### The semi-agentic part comes at the decision making of the retrieval and siever agent
+Automation of article updates (references cited as well as text if necessary) through the use of semi-Agentic RAG and semantic chunking in order to reduce costs (time and money) from sourcing to external vendors and manual effort in reading articles.
 
 #### For more details, refer to the wiki of this project
 
@@ -90,7 +92,8 @@ Run [RAG/gpt_retrieve_sieve.py](RAG/gpt_retrieve_sieve.py) to run the whole proc
 6) Retrieve and 'Generate' (in our case we sieve the chunks as we just want to output the exact text/phrase/paragraph from the retrieved chunk of the reference article that was cited the in the main article as well as label if the sieved portion supports or oppose the statement and finally, give a confidence score on how much the sieved portion supports or oppose the statement. Take note the statement was converted to keywords which are then used to search for the reference articles.) using our agent, which in this case is gpt 4o.  The gpt 4o calls are run in parallel using async io and threads to reduce waiting time. *Next steps will be to only take top 5 results of each statement and new reference article and send to mongo db*
 
 #### Near Future
-1) To run a frontend
-2) To be able to let experts choose which reference to use to update main article
-3) To be able to let expert choose which sieved portions to use to update main article ( by letting gpt 4o created a new statement from the portions ) if necessary (e.g the opposing sieved portions are more increminating)
-4) To output a final .txt or .pdf file with texts
+1) Make search agentic by retrying search if all paper chunks that support a certain statement do not meet a certain confidence threshold as well as if statement keywords do not bring back any papers at all (re-formatting the prompt of keyword generator using a re-evaluator agent)
+2) To run a frontend
+3) To be able to let experts choose which reference to use to update main article
+4) To be able to let expert choose which sieved portions to use to update main article ( by letting gpt 4o created a new statement from the portions ) if necessary (e.g the opposing sieved portions are more increminating)
+5) To output a final .txt or .pdf file with texts
