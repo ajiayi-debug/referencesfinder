@@ -1,9 +1,53 @@
-# Overview of References Finder:
-### The Agentic part of the project will come at the search, which I can't implement this week due to my azure open ai resource facing some issues
-### The semi-agentic part comes at the decision making of the retrieval and siever agent
-Automation of article updates (references cited as well as text if necessary) through the use of semi-Agentic RAG and semantic chunking in order to reduce costs (time and money) from sourcing to external vendors and manual effort in reading articles.
+# **References Finder Project**
 
-#### For more details, refer to the wiki of this project
+## **Overview**
+The **References Finder** project aims to automate the updating process of non-branded educational articles for **FrieslandCampina (FC) Institute**. By leveraging **semi-agentic Retrieval-Augmented Generation (RAG)** and **semantic chunking**, the project addresses the challenges of manual reference management. This approach reduces both **time and financial costs** involved in outsourcing to vendors and the manual effort of reading and validating scientific articles.
+
+---
+
+## **Components**
+
+### 1. **Agentic Component (Future Implementation)**
+The **fully agentic search capability** will autonomously identify relevant references using Azure OpenAI resources.  
+- **Note:** This feature is currently on hold due to Azure resource issues.
+
+### 2. **Semi-Agentic Component (Current Implementation)**
+The **retrieval and filtering agent** uses semantic chunking to help identify and validate relevant references. While the agent automates many processes, **human oversight** ensures the quality of the updates.
+
+---
+
+## **Problem Statement**
+The FC Institute currently incurs significant costs (~5000 euros per topic update) by outsourcing the review and update of references to external vendors. The process involves:
+1. **Manual search** for new references relevant to existing articles.  
+2. **Verification** of existing references to ensure none have been retracted or corrected.  
+3. **Article updates** based on new evidence where necessary.
+
+---
+
+## **Proposed Solution**
+This project offers **semi-automated updates** for both references and article content, providing a more cost-effective and efficient solution.
+
+### Key Benefits:
+- **Automated Reference Retrieval:** Identifies new relevant references using **Semantic Scholar API**.  
+- **Verification of Existing References:** Checks for retractions and corrections via **Crossref API**.  
+- **Automated Content Updates:** Suggests necessary modifications to the article text based on updated references.  
+- **Cost Savings:** Minimizes dependency on external vendors and reduces the need for in-house manual updates.
+
+---
+
+## **Impact**
+The automation of reference management and article updates enables FC Institute to:
+- **Save time** by streamlining the reference search and validation process.
+- **Reduce costs** by decreasing reliance on outsourced vendors.
+- **Improve accuracy** with reliable reference validation through APIs.
+  
+---
+
+## **Future Directions**
+- Implement **fully agentic search capabilities** once Azure OpenAI resources become available.
+- Expand automation to cover a wider range of article types and more complex updates.
+
+---
 
 ## Diagram of workflow
 <img width="714" alt="flowchart of current workflow 22102024" src="https://github.com/user-attachments/assets/89e7ca03-bdc1-4e56-93b1-b2b0da58055e">
