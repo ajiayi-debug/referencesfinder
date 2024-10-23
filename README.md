@@ -51,7 +51,7 @@ The automation of reference management and article updates enables FC Institute 
 
 ---
 
-## Diagram of workflow
+## Diagram of **Current** workflow
 <img width="714" alt="flowchart of current workflow 22102024" src="https://github.com/user-attachments/assets/89e7ca03-bdc1-4e56-93b1-b2b0da58055e">
 
 ## Legend
