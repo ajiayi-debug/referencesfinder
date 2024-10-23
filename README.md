@@ -120,40 +120,47 @@ embed_model=[embed_model]
 uri_mongo=[mongodb]
 
 ```
-## How to run:
-### Articles to insert and folders to create (for now since frontend not created yet)
-Insert the article you will like to update (main article) into a folder called 'main' which you will create in the main directory (outside [RAG](RAG)).
-Insert the reference articles cited in the main article into a folder called 'text' which you will create in the main directory (outside [RAG](RAG)).
-Insert any new reference you found that you thunk can update the main article into a folder called 'external_pdfs' which you will create in the main directory (outside [RAG](RAG)).
+## **How to Run**
+
+### **Set up Folders (Temporary, Before Frontend Implementation)**
+1. **`main` Folder:**  
+   Place the article you want to update in this folder. Create it in the main directory (outside the `RAG` folder).
+
+2. **`text` Folder:**  
+   Add reference articles cited in the main article here. Create this folder in the main directory.
+
+3. **`external_pdfs` Folder:**  
+   Add any additional references you believe can update the main article in this folder. Ensure it exists in the main directory before starting the process.
+
+---
 
 ### **RAG (Backend)**
 
 #### **Current Capabilities**  
-The backend performs a sanity check on the main article, identifies new references, and assesses how effectively these new references **support or oppose statements** that cite existing references within the main article.
+The backend checks the main article’s integrity, discovers new references, and evaluates how these references support or contradict the article’s cited statements.
 
-Run [RAG/gpt_retrieve_sieve.py](RAG/gpt_retrieve_sieve.py) to execute the entire process:
+Run [gpt_retrieve_sieve.py](RAG/gpt_retrieve_sieve.py) to execute the process: 
 
 1. **Extract Statements and References:**  
-   Extracts statements (text that cites references) from the uploaded main article and sends details (author, year, title) to MongoDB. 
+   Extracts cited text and reference details from the main article, storing them in MongoDB.
 
 2. **Chunk and Store Reference Articles:**  
-   Reference PDFs from the `text` folder are embedded and chunked using the [Statistical Chunker](https://github.com/aurelio-labs/semantic-chunkers/blob/main/semantic_chunkers/chunkers/statistical.py). The results are sent to MongoDB, with **async I/O and threads** used to optimize performance.
+   Reference PDFs from `text` are embedded and chunked using the [Statistical Chunker](https://github.com/aurelio-labs/semantic-chunkers/blob/main/semantic_chunkers/chunkers/statistical.py). MongoDB stores the output, with **async I/O and threading** optimizing the process.
 
 3. **Retrieve and Sieve:**  
-   GPT-4o determines if chunks from reference articles match statements, extracting the exact relevant text. Crossref API checks references for retractions or corrections, with results exported to Excel.
+   GPT-4o matches chunks to statements, extracting exact text matches. Crossref API checks for retractions or corrections, with results saved to Excel.
 
-4. **Keyword Generation and New References:**  
-   GPT-4o generates keywords for **Semantic Scholar API** searches. Downloadable papers are saved to the `papers` folder, along with any PDFs placed in `external_pdfs` before the process starts.
+4. **Keyword Generation & New References:**  
+   GPT-4o generates keywords, triggering **Semantic Scholar API** searches. Downloadable papers are saved to the `papers` folder, alongside any PDFs added to `external_pdfs`.
 
 5. **Process New References:**  
-   Newly found references undergo the same chunking and retrieval process as in step 2.
+   Newly retrieved references undergo the same chunking process as in step 2.
 
 6. **Sieve and Label:**  
-   The agent extracts the relevant portion from retrieved chunks, labels whether it **supports or opposes** the statement, and assigns a **confidence score**.
+   The agent extracts relevant chunks, labels them as **supporting or opposing**, and assigns **confidence scores**.
 
 *Next Steps: Prioritize the top 5 results per statement and store them in MongoDB.*
 
----
 
 #### **Near Future Plans**
 1. **Agentic Search Implementation:**  
