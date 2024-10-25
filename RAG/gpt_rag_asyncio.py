@@ -162,12 +162,12 @@ async def process_retry_queue():
         await async_retry_on_exception(func, *args, **kwargs)
     retry_queue = []
 
-#retriever and siever for oppose and support
+#retriever and siever for new reference (with classification)
 async def call_retrieve_sieve_with_async(chunk, ref):
     await initialize_client()
     return await async_retry_on_exception(retriever_and_siever_async, chunk, ref)
 
-#retriever and siever for sanity checking
+#retriever and siever for sanity checking (no classification)
 async def call_retrieve_sieve_with_async_check(chunk, ref):
     await initialize_client()
     return await async_retry_on_exception(retriever_and_siever_async_check, chunk, ref)
@@ -189,8 +189,7 @@ async def call_rewritter_async(prompt):
     result = await async_retry_on_exception(rewritter, prompt)
     return result
 
-
-# Asynchronous function to get responses from the Azure OpenAI API
+# Classification included
 async def retriever_and_siever_async(chunk, ref):
     pro_w_confidence="""
 
@@ -246,10 +245,10 @@ async def retriever_and_siever_async(chunk, ref):
     response = await async_client.chat.completions.create(**data)
     return response.choices[0].message.content.lower()
 
-
+#no support or oppose classification (for sanity checking)
 async def retriever_and_siever_async_check(chunk, ref):
     pro = """
-    Compare the 'Reference Article Text' (which is a chunk of the reference article) to the 'Text Referencing The Reference Article' (which cites the reference article). Identify which parts of the 'Reference Article Text' are being cited or referenced by the 'Text Referencing The Reference Article.' xt Referencing The Reference Article’ (which cites the reference article). Additionally, assign a confidence score (0-100) to each comparison and place it in brackets at the start of the output
+    Compare the 'Reference Article Text' (which is a chunk of the reference article) to the 'Text Referencing The Reference Article' (which cites the reference article). Identify which parts of the 'Reference Article Text' are being cited or referenced by the 'Text Referencing The Reference Article.' Referencing The Reference Article’ (which cites the reference article). Additionally, assign a confidence score (0-100) to each comparison and place it in brackets at the start of the output based on how likely 'Text Referencing The Reference Article' cites the 'Reference Article Text'.
 
     By 'citing,' we mean that the 'Text Referencing The Reference Article' refers to or aligns with the information, facts, or concepts in the 'Reference Article Text.' The match can be direct, paraphrased, or conceptually similar.
 
