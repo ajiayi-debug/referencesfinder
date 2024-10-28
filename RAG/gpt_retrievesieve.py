@@ -200,6 +200,8 @@ def retrieve_sieve_check(df, code):
         asyncio.set_event_loop(loop)
         return loop.run_until_complete(retrieve_sieve_async_check(df, code))
 
+
+#sanity checking existing references
 def retrieve_sieve_references(collection_processed_name, valid_collection_name, invalid_collection_name):
     output_directory = 'RAG'  # Fixed output directory
     
@@ -287,7 +289,7 @@ def retrieve_sieve_references(collection_processed_name, valid_collection_name, 
 
     print("Process completed and data sent to MongoDB.")
 
-
+#checking new references (need to classify)
 def retrieve_sieve_references_new(collection_processed_name, new_ref_collection, valid_collection_name, invalid_collection_name, not_match):
     output_directory = 'RAG'  # Fixed output directory
     
