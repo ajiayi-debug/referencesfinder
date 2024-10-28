@@ -65,6 +65,7 @@ async def process_row_async(row, code):
     chunk = row['Text Content']
     ref = code[0]
     
+    await asyncio.sleep(10)
     # Use the async wrapper to call the GPT service with retry logic
     ans = await call_retrieve_sieve_with_async(chunk, ref)
 
@@ -91,6 +92,8 @@ async def process_row_async_check(row, code):
     chunk = row['Text Content']
     ref = code[0]
     
+
+    await asyncio.sleep(10)
     # Use the async wrapper to call the GPT service with retry logic
     ans = await call_retrieve_sieve_with_async_check(chunk, ref)
 
@@ -119,7 +122,16 @@ async def retrieve_sieve_async(df, code):
     no_dfs = []
 
     # Process each row asynchronously using the process_row_async function
-    tasks = [process_row_async(row, code) for _, row in df.iterrows()]
+    # Define a semaphore to limit the number of concurrent tasks
+    semaphore = asyncio.Semaphore(5)  # Adjust the number as needed
+
+    async def process_row_with_semaphore(row):
+        """Wrapper function to use semaphore for each task."""
+        async with semaphore:
+            return await process_row_async(row, code)
+
+    # Create tasks with semaphore-wrapped function
+    tasks = [process_row_with_semaphore(row) for _, row in df.iterrows()]
     
     # Use tqdm_asyncio to track progress of async tasks
     for result_type, new_row in await tqdm_asyncio.gather(*tasks, desc='Processing rows in parallel'):
@@ -149,7 +161,16 @@ async def retrieve_sieve_async_check(df, code):
     no_dfs = []
 
     # Process each row asynchronously using the process_row_async function
-    tasks = [process_row_async_check(row, code) for _, row in df.iterrows()]
+    # Define a semaphore to limit the number of concurrent tasks
+    semaphore = asyncio.Semaphore(5)  # Adjust the number as needed
+
+    async def process_row_with_semaphore_check(row):
+        """Wrapper function to use semaphore for each task."""
+        async with semaphore:
+            return await process_row_async_check(row, code)
+
+    # Create tasks with semaphore-wrapped function
+    tasks = [process_row_with_semaphore_check(row) for _, row in df.iterrows()]
     
     # Use tqdm_asyncio to track progress of async tasks
     for result_type, new_row in await tqdm_asyncio.gather(*tasks, desc='Processing rows in parallel'):
@@ -306,7 +327,7 @@ def retrieve_sieve_references_new(collection_processed_name, new_ref_collection,
     df=replace_pdf_file_with_title(df, df_found)
     df_found=update_downloadable_status_invalid(df_found)
     df_found = df_found[df_found['downloadable'] != 'no']
-    df_found = df_found[df_found['Paper id'] != '']
+    df_found = df_found[df_found['Paper Id of new reference article found'] != '']
     
 
     codable=[]
