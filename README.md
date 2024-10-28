@@ -1,11 +1,67 @@
-# Overview of References Finder:
-Using Agentic RAG and semantic chunking to sanity check an article with cross ref and semantic scholar api as well as search for new references and check if they can be used with semantic scholar api.
-#### For more details, refer to the wiki of this project
+# **References Finder**
 
-## Diagram of workflow
+## **Overview**
+The **References Finder** project aims to automate the updating process of non-branded educational articles for **FrieslandCampina (FC) Institute**. By leveraging **semi-agentic Retrieval-Augmented Generation (RAG)** and **semantic chunking**, the project addresses the challenges of manual reference management. This approach reduces both **time and financial costs** involved in outsourcing to vendors and the manual effort of reading and validating scientific articles.
+### For more information on experiments run on the differing methods, please refer to the [wiki](https://github.com/ajiayi-debug/referencesfinder/wiki) of this repository
+---
 
+## **Components**
 
-# Instructions for project (as of 10/22/2024)
+### 1. **Agentic Component (Future Implementation)**
+The **fully agentic search capability** will autonomously refine the **keyword search process**. If new papers (or semantic chunks) do not meet a confidence score threshold or no relevant papers are found to support a statement, the system will **retry by adjusting the keyword generator prompt**. This iterative approach aims to optimize retrieval and sieving for higher accuracy without human intervention.
+
+- **Note:** This feature is currently on hold due to issues with Azure resources.
+
+### 2. **Semi-Agentic Component (Current Implementation)**
+The **retrieval and sieving agent** decides which of the semantic chunk to retrieve and sieve, but lacks the iterative, refinement process of a truly agentic agent
+
+---
+
+## **Problem Statement**
+The FC Institute currently incurs significant costs (~5000 euros per topic update) by outsourcing the review and update of references to external vendors. The process involves:
+1. **Manual search** for new references relevant to main article.
+2. **Manual Reading** for new references relevant to main article.
+3. **Verification** of existing references to ensure none have been retracted or corrected.  
+4. **Article updates** based on new evidence where necessary.
+
+---
+
+## **Proposed Solution**
+This project offers **semi-automated updates** for both references and article content, providing a more cost-effective and efficient solution.
+
+### Key Benefits:
+- **Automated Reference Retrieval:** Identifies new relevant references using **Semantic Scholar API**.  
+- **Verification of Existing References:** Checks for retractions and corrections via **Crossref API**.  
+- **Automated Content Updates:** Suggests necessary modifications to the article text based on updated references.  **Note** A future update
+- **Cost Savings:** Minimizes dependency on external vendors and reduces the need for in-house manual updates.
+
+---
+
+## **Impact**
+The automation of reference management and article updates enables FC Institute to:
+- **Save time** by streamlining the reference search and validation process.
+- **Reduce costs** by decreasing reliance on outsourced vendors.
+- **Improve accuracy** with reliable reference validation through APIs.
+  
+---
+
+## **Future Directions**
+- Implement **fully agentic search capabilities** once Azure OpenAI resources become available.
+- Expand automation to cover a wider range of article types and more complex updates.
+
+---
+
+## Diagram of **Current** workflow
+<img width="714" alt="flowchart of current workflow 22102024" src="https://github.com/user-attachments/assets/89e7ca03-bdc1-4e56-93b1-b2b0da58055e">
+
+## Legend
+<img width="698" alt="legend 22102024" src="https://github.com/user-attachments/assets/002a64c0-6640-43b5-b3f6-0d27632c5ba1">
+
+## Symbols
+<img width="234" alt="database symbol" src="https://github.com/user-attachments/assets/4b8d4105-09a0-468a-94dd-4a8ed2cdd16f">
+<img width="130" alt="paper symbol" src="https://github.com/user-attachments/assets/41421712-738d-486b-a492-96ff89b27fb3">
+
+# Instructions for project (as of 22/10/2024)
 ## Installing dependencies
 To start, install the required packages:
 
@@ -29,7 +85,7 @@ Token will automatically be created when running script while endpoint can be fo
 A frontend will be built soon where you can just upload *1* article into the system.
 
 ## Inserting existing references:
-Currently, users need to create a folder called 'text' in the maindirectory to insert reference articles referenced by the main paper. In future, a front end will be built for users to upload a whole folder / individual papers into the system.
+Currently, users need to create a folder called 'text' in the main directory to insert reference articles referenced by the main paper. In future, a front end will be built for users to upload a whole folder / individual papers into the system.
 
 ## Finding version of api
 Replace [version] with your version of api. This can be found in Azure AI Studios/ Resources and Keys/ Chat playground/ </> View Code 
@@ -64,25 +120,58 @@ embed_model=[embed_model]
 uri_mongo=[mongodb]
 
 ```
-## How to run:
-### Articles to insert and folders to create (for now since frontend not created yet)
-Insert the article you will like to update (main article) into a folder called 'main' which you will create in the main directory (outside [RAG](RAG)).
-Insert the reference articles cited in the main article into a folder called 'text' which you will create in the main directory (outside [RAG](RAG)).
-Insert any new reference you found that you thunk can update the main article into a folder called 'external_pdfs' which you will create in the main directory (outside [RAG](RAG)).
+## **How to Run**
 
-### RAG (backend)
-#### Currently able to do a sanity check of main article as well as find new references and semantically check how much the new references support/oppose the statements (text that cites reference articles (i.e text(citation)) in the main article 
+### **Set up Folders (Temporary, Before Frontend Implementation)**
+1. **`main` Folder:**  
+   Place the article you want to update in this folder. Create it in the main directory (outside the `RAG` folder).
 
-Run [RAG/gpt_retrieve_sieve.py](RAG/gpt_retrieve_sieve.py) to run the whole process from 
-1) Finding the statements (text that cites reference articles (i.e text(citation)) and their cited reference article name, author and year the reference article is published from the main article uploaded in 'main' folder in main directory and send the infomation to mongo db
-2) Embed then semantically chunk the reference articles uploaded into 'text' folder in the main directory and send the chunks to mongo db. The chunker used was the [Statistical Chunker](https://github.com/aurelio-labs/semantic-chunkers/blob/main/semantic_chunkers/chunkers/statistical.py). The embedding and chunking is done in parallel using async io and threads to reduce waiting time
-3) Retrieve and 'Generate' (in our case we sieve the chunks as we just want to output the exact text/phrase/paragraph from the retrieved chunk of the reference article that was cited the in the main article) using our agent, which in this case is gpt 4o, and send the outputs to mongo DB. (unranked for now). The gpt 4o calls are run in parallel using async io and threads to reduce waiting time. Call crossref api to check for existing reference article retractions or corrections. If any, results will be outputted as an excel file to the user (for now, inside [RAG](RAG)).
-4) Use gpt 4o to generate keywords from statements, which are then inserted into semantic scholar api to return papers. Downloadable papers are then downloaded and stored in a folder called 'papers' in the main directory. Any additional papers in 'external_pdfs' will also be sent to 'papers' for further processing, so make sure you add papers in 'external_pdfs' BEFORE this process starts
-5) Repeat of step 2 for new reference articles found
-6) Retrieve and 'Generate' (in our case we sieve the chunks as we just want to output the exact text/phrase/paragraph from the retrieved chunk of the reference article that was cited the in the main article as well as label if the sieved portion supports or oppose the statement and finally, give a confidence score on how much the sieved portion supports or oppose the statement. Take note the statement was converted to keywords which are then used to search for the reference articles.) using our agent, which in this case is gpt 4o.  The gpt 4o calls are run in parallel using async io and threads to reduce waiting time. *Next steps will be to only take top 5 results of each statement and new reference article and send to mongo db*
+2. **`text` Folder:**  
+   Add reference articles cited in the main article here. Create this folder in the main directory.
 
-#### Near Future
-1) To run a frontend
-2) To be able to let experts choose which reference to use to update main article
-3) To be able to let expert choose which sieved portions to use to update main article ( by letting gpt 4o created a new statement from the portions ) if necessary (e.g the opposing sieved portions are more increminating)
-4) To output a final .txt or .pdf file with texts
+3. **`external_pdfs` Folder:**  
+   Add any additional references you believe can update the main article in this folder. Ensure it exists in the main directory before starting the process.
+
+---
+
+### **RAG (Backend)**
+
+#### **Current Capabilities**  
+The backend checks the main article’s integrity, discovers new references, and evaluates how these references support or contradict the article’s cited statements.
+
+Run [gpt_retrieve_sieve.py](RAG/gpt_retrieve_sieve.py) to execute the process: 
+
+1. **Extract Statements and References:**  
+   Extracts cited text and reference details from the main article, storing them in MongoDB.
+
+2. **Chunk and Store Reference Articles:**  
+   Reference PDFs from `text` are embedded and chunked using the [Statistical Chunker](https://github.com/aurelio-labs/semantic-chunkers/blob/main/semantic_chunkers/chunkers/statistical.py). MongoDB stores the output, with **async I/O and threading** optimizing the process.
+
+3. **Retrieve and Sieve:**  
+   GPT-4o matches chunks to statements, extracting exact text matches. Crossref API checks for retractions or corrections, with results saved to Excel.
+
+4. **Keyword Generation & New References:**  
+   GPT-4o generates keywords, triggering **Semantic Scholar API** searches. Downloadable papers are saved to the `papers` folder, alongside any PDFs added to `external_pdfs`.
+
+5. **Process New References:**  
+   Newly retrieved references undergo the same chunking process as in step 2.
+
+6. **Sieve and Label:**  
+   The agent extracts relevant chunks, labels them as **supporting or opposing**, and assigns **confidence scores**.
+
+*Next Steps: Prioritize the top 5 results per statement and store them in MongoDB.*
+
+
+#### **Near Future Plans**
+1. **Agentic Search Implementation:**  
+   Retry searches if the retrieved chunks don’t meet a confidence threshold or return no results. A re-evaluator agent will refine keyword generation prompts.
+
+2. **Develop a Frontend Interface.**  
+3. **Expert Selection of References:**  
+   Allow experts to choose which references to use for updating the main article.
+
+4. **Expert Selection of Sieved Portions:**  
+   Experts can review sieved portions and instruct GPT-4o to create new statements based on opposing or critical content.
+
+5. **Export Final Output:**  
+   Generate a `.txt` or `.pdf` file with the updated article content.
