@@ -33,8 +33,9 @@ retry_queue = []  # Store failed tasks for retry
 def get_azure_access_token():
     try:
         logging.info("Fetching Azure OpenAI access token...")
+        az_path = os.getenv("az_path", "az")
         result = subprocess.run(
-            ['az', 'account', 'get-access-token', '--resource', 
+            [az_path, 'account', 'get-access-token', '--resource', 
              'https://cognitiveservices.azure.com', '--query', 'accessToken', '-o', 'tsv'],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
