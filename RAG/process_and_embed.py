@@ -142,14 +142,16 @@ def process_pdfs_to_mongodb_noembed(files_directory, collection1):
 
     data = {'PDF File': processed_name, 'Text Content': processed_texts}
     df = pd.DataFrame(data)
-    tqdm.pandas(desc="Processing Documents for Chunking")
-    df['text_chunks'] = df['Text Content'].apply(semantic_chunk)
+    df=process_dataframe_sc1(df)
+
+    #df = process_dataframe_into_chunks(df)
     
     df_exploded = df.explode('text_chunks').drop(columns=['Text Content'])
     
     # Rename the columns for clarity
     df_exploded.rename(columns={'text_chunks': 'Text Content'}, inplace=True)
 
+    print(df_exploded)
     # final_ans='ref_emb.xlsx'
     # send_excel(emb,'RAG', final_ans)
 
