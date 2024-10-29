@@ -233,7 +233,7 @@ async def retriever_and_siever_async(chunk, ref):
     Output:
     'no'
 
-    Output ONLY the quoted texts after Output: in examples shown.
+    Output ONLY the extraction. (the quoted texts after Output: in examples shown).
     """
     data = {
         "model": "gpt-4o",
