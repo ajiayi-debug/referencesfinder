@@ -473,5 +473,3 @@ def retrieve_sieve_references_new_retry(collection_processed_name, new_ref_colle
     print("Process completed and data sent to MongoDB.")
     return retry_df, valid_output_df
 
-
-
