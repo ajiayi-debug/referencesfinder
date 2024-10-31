@@ -87,7 +87,7 @@ A frontend will be built soon where you can just upload *1* article into the sys
 ## Inserting existing references:
 Currently, users need to create a folder called 'text' in the main directory to insert reference articles referenced by the main paper. In future, a front end will be built for users to upload a whole folder / individual papers into the system.
 
-## Finding version of api
+## Finding version of GPT api
 Replace [version] with your version of api. This can be found in Azure AI Studios/ Resources and Keys/ Chat playground/ </> View Code 
 
 ## GPT model (agents, re-naming, keyword generation)
@@ -107,8 +107,12 @@ Create your own personal cluster on [mongodb](https://www.mongodb.com/lp/cloud/a
 ```
 
 Replace <username> with username of database user, <password> with password of database user and <database> with database name created in cluster
+
+## APIs 
+The apis used in this project are from Semantic Scholar and CrossRef. CrossRef has a public API so we do not need to worry about it since we can just call it in the script. For Semantic Scholar api, you will need to go to [semantic scholar](https://www.semanticscholar.org/product/api#api-key) and request for an api key. Then, replace [semantic_scholar_api] with the api key. 
+
 ## Create .env file
-Replace [endpoint], [path to certificate], [version], [model], [embed_model], [mongodb] and [az cli] with the respective links and paths
+Replace [endpoint], [path to certificate], [version], [model], [embed_model], [mongodb], [semantic_scholar_api] and [az cli] with the respective links and paths
 
 ```sh
 endpoint = [endpoint]
@@ -118,8 +122,9 @@ name=[model]
 cert=[path to certificate]
 embed_model=[embed_model]
 uri_mongo=[mongodb]
-
+x-api-key=[semantic_scholar_api]
 ```
+
 ## **How to Run**
 
 ### **Set up Folders (Temporary, Before Frontend Implementation)**
