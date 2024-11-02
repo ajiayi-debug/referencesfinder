@@ -8,10 +8,9 @@ from gpt_rag import *
 from embedding import *
 from call_mongodb import *
 from semantic_chunking import *
-
+load_dotenv()
 
 def process_pdfs_to_mongodb(files_directory, collection1, collection2):
-    load_dotenv()
     uri = os.getenv("uri_mongo")
     db = 'data'
     
@@ -64,7 +63,6 @@ def process_pdfs_to_mongodb(files_directory, collection1, collection2):
     delete_folder(directory)
 
 def process_new_pdfs_to_mongodb(files_directory, collection1, collection2):
-    load_dotenv()
     uri = os.getenv("uri_mongo")
     db = 'data'
     
@@ -124,7 +122,6 @@ def process_new_pdfs_to_mongodb(files_directory, collection1, collection2):
     delete_folder(directory)
 
 def process_pdfs_to_mongodb_noembed(files_directory, collection1):
-    load_dotenv()
     uri = os.getenv("uri_mongo")
     db = 'data'
     
@@ -142,14 +139,16 @@ def process_pdfs_to_mongodb_noembed(files_directory, collection1):
 
     data = {'PDF File': processed_name, 'Text Content': processed_texts}
     df = pd.DataFrame(data)
-    tqdm.pandas(desc="Processing Documents for Chunking")
-    df['text_chunks'] = df['Text Content'].apply(semantic_chunk)
+    df=process_dataframe_sc1(df)
+
+    #df = process_dataframe_into_chunks(df)
     
     df_exploded = df.explode('text_chunks').drop(columns=['Text Content'])
     
     # Rename the columns for clarity
     df_exploded.rename(columns={'text_chunks': 'Text Content'}, inplace=True)
 
+    print(df_exploded)
     # final_ans='ref_emb.xlsx'
     # send_excel(emb,'RAG', final_ans)
 
@@ -167,13 +166,11 @@ def process_pdfs_to_mongodb_noembed(files_directory, collection1):
     delete_folder(directory)
 
 
-def process_pdfs_to_mongodb_noembed_new(files_directory, collection1):
-    load_dotenv()
+def process_pdfs_to_mongodb_noembed_new(files_directory, collection1, change_to_add=False):
     uri = os.getenv("uri_mongo")
     db = 'data'
-    
     directory = 'doc'  # Fixed directory
-
+    delete_folder(directory)
     pdf_list = read_pdf_file_list(files_directory)
     #filenames = get_txt_names(files_directory)
     
@@ -187,7 +184,7 @@ def process_pdfs_to_mongodb_noembed_new(files_directory, collection1):
 
     processed_texts = read_processed_texts(directory, filenames)
     #processed_name = get_names(filenames, directory)
-    processed_name=list_pdf_bases('papers')
+    processed_name=list_pdf_bases(files_directory)
     
     
 
@@ -210,7 +207,11 @@ def process_pdfs_to_mongodb_noembed_new(files_directory, collection1):
     print("Sending data to MongoDB Atlas...")
     send_excel(df_exploded,'RAG','test_async_chunk.xlsx')
     # Send all records at once for collection1
-    replace_database_collection(uri, db, collection1, records1)
+    if change_to_add:
+        insert_documents(uri,db,collection1,records1)
+    else:
+        replace_database_collection(uri, db, collection1, records1)
+
     print(f"Data sent to MongoDB Atlas for collection: {collection1}")
 
 

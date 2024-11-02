@@ -1,7 +1,7 @@
 from dotenv import load_dotenv
 load_dotenv()
 
-from aiohttp import ClientSession
+from aiohttp import ClientSession, ClientResponseError
 import argparse
 import asyncio
 from itertools import islice
@@ -9,6 +9,7 @@ import os
 from typing import AsyncGenerator, Generator, Iterable, TypeVar, Union, List, Dict, Any, Optional, Tuple
 from tqdm.asyncio import tqdm as tqdm_asyncio
 from bs4 import BeautifulSoup
+import random
 
 S2_API_KEY = os.environ['x-api-key']
 
@@ -26,24 +27,58 @@ def extract_paper_ids(metadata_list: List[Dict[str, Any]]) -> List[str]:
     """Extract paper IDs from the metadata list."""
     return [paper['paperId'] for paper in metadata_list]
 
-async def get_papers(session: ClientSession, paper_ids: list[str], batch_size = 500, fields: str = 'paperId,title', **kwargs) -> AsyncGenerator[dict, None]:
+
+async def get_papers(session: ClientSession, paper_ids: list[str], batch_size=500, fields: str = 'paperId,title', retries: int = 5, backoff_factor: int = 2, **kwargs) -> AsyncGenerator[dict, None]:
+    """
+    Retrieve paper details in batches, with retries on failure using exponential backoff.
+
+    Args:
+        session (ClientSession): The aiohttp client session.
+        paper_ids (list[str]): List of paper IDs to retrieve.
+        batch_size (int): Number of paper IDs to send in each request.
+        fields (str): Fields to request from the API.
+        retries (int): Maximum number of retry attempts.
+        backoff_factor (int): Multiplier for exponential backoff.
+        kwargs: Additional arguments to include in the API request.
+
+    Yields:
+        dict: The paper data retrieved from the API.
+    """
     for batch in batched(paper_ids, batch_size):
-        params = {
-            'fields': fields,
-            **kwargs,
-        }
-        headers = {
-            'X-API-KEY': S2_API_KEY,
-        }
-        json = {
-            'ids': batch,
-        }
+        params = {'fields': fields, **kwargs}
+        headers = {'X-API-KEY': S2_API_KEY}
+        json = {'ids': batch}
 
-        async with session.post(f'https://api.semanticscholar.org/graph/v1/paper/batch', params=params, headers=headers, json=json) as response:
-            response.raise_for_status()
+        attempt = 0
+        while attempt <= retries:
+            try:
+                async with session.post(
+                    'https://api.semanticscholar.org/graph/v1/paper/batch',
+                    params=params, headers=headers, json=json
+                ) as response:
+                    response.raise_for_status()  # Check for HTTP errors
+                    papers = await response.json()
+                    for paper in papers:
+                        yield paper
+                break  # Exit the retry loop if successful
 
-            for paper in await response.json():
-                yield paper
+            except ClientResponseError as e:
+                # Only retry on specific status codes
+                if e.status in {429, 500, 503}:
+                    wait_time = backoff_factor ** attempt + random.uniform(0, 1)
+                    print(f"Error {e.status} - Retrying in {wait_time:.2f} seconds... (Attempt {attempt + 1}/{retries})")
+                    await asyncio.sleep(wait_time)
+                    attempt += 1
+                else:
+                    # Re-raise for other HTTP errors
+                    raise
+
+            except Exception as e:
+                print(f"Unexpected error: {e}")
+                raise
+
+        if attempt > retries:
+            print(f"Failed to retrieve batch after {retries} retries. Skipping this batch.")
 
 async def download_pdf(session: ClientSession, url: str, path: str, non_pdf_folder: str, user_agent: str = 'aiohttp/3.0.0') -> Optional[str]:
     headers = {
