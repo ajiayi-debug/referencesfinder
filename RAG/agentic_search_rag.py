@@ -35,7 +35,16 @@ logging.info('Chunking new reference articles')
 process_pdfs_to_mongodb_noembed_new(files_directory='papers', collection1='new_chunked_noembed_3')
 asyncio.run(asyncio.sleep(60))
 
-"""retrieve and sieve using gpt 4o then run loop """
-agentic_search(ccollection_processed_name='new_chunked_noembed_3',new_ref_collection='new_ref_found_Agentic_retry',
-               valid_collection_name='Agentic_sieved_RAG_new_support_nosupport_confidence_retry', 
-               invalid_collection_name='No_match_agentic_new3_confidence_retry',not_match='no_match3_confidence_retry')
+"""retrieve and sieve using gpt 4o"""
+logging.info("Comparing chunks with statements used to retrieve chunks that support/oppose statements")
+retrieve_sieve_references_new(collection_processed_name='new_chunked_noembed_3',new_ref_collection='new_ref_found_Agentic_3',valid_collection_name='Agentic_sieved_RAG_new_support_nosupport_confidence', invalid_collection_name='No_match_agentic_new3_confidence',not_match='no_match3_confidence')
+asyncio.run(asyncio.sleep(60))
+
+"""Clean the data for ranking (remove hallucinations as well) as well as obtain df of statements that need to be retried due to poor retrieved paper quality"""
+logging.info("Checking if any statement that has found paper needs to re-try keyword search as well as clean up hallucinations AND rank the sived portions")
+cleaning('Agentic_sieved_RAG_new_support_nosupport_confidence','no_match3_confidence')
+asyncio.run(asyncio.sleep(60))
+
+"""Perform agentic search for poor performance papers or statements that has no papers returned"""
+logging.info('Performing agentic search for poor search results')
+agentic_search(collection_processed_name='retry_chunked',new_ref_collection='new_paper_after_retry',valid_collection_name='Agentic_sieved_RAG_new_support_nosupport_confidence',invalid_collection_name='No_match_agentic_new3_confidence',not_match='no_match3_confidence')
