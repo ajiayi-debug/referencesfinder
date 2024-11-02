@@ -4,16 +4,14 @@
 The **References Finder** project aims to automate the updating process of non-branded educational articles for **FrieslandCampina (FC) Institute**. By leveraging **semi-agentic Retrieval-Augmented Generation (RAG)** and **semantic chunking**, the project addresses the challenges of manual reference management. This approach reduces both **time and financial costs** involved in outsourcing to vendors and the manual effort of reading and validating scientific articles.
 ### For more information on experiments run on the differing methods, please refer to the [wiki](https://github.com/ajiayi-debug/referencesfinder/wiki) of this repository
 ---
+## **Key features**
+### **Agentic Components**
 
-## **Components**
-
-### 1. **Agentic Component (Future Implementation)**
-The **fully agentic search capability** will autonomously refine the **keyword search process**. If new papers (or semantic chunks) do not meet a confidence score threshold or no relevant papers are found to support a statement, the system will **retry by adjusting the keyword generator prompt**. This iterative approach aims to optimize retrieval and sieving for higher accuracy without human intervention.
-
-- **Note:** This feature is currently on hold due to issues with Azure resources.
-
-### 2. **Semi-Agentic Component (Current Implementation)**
+#### 1. **Semi-Agentic RAG **
 The **retrieval and sieving agent** decides which of the semantic chunk to retrieve and sieve, but lacks the iterative, refinement process of a truly agentic agent
+
+#### 2. **Agentic Search **
+The **fully agentic search capability** will autonomously refine the **keyword search process**. If new papers (or semantic chunks) do not meet a confidence score threshold or no relevant papers are found to support a statement, the system will **retry by adjusting the keyword generator prompt**. This iterative approach aims to optimize retrieval and sieving for higher accuracy without human intervention.
 
 ---
 
@@ -41,7 +39,7 @@ This project offers **semi-automated updates** for both references and article c
 The automation of reference management and article updates enables FC Institute to:
 - **Save time** by streamlining the reference search and validation process.
 - **Reduce costs** by decreasing reliance on outsourced vendors.
-- **Improve accuracy** with reliable reference validation through APIs.
+- **Improve accuracy** with reliable reference validation through APIs as well as reduce human error.
   
 ---
 
