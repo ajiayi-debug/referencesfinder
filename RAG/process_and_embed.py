@@ -148,9 +148,6 @@ def process_pdfs_to_mongodb_noembed(files_directory, collection1):
     # Rename the columns for clarity
     df_exploded.rename(columns={'text_chunks': 'Text Content'}, inplace=True)
 
-    print(df_exploded)
-    # final_ans='ref_emb.xlsx'
-    # send_excel(emb,'RAG', final_ans)
 
     # Convert DataFrames to records
     records1 = df_exploded.to_dict(orient='records')
