@@ -7,7 +7,7 @@ import logging
 import asyncio
 from agentic_search_system import *
 
-#time start: 5:40
+#time start: 8:45
 #time end: 
 
 """Sanity checking"""
@@ -16,7 +16,7 @@ logging.info('Finding initial references')
 get_statements()
 asyncio.run(asyncio.sleep(60))
 """Allow user to add to mongodb for missing statements and their respective references"""
-
+#function to add missing statements if necessary
 """process documents, noembed means we are not using embedding in retrieval and generate process but just to semantically chunk"""
 logging.info('Chunking Initial reference articles')
 process_pdfs_to_mongodb_noembed(files_directory='text', collection1='chunked_noembed')

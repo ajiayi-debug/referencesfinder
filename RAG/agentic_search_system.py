@@ -145,6 +145,7 @@ def process_retry_logic(count, collection_processed_name, new_ref_collection,
         missing_ref_df = retrieve_missing_references(valid, retry, statement_df)
 
         count -= 1  # Decrement the count
+    print(f"Retried search {3-count} times")
 
 #agentic search function (main function)
 def agentic_search(collection_processed_name,new_ref_collection, 
