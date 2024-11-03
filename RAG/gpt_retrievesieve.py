@@ -614,16 +614,16 @@ def add_to_existing(collection_processed_name_new, collection_processed_name_ori
     # if there are no new data found in this iteration, the previous iteration of data will not be added due to 
     # it not being cleared in the previous iteration
     insert_documents(uri, db.name, collection_processed_name_original, documents1)
-    clear_collection(collection_processed_name_new)
+    clear_collection(uri, db.name, collection_processed_name_new)
     
     insert_documents(uri, db.name, new_ref_collection_original, documents2)
-    clear_collection(new_ref_collection_new)
+    clear_collection(uri, db.name, new_ref_collection_new)
     
     insert_documents(uri, db.name, valid_collection_name_original, documents3)
-    clear_collection(valid_collection_name_new)
+    clear_collection(uri, db.name, valid_collection_name_new)
     
     insert_documents(uri, db.name, invalid_collection_name_original, documents4)
-    clear_collection(invalid_collection_name_new)
+    clear_collection(uri, db.name, invalid_collection_name_new)
     
     insert_documents(uri, db.name, not_match_original, documents5)
-    clear_collection(not_match_new)
+    clear_collection(uri, db.name, not_match_new)
