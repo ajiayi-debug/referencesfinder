@@ -33,6 +33,7 @@ def retrieve_missing_references(valid, retry, statement_df):
         # Ensure missing_ref_df is unique
         missing_ref_df = missing_ref_df.sort_values('Date', ascending=False).drop_duplicates(subset=['Reference text in main article'], keep='first')
         print(f"Found {len(missing_ref_df)} statement(s) that have no valid papers.")
+        print(f"Statement(s): {missing_ref_df}")
         return missing_ref_df
     #There are papers where chunks retrieved top score below threshold
     else:
@@ -54,12 +55,14 @@ def retrieve_missing_references(valid, retry, statement_df):
             missing_ref_df = missing_ref_df.sort_values('Date', ascending=False).drop_duplicates(subset=['Reference text in main article'], keep='first')
 
             print(f"Found {len(missing_ref_df)} statement(s) that need to be retried.")
+            print(f"Statement(s): {missing_ref_df}")
         else:
             #all statements with papers have valid papers. 
             print("All statements with papers have satisfactory papers.")
             missing_ref_df = missing_ref_df.sort_values('Date', ascending=False).drop_duplicates(subset=['Reference text in main article'], keep='first')
 
             print(f"Found {len(missing_ref_df)} statement(s) that need to be retried.")
+            print(f"Statement(s): {missing_ref_df}")
 
         return missing_ref_df
 
@@ -87,6 +90,7 @@ def process_retry_logic(count, collection_processed_name, new_ref_collection,
     while count > 0 and not missing_ref_df.empty:
         # Generate new improved prompt using prompt generator and old prompt (to make sure prompt generator improves on old prompt)
         new_prompt = asyncio.run(generate_improved_prompt(old_prompt))
+        print(new_prompt)
         #Add new prompt to db if it doesnt exist
         add_prompt_to_db(uri,db.name,'prompts',new_prompt)
         #generated prompt is now the new prompt for next loop if necessary
@@ -106,6 +110,7 @@ def process_retry_logic(count, collection_processed_name, new_ref_collection,
                     valid_collection_name_new='new_valid',valid_collection_name_original=valid_collection_name,
                     invalid_collection_name_new='new_invalid',invalid_collection_name_original=invalid_collection_name,
                     not_match_new='new_notmatch',not_match_original=not_match)
+        move_files('retry_paper','papers')
         #we calculate missing ref df again
         collection_valid=db[valid_collection_name]
         collection_retry=db['retry']
