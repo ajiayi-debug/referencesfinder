@@ -323,7 +323,7 @@ def update_downloadable_status(df: pd.DataFrame, pdf_folder: str) -> pd.DataFram
 
 
 
-#move ext files to papers
+#move ext files to papers, keeping a copy in old directory
 
 def move_pdf_files(source_folder: str, destination_folder: str):
     # Check if the source folder exists
@@ -349,6 +349,7 @@ def move_pdf_files(source_folder: str, destination_folder: str):
                 # If the PDF is invalid, you can choose to ignore it
                 print(f"Ignored invalid PDF: {filename}")
 
+#move completedly based on type of file (whether valid pdf or not)
 def move_pdf_files_completedly(source_folder: str, destination_folder: str, invalid_folder: str):
     """
     Move PDF files from the source folder to the destination folder or invalid folder based on their validity.
@@ -377,6 +378,32 @@ def move_pdf_files_completedly(source_folder: str, destination_folder: str, inva
                 shutil.move(source_path, invalid_path)
                 print(f"Moved invalid PDF to invalid folder: {filename}")
 
+#just moving files completedly if pdf and valid
+def move_files(source_folder: str, destination_folder: str):
+    # Check if the source folder exists
+    if not os.path.exists(source_folder):
+        print(f"Source folder '{source_folder}' does not exist. Creating the folder.")
+        os.makedirs(source_folder)
+        return
+
+    # Create destination folder if it doesn't exist
+    os.makedirs(destination_folder, exist_ok=True)
+
+    # Loop through all files in the source folder
+    for filename in os.listdir(source_folder):
+        if filename.endswith('.pdf'):
+            print(f'Moving {filename} from {source_folder} to {destination_folder}')
+            source_path = os.path.join(source_folder, filename)
+            destination_path = os.path.join(destination_folder, filename)
+            
+            if validate_pdf(source_path):
+                # If the PDF is valid, move it to the destination folder
+                shutil.move(source_path, destination_path)
+                print(f"Moved valid external PDF: {filename}")
+            else:
+                # If the PDF is invalid, you can choose to ignore it
+                print(f"Ignored invalid PDF: {filename}")
+    print('Moved new-found papers to main papers directory.')
 
 #check if each iteration same
 def validate_pdf(file_path):

@@ -89,16 +89,18 @@ async def retrieve_sieve_async(df, code):
     no_dfs = []
 
     # Process each row asynchronously using the process_row_async function
-    # Define a semaphore to limit the number of concurrent tasks
+    # Define a semaphore to limit the number of concurrent tasks (added because VPN cause my tasks to throttle, you can try to remove from this line onwards to)
     semaphore = asyncio.Semaphore(5)  # Adjust the number as needed
 
     async def process_row_with_semaphore(row):
         """Wrapper function to use semaphore for each task."""
         async with semaphore:
             return await process_row_async(row, code)
-
     # Create tasks with semaphore-wrapped function
     tasks = [process_row_with_semaphore(row) for _, row in df.iterrows()]
+    #this line then replace with
+    #tasks = [process_row_async(row) for _, row in df.iterrows()]
+    #for quicker times (for context, without the vpn a 8 hours task takes 2 hours)
     
     # Use tqdm_asyncio to track progress of async tasks
     for result_type, new_row in await tqdm_asyncio.gather(*tasks, desc='Processing rows in parallel'):
@@ -128,16 +130,18 @@ async def retrieve_sieve_async_check(df, code):
     no_dfs = []
 
     # Process each row asynchronously using the process_row_async function
-    # Define a semaphore to limit the number of concurrent tasks
+    # Define a semaphore to limit the number of concurrent tasks (added because VPN cause my tasks to throttle, you can try to remove from this line onwards to)
     semaphore = asyncio.Semaphore(5)  # Adjust the number as needed
 
-    async def process_row_with_semaphore_check(row):
+    async def process_row_with_semaphore(row):
         """Wrapper function to use semaphore for each task."""
         async with semaphore:
-            return await process_row_async_check(row, code)
-
+            return await process_row_async(row, code)
     # Create tasks with semaphore-wrapped function
-    tasks = [process_row_with_semaphore_check(row) for _, row in df.iterrows()]
+    tasks = [process_row_with_semaphore(row) for _, row in df.iterrows()]
+    #this line then replace with
+    #tasks = [process_row_async(row) for _, row in df.iterrows()]
+    #for quicker times (for context, without the vpn a 8 hours task takes 2 hours)
     
     # Use tqdm_asyncio to track progress of async tasks
     for result_type, new_row in await tqdm_asyncio.gather(*tasks, desc='Processing rows in parallel'):
@@ -460,7 +464,7 @@ def cleaning(valid_collection_name, not_match, threshold=70, change_to_add=False
     invalid_rows = []
 
     # Iterate through rows and classify them
-    #if rows already cleaned, will skip over!
+    # if rows already cleaned, will skip over!
     for idx, row in df.iterrows():
         extracted_df = extract_classification(row['Sieving by gpt 4o'])
 
@@ -477,6 +481,16 @@ def cleaning(valid_collection_name, not_match, threshold=70, change_to_add=False
 
     # Combine valid rows into a DataFrame
     valid_df = pd.concat(valid_rows, ignore_index=True) if valid_rows else pd.DataFrame()
+
+    # If valid_df is empty, skip filtering and retry logic
+    if valid_df.empty:
+        print("No valid rows found. Skipping filtering and retry logic.")
+        # Export invalid data if required
+        invalid_df = pd.concat([pd.DataFrame(invalid_rows)], ignore_index=True)
+        send_excel(invalid_df, 'RAG', 'test_invalid.xlsx')
+        records3 = invalid_df.to_dict(orient='records')
+        insert_documents(uri, db.name, not_match, records3)
+        return  # Exit the function early as there's no valid data to process further
 
     # Identify rows where reference text is found within the content
     matches_df = valid_df[valid_df.apply(contains_reference_text, axis=1)]
@@ -498,7 +512,6 @@ def cleaning(valid_collection_name, not_match, threshold=70, change_to_add=False
             indicator=True
         ).query('_merge == "left_only"').drop('_merge', axis=1)
 
-
     # Group the remaining valid rows and apply the top 5 or all top scores logic
     top_ranked_with_ties_df = (
         filtered_df.groupby(
@@ -506,42 +519,39 @@ def cleaning(valid_collection_name, not_match, threshold=70, change_to_add=False
         ).apply(top_5_or_all_top_scores).reset_index(drop=True)
     )
 
-
     if change_to_add:
         # Send top-ranked output to an Excel file
         send_excel(top_ranked_with_ties_df, 'RAG', 'top5_new.xlsx')
-        records1=top_ranked_with_ties_df.to_dict(orient='records')
+        records1 = top_ranked_with_ties_df.to_dict(orient='records')
         upsert_database_and_collection(uri, db.name, 'top_results', records1)
 
         # Send the cleaned valid rows to an Excel file
         send_excel(valid_df, 'RAG', 'valid_new.xlsx')
-        records2=valid_df.to_dict(orient='records')
+        records2 = valid_df.to_dict(orient='records')
         upsert_database_and_collection(uri, db.name, valid_collection_name, records2)
-
     else:
         # Send top-ranked output to an Excel file
         send_excel(top_ranked_with_ties_df, 'RAG', 'top5.xlsx')
-        records1=top_ranked_with_ties_df.to_dict(orient='records')
+        records1 = top_ranked_with_ties_df.to_dict(orient='records')
         replace_database_collection(uri, db.name, 'top_results', records1)
 
         # Send the cleaned valid rows to an Excel file
         send_excel(valid_df, 'RAG', 'valid.xlsx')
-        records2=valid_df.to_dict(orient='records')
+        records2 = valid_df.to_dict(orient='records')
         replace_database_collection(uri, db.name, valid_collection_name, records2)
 
     # Combine invalid rows and matches into one DataFrame
     invalid_df = pd.concat([pd.DataFrame(invalid_rows), matches_df], ignore_index=True)
     send_excel(invalid_df, 'RAG', 'test_invalid.xlsx')
-    records3=invalid_df.to_dict(orient='records')
-    insert_documents(uri,db.name,not_match,records3)
+    records3 = invalid_df.to_dict(orient='records')
+    insert_documents(uri, db.name, not_match, records3)
 
     # If retry_df is not empty, save it as an Excel file
     if not retry_df.empty:
         send_excel(retry_df, 'RAG', 'retry.xlsx')
-    records4=retry_df.to_dict(orient='records')
-    replace_database_collection(uri, db.name, 'retry', records4)
+        records4 = retry_df.to_dict(orient='records')
+        replace_database_collection(uri, db.name, 'retry', records4)
 
-    # return retry_df,valid_df
 
 
 
@@ -600,9 +610,20 @@ def add_to_existing(collection_processed_name_new, collection_processed_name_ori
         'Date': 1
     }))
     
-    # Insert documents into the original collections
+    # Insert documents into the original collections then clear the new collection such that 
+    # if there are no new data found in this iteration, the previous iteration of data will not be added due to 
+    # it not being cleared in the previous iteration
     insert_documents(uri, db.name, collection_processed_name_original, documents1)
+    clear_collection(collection_processed_name_new)
+    
     insert_documents(uri, db.name, new_ref_collection_original, documents2)
+    clear_collection(new_ref_collection_new)
+    
     insert_documents(uri, db.name, valid_collection_name_original, documents3)
+    clear_collection(valid_collection_name_new)
+    
     insert_documents(uri, db.name, invalid_collection_name_original, documents4)
+    clear_collection(invalid_collection_name_new)
+    
     insert_documents(uri, db.name, not_match_original, documents5)
+    clear_collection(not_match_new)

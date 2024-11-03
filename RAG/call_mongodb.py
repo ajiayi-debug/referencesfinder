@@ -221,3 +221,11 @@ def insert_documents(uri, db_name, collection_name, records):
     finally:
         client.close()
 
+#clear all documents in a collection
+def clear_collection(collection_name):
+    """
+    Clears all documents from the specified MongoDB collection.
+    """
+    collection = db[collection_name]
+    collection.delete_many({})
+    print(f"Cleared all documents from collection: {collection_name}")
