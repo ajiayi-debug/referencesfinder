@@ -7,6 +7,9 @@ import logging
 import asyncio
 from agentic_search_system import *
 
+#time start: 5:40
+#time end: 
+
 """Sanity checking"""
 """Get the statements and their respective reference articles and send to mongodb"""
 logging.info('Finding initial references')
