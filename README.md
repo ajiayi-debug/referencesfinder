@@ -57,8 +57,7 @@ The automation of reference management and article updates enables FC Institute 
 
 
 ## Legend
-![image](https://github.com/user-attachments/assets/50d0a1bb-22ea-4421-9494-f707caedcd24)
-
+![image](https://github.com/user-attachments/assets/2aaad6da-0f6b-45bd-95b8-a581129d56cf)
 
 ## Symbols
 ![image](https://github.com/user-attachments/assets/185fb3c1-7f2f-4294-a767-1ced9900ca97)
