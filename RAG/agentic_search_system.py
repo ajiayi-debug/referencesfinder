@@ -143,6 +143,7 @@ def process_retry_logic(count, collection_processed_name, new_ref_collection,
         retry=pd.DataFrame(documents_retry)
         # Update the missing references DataFrame from existing valid collection and statement collection (that already has new data added)
         missing_ref_df = retrieve_missing_references(valid, retry, statement_df)
+        update_database_and_excel(missing_ref_df, uri, db)
 
         count -= 1  # Decrement the count
     print(f"Retried search {3-count} times")
