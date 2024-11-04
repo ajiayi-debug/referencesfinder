@@ -75,7 +75,7 @@ def update_database_and_excel(missing_ref_df, uri, db):
 
 #while loop to perform agentic search a max of three times (stops when all conditions of satisfactory papers found met)
 def process_retry_logic(count, collection_processed_name, new_ref_collection, 
-                              valid_collection_name, invalid_collection_name, not_match, statement_df, missing_ref_df, threshold):
+                              valid_collection_name, invalid_collection_name, not_match, statement_df, missing_ref_df, threshold,top_5):
     #Add original prompt to db
     old_prompt = """
         What are the keywords in terms of topics for the Text? Use the keywords to write keyword searches 
@@ -103,13 +103,14 @@ def process_retry_logic(count, collection_processed_name, new_ref_collection,
         # Re-fetch new references after processing and add another collection outside original collections for each collection type
         retrieve_sieve_references_new(collection_processed_name='agentic_new_chunked',new_ref_collection='new_metadata',valid_collection_name='new_valid', invalid_collection_name='new_invalid',not_match='new_notmatch')
         # We clean new data in a seperate collection (like their respective new, seperate, collection)
-        cleaning(valid_collection_name='new_valid',not_match='new_notmatch',threshold=threshold)
+        cleaning(valid_collection_name='new_valid',not_match='new_notmatch',top_5='top_5_new',threshold=threshold)
         # Add new found data to existing data to determine if need continue loop since measures whole existing database
         add_to_existing(collection_processed_name_new='agentic_new_chunked',collection_processed_name_original=collection_processed_name,
                     new_ref_collection_new='new_metadata',new_ref_collection_original=new_ref_collection,
                     valid_collection_name_new='new_valid',valid_collection_name_original=valid_collection_name,
                     invalid_collection_name_new='new_invalid',invalid_collection_name_original=invalid_collection_name,
-                    not_match_new='new_notmatch',not_match_original=not_match)
+                    not_match_new='new_notmatch',not_match_original=not_match,
+                    top_5_new='top_5_new',top_5_original=top_5)
         move_files('retry_paper','papers')
         #we calculate missing ref df again
         collection_valid=db[valid_collection_name]
@@ -146,11 +147,12 @@ def process_retry_logic(count, collection_processed_name, new_ref_collection,
         update_database_and_excel(missing_ref_df, uri, db)
 
         count -= 1  # Decrement the count
-    print(f"Retried search {3-count} times")
+        
+    print(f"Retried search a total of {3-count} times")
 
 #agentic search function (main function)
 def agentic_search(collection_processed_name,new_ref_collection, 
-                   valid_collection_name,invalid_collection_name,not_match,threshold=False):
+                   valid_collection_name,invalid_collection_name,not_match,top_5,threshold=False):
     logging.info("Beginning Agentic Search for statements' keywords that did not return satisfactory papers.")
 
     # Load collated statements and citations from the database once.
@@ -218,7 +220,8 @@ def agentic_search(collection_processed_name,new_ref_collection,
             not_match=not_match,
             statement_df=statement_df,
             missing_ref_df=missing_ref_df,
-            threshold=threshold 
+            threshold=threshold,
+            top_5=top_5 
             )
         print('Finished agentic search loop')
     else:

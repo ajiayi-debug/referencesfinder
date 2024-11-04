@@ -436,7 +436,7 @@ def contains_reference_text(row):
     return bool(pattern.search(row['Sieving by gpt 4o']))
 
 
-def cleaning(valid_collection_name, not_match, threshold=70, change_to_add=False):
+def cleaning(valid_collection_name, not_match, top_5, threshold=70, change_to_add=False):
     # Fetch documents from the collection
     collection_valid = db[valid_collection_name]
     documents = list(
@@ -488,7 +488,7 @@ def cleaning(valid_collection_name, not_match, threshold=70, change_to_add=False
         insert_documents(uri, db.name, not_match, records3)
         return  # Exit the function early as there's no valid data to process further
 
-    # Identify rows where reference text is found within the content
+    # Identify rows where reference text is found within the content and remove them (hallucinations)
     matches_df = valid_df[valid_df.apply(contains_reference_text, axis=1)]
     filtered_df = valid_df[~valid_df.apply(contains_reference_text, axis=1)]
 
@@ -517,32 +517,35 @@ def cleaning(valid_collection_name, not_match, threshold=70, change_to_add=False
 
     if change_to_add:
         # Send top-ranked output to an Excel file
-        send_excel(top_ranked_with_ties_df, 'RAG', 'top5_new.xlsx')
+        xlsx=top_5+'.xlsx'
+        send_excel(top_ranked_with_ties_df, 'RAG', xlsx)
         records1 = top_ranked_with_ties_df.to_dict(orient='records')
-        upsert_database_and_collection(uri, db.name, 'top_results', records1)
-
+        upsert_database_and_collection(uri, db.name, top_5, records1)
+        valid_xlsx=valid_collection_name+'.xlsx'
         # Send the cleaned valid rows to an Excel file
-        send_excel(valid_df, 'RAG', 'valid_new.xlsx')
+        send_excel(valid_df, 'RAG', valid_xlsx)
         records2 = valid_df.to_dict(orient='records')
         upsert_database_and_collection(uri, db.name, valid_collection_name, records2)
     else:
         # Send top-ranked output to an Excel file
-        send_excel(top_ranked_with_ties_df, 'RAG', 'top5.xlsx')
+        xlsx=top_5+'.xlsx'
+        send_excel(top_ranked_with_ties_df, 'RAG', xlsx)
         records1 = top_ranked_with_ties_df.to_dict(orient='records')
-        replace_database_collection(uri, db.name, 'top_results', records1)
-
+        replace_database_collection(uri, db.name, top_5, records1)
+        valid_xlsx=valid_collection_name+'.xlsx'
         # Send the cleaned valid rows to an Excel file
-        send_excel(valid_df, 'RAG', 'valid.xlsx')
+        send_excel(valid_df, 'RAG', valid_xlsx)
         records2 = valid_df.to_dict(orient='records')
         replace_database_collection(uri, db.name, valid_collection_name, records2)
 
     # Combine invalid rows and matches into one DataFrame
     invalid_df = pd.concat([pd.DataFrame(invalid_rows), matches_df], ignore_index=True)
-    send_excel(invalid_df, 'RAG', 'test_invalid.xlsx')
+    invalid_xlsx=not_match+'.xlsx'
+    send_excel(invalid_df, 'RAG', invalid_xlsx)
     records3 = invalid_df.to_dict(orient='records')
     insert_documents(uri, db.name, not_match, records3)
 
-    # If retry_df is not empty, save it as an Excel file
+    # If retry_df is not empty, save it 
     if not retry_df.empty:
         send_excel(retry_df, 'RAG', 'retry.xlsx')
         records4 = retry_df.to_dict(orient='records')
@@ -555,12 +558,14 @@ def add_to_existing(collection_processed_name_new, collection_processed_name_ori
                     new_ref_collection_new, new_ref_collection_original,
                     valid_collection_name_new, valid_collection_name_original,
                     invalid_collection_name_new, invalid_collection_name_original,
-                    not_match_new, not_match_original):
+                    not_match_new, not_match_original,
+                    top_5_new,top_5_original):
     collection_processed = db[collection_processed_name_new]
     collection_f = db[new_ref_collection_new]
     collection_valid = db[valid_collection_name_new]
     collection_invalid = db[invalid_collection_name_new]
     collection_notmatch = db[not_match_new]
+    collection_top5=db[top_5_new]
     
     # Fetch documents from MongoDB
     # Fetch documents from MongoDB
@@ -605,6 +610,17 @@ def add_to_existing(collection_processed_name_new, collection_processed_name_ori
         'Chunk': 1,
         'Date': 1
     }))
+
+    documents6 = list(collection_top5.find({}, {
+        '_id': 1,
+        'Sentiment':1,
+        'Confidence Score':1,
+        'Sieving by gpt 4o': 1,
+        'Reference article name': 1,
+        'Reference text in main article': 1,
+        'Chunk': 1,
+        'Date': 1
+    }))
     
     # Insert documents into the original collections then clear the new collection such that 
     # if there are no new data found in this iteration, the previous iteration of data will not be added due to 
@@ -623,3 +639,6 @@ def add_to_existing(collection_processed_name_new, collection_processed_name_ori
     
     insert_documents(uri, db.name, not_match_original, documents5)
     clear_collection(uri, db.name, not_match_new)
+
+    insert_documents(uri, db.name, top_5_original, documents6)
+    clear_collection(uri, db.name, top_5_new)
