@@ -19,8 +19,8 @@ From comparison of the available semantic chunkers, Aurelio Labs semantic chunke
 
 ---
 
-## **Problem Statement**
-The FC Institute currently incurs significant costs (~5000 euros per topic update) by outsourcing the review and update of references to external vendors. The process involves:
+## **Task Background**
+The FC Institute recurringly incurs significant costs (~5000 euros per topic update) by outsourcing the review and update of articles to external vendors. The process involves:
 1. **Manual search** for new references relevant to main article.
 2. **Manual Reading** for new references relevant to main article.
 3. **Verification** of existing references to ensure none have been retracted or corrected.  
@@ -48,9 +48,8 @@ The automation of reference management and article updates enables FC Institute 
 ---
 
 ## **Future Directions**
-- Implement **fully agentic search capabilities** once Azure OpenAI resources become available.
-- Expand automation to cover a wider range of article types and more complex updates.
-
+- Fine-tuning of agents for more accurate retrieval, sieving, scoring and search
+- A larger database to store different articles and all their related data such as old and new reference papers and their chunked content
 ---
 
 ## Diagram of **Current** workflow
@@ -63,7 +62,7 @@ The automation of reference management and article updates enables FC Institute 
 <img width="234" alt="database symbol" src="https://github.com/user-attachments/assets/4b8d4105-09a0-468a-94dd-4a8ed2cdd16f">
 <img width="130" alt="paper symbol" src="https://github.com/user-attachments/assets/41421712-738d-486b-a492-96ff89b27fb3">
 
-# Instructions for project (as of 22/10/2024)
+# Instructions for project (as of 04/11/2024)
 ## Installing dependencies
 To start, install the required packages:
 
@@ -131,7 +130,7 @@ x-api-key=[semantic_scholar_api]
 
 ### **Set up Folders (Temporary, Before Frontend Implementation)**
 1. **`main` Folder:**  
-   Place the article you want to update in this folder. Create it in the main directory (outside the `RAG` folder).
+   Place the article you want to update in this folder. Create this folder in the main directory (outside the `RAG` folder).
 
 2. **`text` Folder:**  
    Add reference articles cited in the main article here. Create this folder in the main directory.
@@ -144,41 +143,50 @@ x-api-key=[semantic_scholar_api]
 ### **RAG (Backend)**
 
 #### **Current Capabilities**  
-The backend checks the main article’s integrity, discovers new references, and evaluates how these references support or contradict the article’s cited statements.
+The backend checks the main article’s integrity, discovers new references, evaluates how these references support or contradict the article’s cited statements and searches for new reference papers as well as check their integrity, how they support or contradict the main articles'cited statements if the currentpapers are not sufficient (for more details, refer to the [wiki](https://github.com/ajiayi-debug/referencesfinder/wiki/5-Workflow-%E2%80%90-Agentic-search-using-Agentic-AI)).
 
-Run [gpt_retrieve_sieve.py](RAG/gpt_retrieve_sieve.py) to execute the process: 
+Run [agentic_search_rag.py](RAG/agentic_search_rag.py) to execute the process: 
 
 1. **Extract Statements and References:**  
+
    Extracts cited text and reference details from the main article, storing them in MongoDB.
 
 2. **Chunk and Store Reference Articles:**  
+
    Reference PDFs from `text` are embedded and chunked using the [Statistical Chunker](https://github.com/aurelio-labs/semantic-chunkers/blob/main/semantic_chunkers/chunkers/statistical.py). MongoDB stores the output, with **async I/O and threading** optimizing the process.
 
 3. **Retrieve and Sieve:**  
+
    GPT-4o matches chunks to statements, extracting exact text matches. Crossref API checks for retractions or corrections, with results saved to Excel.
 
 4. **Keyword Generation & New References:**  
+
    GPT-4o generates keywords, triggering **Semantic Scholar API** searches. Downloadable papers are saved to the `papers` folder, alongside any PDFs added to `external_pdfs`.
 
 5. **Process New References:**  
    Newly retrieved references undergo the same chunking process as in step 2.
 
 6. **Sieve and Label:**  
+
    The agent extracts relevant chunks, labels them as **supporting or opposing**, and assigns **confidence scores**.
 
-*Next Steps: Prioritize the top 5 results per statement and store them in MongoDB.*
+7. **Retrieve top 5 paper chunks for each statement and paper:**
+
+   Process the data to output the top 5 chunks per statement per paper per sentiment using **confidence score** given
+
+8. **Perform Agentic Search for poor performing statements:**
+
+   Statements that do not have papers found or all papers found are poor will go through the search process again with a different prompt formulated by an evaluator agent for keyword generation.
+   (Refer to the [wiki](https://github.com/ajiayi-debug/referencesfinder/wiki/5-Workflow-%E2%80%90-Agentic-search-using-Agentic-AI) for more information)
 
 
 #### **Near Future Plans**
-1. **Agentic Search Implementation:**  
-   Retry searches if the retrieved chunks don’t meet a confidence threshold or return no results. A re-evaluator agent will refine keyword generation prompts.
+1. **Develop a Frontend Interface:**
 
-2. **Develop a Frontend Interface.**  
-3. **Expert Selection of References:**  
-   Allow experts to choose which references to use for updating the main article.
+   Allow us to create table for next step as well as easy user interface
+2. **Expert Selection of References:**  
 
-4. **Expert Selection of Sieved Portions:**  
-   Experts can review sieved portions and instruct GPT-4o to create new statements based on opposing or critical content.
+   Allow experts to choose which references to use for updating the main article based on top 5 outputs. 
+3. **Export Final Output:**  
 
-5. **Export Final Output:**  
    Generate a `.txt` or `.pdf` file with the updated article content.
