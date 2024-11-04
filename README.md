@@ -67,7 +67,8 @@ The automation of reference management and article updates enables FC Institute 
 
 ![image](https://github.com/user-attachments/assets/ac6f1277-9588-43e1-a38c-8b1aaa2bd95b)
 
-![image](https://github.com/user-attachments/assets/074df774-1771-41af-9667-fe614070fcfd)
+![image](https://github.com/user-attachments/assets/0995aa0e-ee29-4334-b96e-63196d1d1a71)
+
 
 
 # Instructions for project (as of 04/11/2024)
