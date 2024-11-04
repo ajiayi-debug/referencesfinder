@@ -14,8 +14,9 @@ The **retrieval and sieving agent** decides which of the semantic chunk to retri
 The **fully agentic search capability** will autonomously refine the **keyword search process**. If new papers (or semantic chunks) do not meet a confidence score threshold or no relevant papers are found to support a statement, the system will **retry by adjusting the keyword generator prompt**. This iterative approach aims to optimize retrieval and sieving for higher accuracy without human intervention.
 
 ### **Semantic Chunking**
-#### **Aurelio labs Semantic Chunker** 
-#### From comparison of the available semantic chunkers, Aurelio Labs semantic chunker was chosen. For more details, refer to the [wiki](https://github.com/ajiayi-debug/referencesfinder/wiki/3-Workflow-%E2%80%90-Existing-reference-articles)
+#### 1. **Aurelio labs Semantic Chunker** 
+From comparison of the available semantic chunkers, Aurelio Labs semantic chunker was chosen. For more details, refer to the [wiki](https://github.com/ajiayi-debug/referencesfinder/wiki/3-Workflow-%E2%80%90-Existing-reference-articles)
+
 ---
 
 ## **Problem Statement**
