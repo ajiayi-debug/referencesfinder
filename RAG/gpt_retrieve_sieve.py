@@ -40,7 +40,7 @@ retrieve_sieve_references_new(collection_processed_name='new_chunked_noembed_3',
 
 """Clean the data for ranking (remove hallucinations as well) as well as obtain df of statements that need to be retried due to poor retrieved paper quality"""
 logging.info("Checking if any statement that has found paper needs to re-try keyword search as well as clean up hallucinations AND rank the sived portions")
-cleaning('Agentic_sieved_RAG_new_support_nosupport_confidence','no_match3_confidence')
+cleaning('Agentic_sieved_RAG_new_support_nosupport_confidence','no_match3_confidence','top_5')
 
 
 """
