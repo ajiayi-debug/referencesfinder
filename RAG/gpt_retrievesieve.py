@@ -90,7 +90,7 @@ async def retrieve_sieve_async(df, code):
 
     # Process each row asynchronously using the process_row_async function
     # Define a semaphore to limit the number of concurrent tasks (added because VPN cause my tasks to throttle, you can try to remove from this line onwards to)
-    semaphore = asyncio.Semaphore(5)  # Adjust the number as needed
+    semaphore = asyncio.Semaphore(10)  # Adjust the number as needed
 
     async def process_row_with_semaphore(row):
         """Wrapper function to use semaphore for each task."""
@@ -131,7 +131,7 @@ async def retrieve_sieve_async_check(df, code):
 
     # Process each row asynchronously using the process_row_async function
     # Define a semaphore to limit the number of concurrent tasks (added because VPN cause my tasks to throttle, you can try to remove from this line onwards to)
-    semaphore = asyncio.Semaphore(5)  # Adjust the number as needed
+    semaphore = asyncio.Semaphore(10)  # Adjust the number as needed
 
     async def process_row_with_semaphore(row):
         """Wrapper function to use semaphore for each task."""
@@ -226,10 +226,6 @@ def retrieve_sieve_references(collection_processed_name, valid_collection_name, 
     codable_df = pd.DataFrame(codable_df, columns=[ 'Reference text in main article', 'Reference article name','Date', 'Name of authors'])
     
     codable=codable_df.values.tolist()
-    # Perform full cycle and get references
-    # text = full_cycle(pdf_to_check, filename="extracted")
-    # output = get_references(text)
-    # codable = ast.literal_eval(output)
     #Check if any paper retracted or corrected. If yes, send to user as an excel file for user to take note (either way we are going to look for more recent papers) and send to mongo db 
     #for us to edit in final paper if the paper cannot be updated (like its the same paper in the final form)
     unique_dict = {item[1]: item for item in codable}
