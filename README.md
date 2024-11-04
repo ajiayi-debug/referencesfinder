@@ -7,10 +7,10 @@ The **References Finder** project aims to automate the updating process of non-b
 ## **Key features**
 ### **Agentic Components**
 
-##### 1. **Semi-Agentic RAG **
+#### 1. **Semi-Agentic RAG**
 The **retrieval and sieving agent** decides which of the semantic chunk to retrieve and sieve, but lacks the iterative, refinement process of a truly agentic agent
 
-#### 2. **Agentic Search **
+#### 2. **Agentic Search**
 The **fully agentic search capability** will autonomously refine the **keyword search process**. If new papers (or semantic chunks) do not meet a confidence score threshold or no relevant papers are found to support a statement, the system will **retry by adjusting the keyword generator prompt**. This iterative approach aims to optimize retrieval and sieving for higher accuracy without human intervention.
 
 ### **Semantic Chunking**
