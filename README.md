@@ -53,14 +53,22 @@ The automation of reference management and article updates enables FC Institute 
 ---
 
 ## Diagram of **Current** workflow
-<img width="714" alt="flowchart of current workflow 22102024" src="https://github.com/user-attachments/assets/89e7ca03-bdc1-4e56-93b1-b2b0da58055e">
+![image](https://github.com/user-attachments/assets/0e860536-d8f9-4b55-a492-6464ce1ba196)
+
 
 ## Legend
-<img width="698" alt="legend 22102024" src="https://github.com/user-attachments/assets/002a64c0-6640-43b5-b3f6-0d27632c5ba1">
+![image](https://github.com/user-attachments/assets/50d0a1bb-22ea-4421-9494-f707caedcd24)
+
 
 ## Symbols
-<img width="234" alt="database symbol" src="https://github.com/user-attachments/assets/4b8d4105-09a0-468a-94dd-4a8ed2cdd16f">
-<img width="130" alt="paper symbol" src="https://github.com/user-attachments/assets/41421712-738d-486b-a492-96ff89b27fb3">
+![image](https://github.com/user-attachments/assets/185fb3c1-7f2f-4294-a767-1ced9900ca97)
+
+![image](https://github.com/user-attachments/assets/e32db32f-e6d9-48c4-bf08-e537d347ee5a)
+
+![image](https://github.com/user-attachments/assets/ac6f1277-9588-43e1-a38c-8b1aaa2bd95b)
+
+![image](https://github.com/user-attachments/assets/074df774-1771-41af-9667-fe614070fcfd)
+
 
 # Instructions for project (as of 04/11/2024)
 ## Installing dependencies
