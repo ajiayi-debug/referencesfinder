@@ -492,11 +492,14 @@ def cleaning(valid_collection_name, not_match, top_5, threshold=70, change_to_ad
     matches_df = valid_df[valid_df.apply(contains_reference_text, axis=1)]
     filtered_df = valid_df[~valid_df.apply(contains_reference_text, axis=1)]
 
-    # Check for groups with top scores < 70 and create retry_df
+    # Check for groups with 'positive' sentiments with top scores < 70 and create retry_df
     retry_df = (
-        filtered_df.groupby(
+        filtered_df[filtered_df['Sentiment'] == 'positive']  # Filter only positive sentiment
+        .groupby(
             ['Reference article name', 'Reference text in main article', 'Sentiment'], as_index=False
-        ).apply(check_for_retry, threshold=threshold).reset_index(drop=True)
+        )
+        .apply(check_for_retry, threshold=threshold)
+        .reset_index(drop=True)
     )
 
     # Remove rows belonging to retry_df from valid_df
