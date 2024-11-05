@@ -286,6 +286,9 @@ def retrieve_sieve_references_new(collection_processed_name, new_ref_collection,
     collection_f=db[new_ref_collection]
     # Fetch documents from MongoDB
     documents1 = list(collection_processed.find({}, {'_id': 1, 'PDF File': 1, 'Text Content': 1, 'n_tokens': 1, 'Text Chunks': 1}))
+    if not documents1:
+        print(f"No documents found in '{collection_processed_name}'. Skipping further processing.")
+        return  # Exit the function early
     df = pd.DataFrame(documents1)
 
     documents2=list(collection_f.find({},{'_id': 1, 'Title of original reference article': 1, 'Text in main article referencing reference article': 1, 'Year reference article released': 1, 'Keywords for graph paper search': 1, 'Paper Id of new reference article found': 1, 'Title of new reference article found': 1, 'Year new reference article found published': 1, 'downloadable': 1, 'externalId_of_undownloadable_paper': 1, 'reason_for_failure': 1, 'pdf_url':1}))
@@ -480,6 +483,8 @@ def cleaning(valid_collection_name, not_match, top_5, threshold=70, change_to_ad
     # Initialize lists for valid and invalid rows
     valid_rows = []
     invalid_rows = []
+
+    
 
     # Iterate through rows and classify them
     for idx, row in df.iterrows():
