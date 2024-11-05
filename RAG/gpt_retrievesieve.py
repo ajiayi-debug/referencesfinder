@@ -90,7 +90,7 @@ async def retrieve_sieve_async(df, code):
 
     # Process each row asynchronously using the process_row_async function
     # Define a semaphore to limit the number of concurrent tasks (added because VPN cause my tasks to throttle, you can try to remove from this line onwards to)
-    semaphore = asyncio.Semaphore(10)  # Adjust the number as needed
+    semaphore = asyncio.Semaphore(20)  # Adjust the number as needed
 
     async def process_row_with_semaphore(row):
         """Wrapper function to use semaphore for each task."""
@@ -131,7 +131,7 @@ async def retrieve_sieve_async_check(df, code):
 
     # Process each row asynchronously using the process_row_async function
     # Define a semaphore to limit the number of concurrent tasks (added because VPN cause my tasks to throttle, you can try to remove from this line onwards to)
-    semaphore = asyncio.Semaphore(10)  # Adjust the number as needed
+    semaphore = asyncio.Semaphore(20)  # Adjust the number as needed
 
     async def process_row_with_semaphore(row):
         """Wrapper function to use semaphore for each task."""
@@ -420,15 +420,37 @@ def top_5_or_all_top_scores(group):
         return sorted_group.head(5)
 #get top score of each grp and check if below threshold
 
-#check if that particular statement's new ref article none of chunks meet threshold
-def check_for_retry(group,threshold=70):
-    # Check the maximum score in the group
-    max_score = group['Confidence Score'].max()
-    # If the top score is less than 70, add the entire group to retry_df
-    if max_score < threshold:
+#check if that particular statement's new ref article none of chunks meet threshold OR all chunks are negative
+def check_for_retry(group, threshold=70):
+    # Check if all sentiments are negative
+    all_negative_sentiment = (group['Sentiment'] == 'negative').all()
+
+    # Check if the group contains positive sentiments
+    has_positive_sentiment = (group['Sentiment'] == 'positive').any()
+
+    # Initialize flag to decide whether to retry
+    should_retry = False
+
+    # Condition 1: For groups with positive sentiments, check if max score < threshold
+    if has_positive_sentiment:
+        # Filter positive sentiments within the group
+        positive_group = group[group['Sentiment'] == 'positive']
+        max_score = positive_group['Confidence Score'].max()
+        if max_score < threshold:
+            should_retry = True
+
+    # Condition 2: If all sentiments are negative
+    if all_negative_sentiment:
+        should_retry = True
+
+    if should_retry:
         return group
     else:
         return pd.DataFrame()
+
+
+
+
 
 #to remove hallucination of model outputting the statement
 def contains_reference_text(row):
@@ -460,7 +482,6 @@ def cleaning(valid_collection_name, not_match, top_5, threshold=70, change_to_ad
     invalid_rows = []
 
     # Iterate through rows and classify them
-    # if rows already cleaned, will skip over!
     for idx, row in df.iterrows():
         extracted_df = extract_classification(row['Sieving by gpt 4o'])
 
@@ -492,50 +513,52 @@ def cleaning(valid_collection_name, not_match, top_5, threshold=70, change_to_ad
     matches_df = valid_df[valid_df.apply(contains_reference_text, axis=1)]
     filtered_df = valid_df[~valid_df.apply(contains_reference_text, axis=1)]
 
-    # Check for groups with 'positive' sentiments with top scores < 70 and create retry_df
+    # Apply the modified check_for_retry function without initial sentiment filtering
     retry_df = (
-        filtered_df[filtered_df['Sentiment'] == 'positive']  # Filter only positive sentiment
+        filtered_df
         .groupby(
-            ['Reference article name', 'Reference text in main article', 'Sentiment'], as_index=False
+            ['Reference article name', 'Reference text in main article'], as_index=False
         )
         .apply(check_for_retry, threshold=threshold)
         .reset_index(drop=True)
     )
 
-    # Remove rows belonging to retry_df from valid_df
+    # Remove rows belonging to retry_df from filtered_df to get the final valid_df
     if not retry_df.empty:
-        common_columns = valid_df.columns.intersection(retry_df.columns).tolist()
-        valid_df = valid_df.merge(
+        common_columns = filtered_df.columns.intersection(retry_df.columns).tolist()
+        valid_df = filtered_df.merge(
             retry_df[common_columns], 
             how='outer', 
             indicator=True
         ).query('_merge == "left_only"').drop('_merge', axis=1)
+    else:
+        valid_df = filtered_df.copy()
 
     # Group the remaining valid rows and apply the top 5 or all top scores logic
     top_ranked_with_ties_df = (
-        filtered_df.groupby(
+        valid_df.groupby(
             ['Reference article name', 'Reference text in main article', 'Sentiment'], as_index=False
         ).apply(top_5_or_all_top_scores).reset_index(drop=True)
     )
 
     if change_to_add:
         # Send top-ranked output to an Excel file
-        xlsx=top_5+'.xlsx'
+        xlsx = top_5 + '.xlsx'
         send_excel(top_ranked_with_ties_df, 'RAG', xlsx)
         records1 = top_ranked_with_ties_df.to_dict(orient='records')
         upsert_database_and_collection(uri, db.name, top_5, records1)
-        valid_xlsx=valid_collection_name+'.xlsx'
+        valid_xlsx = valid_collection_name + '.xlsx'
         # Send the cleaned valid rows to an Excel file
         send_excel(valid_df, 'RAG', valid_xlsx)
         records2 = valid_df.to_dict(orient='records')
         upsert_database_and_collection(uri, db.name, valid_collection_name, records2)
     else:
         # Send top-ranked output to an Excel file
-        xlsx=top_5+'.xlsx'
+        xlsx = top_5 + '.xlsx'
         send_excel(top_ranked_with_ties_df, 'RAG', xlsx)
         records1 = top_ranked_with_ties_df.to_dict(orient='records')
         replace_database_collection(uri, db.name, top_5, records1)
-        valid_xlsx=valid_collection_name+'.xlsx'
+        valid_xlsx = valid_collection_name + '.xlsx'
         # Send the cleaned valid rows to an Excel file
         send_excel(valid_df, 'RAG', valid_xlsx)
         records2 = valid_df.to_dict(orient='records')
@@ -543,18 +566,16 @@ def cleaning(valid_collection_name, not_match, top_5, threshold=70, change_to_ad
 
     # Combine invalid rows and matches into one DataFrame
     invalid_df = pd.concat([pd.DataFrame(invalid_rows), matches_df], ignore_index=True)
-    invalid_xlsx=not_match+'.xlsx'
+    invalid_xlsx = not_match + '.xlsx'
     send_excel(invalid_df, 'RAG', invalid_xlsx)
     records3 = invalid_df.to_dict(orient='records')
     insert_documents(uri, db.name, not_match, records3)
 
-    # If retry_df is not empty, save it 
+    # If retry_df is not empty, save it
     if not retry_df.empty:
         send_excel(retry_df, 'RAG', 'retry.xlsx')
         records4 = retry_df.to_dict(orient='records')
         replace_database_collection(uri, db.name, 'retry', records4)
-
-
 
 
 def add_to_existing(collection_processed_name_new, collection_processed_name_original,
@@ -591,9 +612,11 @@ def add_to_existing(collection_processed_name_new, collection_processed_name_ori
     }))
     documents3 = list(collection_valid.find({}, {
         '_id': 1,
+        'Sentiment':1,
+        'Confidence Score':1,
+        'Sieving by gpt 4o': 1,
         'Reference article name': 1,
         'Reference text in main article': 1,
-        'Sieving by gpt 4o': 1,
         'Chunk': 1,
         'Date': 1
     }))
