@@ -259,6 +259,8 @@ def search_and_retrieve_keyword_agentic(new_metadata,old_metadata,p=None):
 
     # Move PDF files
     move_pdf_files(ex_pdf, pdf_folder)
+
+    #new data send to excel (new_metadata)
     final_ans = 'new_ref_paper_ids_EXT_IDS_retry.xlsx'
     send_excel(df_updated, 'RAG', final_ans)
 
