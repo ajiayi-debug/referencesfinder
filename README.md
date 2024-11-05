@@ -68,7 +68,7 @@ The automation of reference management and article updates enables FC Institute 
 
 ![image](https://github.com/user-attachments/assets/0995aa0e-ee29-4334-b96e-63196d1d1a71)
 
-**Note:** The conditional database will not be created at all if all statements have satisfactory papers (refer to the [wiki](https://github.com/ajiayi-debug/referencesfinder/wiki/5-Workflow-%E2%80%90-Agentic-search-using-Agentic-AI) for definition of satisfactory/unsatisfactory papers)
+**Note:** The conditional database will not be created at all if all statements have satisfactory papers (refer to the [wiki](https://github.com/ajiayi-debug/referencesfinder/wiki/5-Workflow-%E2%80%90-Agentic-search-using-Agentic-AI) for definition of satisfactory/unsatisfactory papers) and the [agentic search loop](https://github.com/ajiayi-debug/referencesfinder/wiki/5-Workflow-%E2%80%90-Agentic-search-using-Agentic-AI) will stop/ will not start at all
 
 # Instructions for project (as of 04/11/2024)
 ## Installing dependencies
