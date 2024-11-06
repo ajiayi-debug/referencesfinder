@@ -424,7 +424,7 @@ def top_5_or_all_top_scores(group):
 #get top score of each grp and check if below threshold
 
 #check if that particular statement's new ref article none of chunks meet threshold OR all chunks are negative
-def check_for_retry(group, threshold=70):
+def check_for_retry(group, threshold):
     # Check if all sentiments are negative
     all_negative_sentiment = (group['Sentiment'] == 'negative').all()
 
@@ -461,7 +461,7 @@ def contains_reference_text(row):
     return bool(pattern.search(row['Sieving by gpt 4o']))
 
 
-def cleaning(valid_collection_name, not_match, top_5, threshold=70, change_to_add=False):
+def cleaning(valid_collection_name, not_match, top_5, threshold=75, change_to_add=False):
     # Fetch documents from the collection
     collection_valid = db[valid_collection_name]
     documents = list(
@@ -673,3 +673,77 @@ def add_to_existing(collection_processed_name_new, collection_processed_name_ori
 
     insert_documents(uri, db.name, top_5_original, documents6)
     clear_collection(uri, db.name, top_5_new)
+
+#for easy debugging for developer side. Meant to send final collections to excel for viewing if you dont have mongo shell installed 
+def send_excel_all(collection_processed_name,new_ref_collection,valid_collection_name,invalid_collection_name,not_match,top_5):
+    
+    # Fetch documents from MongoDB collections and convert to DataFrames
+    df_processed = pd.DataFrame(list(db[collection_processed_name].find({}, {
+        '_id': 1, 'PDF File': 1, 'Text Content': 1, 'n_tokens': 1, 'Text Chunks': 1
+    })))
+    name_processed=collection_processed_name+'.xlsx'
+    send_excel(df_processed,'RAG',name_processed)
+
+    df_new_ref = pd.DataFrame(list(db[new_ref_collection].find({}, {
+        '_id': 1,
+        'Title of original reference article': 1,
+        'Text in main article referencing reference article': 1,
+        'Year reference article released': 1,
+        'Keywords for graph paper search': 1,
+        'Paper Id of new reference article found': 1,
+        'Title of new reference article found': 1,
+        'Year new reference article found published': 1,
+        'downloadable': 1,
+        'externalId_of_undownloadable_paper': 1,
+        'reason_for_failure': 1,
+        'pdf_url': 1
+    })))
+    name_new_ref=new_ref_collection + '.xlsx'
+    send_excel(df_new_ref,'RAG',name_new_ref)
+    df_valid = pd.DataFrame(list(db[valid_collection_name].find({}, {
+        '_id': 1,
+        'Sentiment': 1,
+        'Confidence Score': 1,
+        'Sieving by gpt 4o': 1,
+        'Reference article name': 1,
+        'Reference text in main article': 1,
+        'Chunk': 1,
+        'Date': 1
+    })))
+    name_valid=valid_collection_name+'.xlsx'
+    send_excel(df_valid,'RAG',name_valid)
+
+    df_invalid = pd.DataFrame(list(db[invalid_collection_name].find({}, {
+        '_id': 1,
+        'Reference article name': 1,
+        'Reference text in main article': 1,
+        'Sieving by gpt 4o': 1,
+        'Chunk': 1,
+        'Date': 1
+    })))
+    name_invalid=invalid_collection_name+'.xlsx'
+    send_excel(df_invalid,'RAG',name_invalid)
+
+    df_not_match = pd.DataFrame(list(db[not_match].find({}, {
+        '_id': 1,
+        'Reference article name': 1,
+        'Reference text in main article': 1,
+        'Sieving by gpt 4o': 1,
+        'Chunk': 1,
+        'Date': 1
+    })))
+    name_not_match=not_match +'.xlsx'
+    send_excel(df_not_match,'RAG',name_not_match)
+    df_top_5 = pd.DataFrame(list(db[top_5].find({}, {
+        '_id': 1,
+        'Sentiment': 1,
+        'Confidence Score': 1,
+        'Sieving by gpt 4o': 1,
+        'Reference article name': 1,
+        'Reference text in main article': 1,
+        'Chunk': 1,
+        'Date': 1
+    })))
+    name_top_5=top_5+'.xlsx'
+    send_excel(df_top_5,'RAG',name_top_5)
+    
