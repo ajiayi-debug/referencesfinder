@@ -2,7 +2,7 @@
 
 ## **Overview**
 The **References Finder** project aims to automate the updating process of non-branded educational articles for **FrieslandCampina (FC) Institute**. By leveraging **semi-agentic Retrieval-Augmented Generation (RAG)**, **Agentic Search** and **semantic chunking**, the project addresses the challenges of manual reference management. This approach reduces both **time and financial costs** involved in outsourcing to vendors and the manual effort of reading and validating scientific articles.
-### For more information on experiments run on the differing methods, please refer to the [wiki](https://github.com/ajiayi-debug/referencesfinder/wiki) of this repository
+### For more information on experiments run on the differing methods and/or the detailed explanation on the methods, please refer to the [wiki](https://github.com/ajiayi-debug/referencesfinder/wiki) of this repository
 ---
 ## **Key features**
 ### **Agentic Components**
@@ -53,7 +53,8 @@ The automation of reference management and article updates enables FC Institute 
 ---
 
 ## Diagram of **Current** workflow
-![image](https://github.com/user-attachments/assets/a23206c4-a542-4798-9dbb-089b470e8332)
+![image](https://github.com/user-attachments/assets/a05bbda7-98ce-408f-98bd-82ab879bda90)
+
 
 
 ## Legend
@@ -68,7 +69,7 @@ The automation of reference management and article updates enables FC Institute 
 
 ![image](https://github.com/user-attachments/assets/0995aa0e-ee29-4334-b96e-63196d1d1a71)
 
-
+**Note:** The conditional database will not be created at all if all statements have satisfactory papers (refer to the [wiki](https://github.com/ajiayi-debug/referencesfinder/wiki/5-Workflow-%E2%80%90-Agentic-search-using-Agentic-AI) for definition of satisfactory/unsatisfactory papers) and the [agentic search loop](https://github.com/ajiayi-debug/referencesfinder/wiki/5-Workflow-%E2%80%90-Agentic-search-using-Agentic-AI) will stop/ will not start at all
 
 # Instructions for project (as of 04/11/2024)
 ## Installing dependencies
