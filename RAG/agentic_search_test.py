@@ -13,8 +13,8 @@ db = client['data']
 # duplicate_collection_with_drop(uri, db.name, "no_match_confidence", "no_match3_confidence_retry")
 # duplicate_collection_with_drop(uri, db.name, "top_5", "top_5_test")
 
-#delete_documents_by_reference_text(uri,db.name,target_collection_name,'Primary lactose intolerance is the most common form.')
+# delete_documents_by_reference_text(uri,db.name,'test_agentic_search_valid','Primary lactose intolerance is the most common form.')
 
-agentic_search(collection_processed_name='new_chunked_noembed_retry',new_ref_collection='new_paper_after_retry',valid_collection_name='test_agentic_search_valid',invalid_collection_name='No_match_agentic_new_confidence_retry',not_match='no_match3_confidence_retry',top_5='top_5_test',threshold=76)
+agentic_search(collection_processed_name='new_chunked_noembed_retry',new_ref_collection='new_paper_after_retry',valid_collection_name='test_agentic_search_valid',invalid_collection_name='No_match_agentic_new_confidence_retry',not_match='no_match3_confidence_retry',top_5='top_5_test',threshold=70)
 
 #test script for agentic search function

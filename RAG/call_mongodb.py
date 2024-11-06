@@ -79,7 +79,7 @@ def replace_database_collection(uri, db_name, collection_name, records):
         collection.insert_many(records)
         print(f"Inserted {len(records)} records into {collection_name}.")
 
-#for agentic search
+#for agentic search without checking histroy
 def add_prompt_to_db(uri, db_name, collection_name, prompt):
     """
     Adds a prompt to the MongoDB database if it doesn't already exist.
@@ -105,6 +105,57 @@ def add_prompt_to_db(uri, db_name, collection_name, prompt):
         print("Prompt added to the database.")
     else:
         print("Prompt already exists in the database.")
+
+#add prompt if dont exist as well as effective state. if exist, change effective state only
+def change_prompt_state_or_add(uri, db_name, collection_name, prompt, effective):
+    """
+    Adds a prompt to the MongoDB database with an 'effective' field (Y/N).
+    If the prompt exists, updates its 'effective' field.
+
+    Args:
+        uri (str): MongoDB connection URI.
+        db_name (str): Name of the database.
+        collection_name (str): Name of the collection.
+        prompt (str): The prompt to be added.
+        effective (str): 'Y' or 'N' indicating the effective state.
+    """
+    client = MongoClient(uri, tls=True, tlsCAFile=certifi.where())
+    db = client[db_name]
+    collection = db[collection_name]
+
+    # Upsert operation: insert or update the document
+    result = collection.update_one(
+        {'prompt': prompt},  # Query: look for a document with this prompt
+        {
+            '$setOnInsert': {'prompt': prompt},  # Set 'prompt' only if it's a new document
+            '$set': {'effective': effective}     # Always set 'effective' to the new value
+        },
+        upsert=True
+    )
+
+
+def get_effective_prompts(uri, db_name, collection_name):
+    """
+    Retrieves a list of prompts where the effectiveness is 'Y' from a MongoDB collection.
+
+    Args:
+        uri (str): MongoDB connection URI.
+        db_name (str): Name of the database.
+        collection_name (str): Name of the collection.
+
+    Returns:
+        list: A list of prompts where effectiveness is 'Y'.
+    """
+    client = MongoClient(uri)
+    db = client[db_name]
+    collection = db[collection_name]
+    
+    # Query the collection for documents where effectiveness is 'Y'
+    results = collection.find({"effectiveness": "Y"}, {"prompt": 1, "_id": 0})
+    
+    # Extract and return the list of prompts
+    prompts = [doc['prompt'] for doc in results]
+    return prompts
 
 #duplicate a collection
 def duplicate_collection(uri, db_name, source_collection_name, target_collection_name):
