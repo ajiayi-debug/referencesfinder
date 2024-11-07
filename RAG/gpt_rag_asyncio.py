@@ -190,6 +190,11 @@ async def call_rewritter_async(prompt):
     result = await async_retry_on_exception(rewritter, prompt)
     return result
 
+# agent to select best prompt from db
+async def call_selector_async(list_of_prompts):
+    await initialize_client()
+    result = await async_retry_on_exception(selector, list_of_prompts)
+    return result
 
 # support or oppose included, used to classify the new ref
 # Classification included
@@ -377,6 +382,38 @@ async def rewritter(old_prompt):
         "messages":[
             {"role": "system", "content": 'You are an advanced prompt tuning agent. You output only the tuned prompt and nothing else.'},
             {"role": "user", "content": [{"type": "text","text": retry_prompt}]}
+        ],
+        "temperature":0
+    }
+    response = await async_client.chat.completions.create(**data)
+    return response.choices[0].message.content
+
+
+
+#make sure list of prompt is a string first
+async def selector(list_of_prompts):
+    selector_prompt="""
+    You are a specialized evaluator agent tasked with selecting the best prompt for generating high-quality keywords from text-based statements. Your job is to review a list of prompts and choose the one most aligned with the following criteria:
+
+    List of prompts: {list_of_prompts}
+
+    Here are guidelines for the selecting the best prompt:
+
+        1. **Clarity and Specificity:** The prompt should clearly instruct the model to extract relevant keywords. Look for any elements that remove ambiguity and make the instructions straightforward.
+        
+        2. **Keyword Focus:** Ensure the prompt guides the model to capture essential concepts, focusing on nouns, named entities, and core ideas central to the statement's meaning.
+
+        3. **Constraints and Instructions:** The prompt should, where useful, include constraints on keyword quantity, discourage generic terms, and specify uniqueness in keywords, enhancing relevance.
+
+        4. **Format Requirements:** The selected prompt should direct the output to be structured in a clear, readable format for easy keyword identification.
+
+    Only output the best prompt from the list that excels in these criteria, ensuring it achieves the stated objective effectively.""".format(list_of_prompts=list_of_prompts)
+
+    data={
+        "model":"gpt-4o",
+        "messages":[
+            {"role": "system", "content": 'You are an advanced evaluation agent specialized in prompt selection. Your role is to evaluate a list of provided prompts and select only the best one based on clarity, focus on essential keywords, appropriate constraints, and structured format requirements. Output only the selected best prompt and nothing else.'},
+            {"role": "user", "content": [{"type": "text","text": selector_prompt}]}
         ],
         "temperature":0
     }
