@@ -45,7 +45,7 @@ time.sleep(60)
 
 """Clean the data for ranking (remove hallucinations as well) as well as obtain df of statements that need to be retried due to poor retrieved paper quality"""
 logging.info("Checking if any statement that has found paper needs to re-try keyword search as well as clean up hallucinations AND rank the sived portions")
-cleaning('Agentic_sieved_RAG_new_support_nosupport_confidence','no_match_confidence','top_5')
+cleaning('Agentic_sieved_RAG_new_support_nosupport_confidence','no_match_confidence','top_5',threshold=80)
 time.sleep(60)
 
 """Perform agentic search for poor performance papers or statements that has no papers returned"""
