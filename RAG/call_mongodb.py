@@ -292,28 +292,3 @@ def clear_collection(uri, db_name, collection_name):
     # Close the connection
     client.close()
 
-
-def duplicate_collection_with_drop(uri, db_name, source_collection_name, target_collection_name):
-    client = MongoClient(uri, tls=True, tlsCAFile=certifi.where())
-    db = client[db_name]
-    source_collection = db[source_collection_name]
-    target_collection = db[target_collection_name]
-    
-    # Check if the target collection exists, then drop it
-    if target_collection_name in db.list_collection_names():
-        target_collection.drop()
-        print(f"Dropped existing collection '{target_collection_name}'")
-    else:
-        print(f"Collection '{target_collection_name}' does not exist, so nothing was dropped.")
-
-    # Retrieve documents from the source collection
-    documents = list(source_collection.find())
-
-    # Insert documents into the target collection
-    if documents:
-        target_collection.insert_many(documents)
-        print(f"Duplicated {len(documents)} documents from '{source_collection_name}' to '{target_collection_name}'")
-    else:
-        print(f"No documents found in '{source_collection_name}' to duplicate.")
-
-# Usage
