@@ -10,28 +10,28 @@ from agentic_search_system import *
 #time start: 
 #time end: 
 
-"""Sanity checking"""
-"""Get the statements and their respective reference articles and send to mongodb"""
-logging.info('Finding initial references')
-get_statements()
-time.sleep(60)
-"""Allow user to add to mongodb for missing statements and their respective references"""
-#function to add missing statements if necessary
-"""process documents, noembed means we are not using embedding in retrieval and generate process but just to semantically chunk"""
-logging.info('Chunking Initial reference articles')
-process_pdfs_to_mongodb_noembed(files_directory='text', collection1='chunked_noembed')
-time.sleep(60)
+# """Sanity checking"""
+# """Get the statements and their respective reference articles and send to mongodb"""
+# logging.info('Finding initial references')
+# get_statements()
+# time.sleep(60)
+# """Allow user to add to mongodb for missing statements and their respective references"""
+# #function to add missing statements if necessary
+# """process documents, noembed means we are not using embedding in retrieval and generate process but just to semantically chunk"""
+# logging.info('Chunking Initial reference articles')
+# process_pdfs_to_mongodb_noembed(files_directory='text', collection1='chunked_noembed')
+# time.sleep(60)
 
-"""retrieve and sieve using gpt 4o"""
-logging.info("Comparing chunks with statements referencing the chunks' reference article in the main article")
-retrieve_sieve_references(collection_processed_name='chunked_noembed',valid_collection_name='Agentic_sieved_RAG_original', invalid_collection_name='No_match_agentic_original')
-time.sleep(60)
+# """retrieve and sieve using gpt 4o"""
+# logging.info("Comparing chunks with statements referencing the chunks' reference article in the main article")
+# retrieve_sieve_references(collection_processed_name='chunked_noembed',valid_collection_name='Agentic_sieved_RAG_original', invalid_collection_name='No_match_agentic_original')
+# time.sleep(60)
 
-"""Finding new references and checking them"""
-"""make keywords from statements then do keyword search and download"""
-logging.info('Searching for new references using statements')
-search_and_retrieve_keyword('Agentic_sieved_RAG_original', 'new_ref_found_Agentic')
-time.sleep(60)
+# """Finding new references and checking them"""
+# """make keywords from statements then do keyword search and download"""
+# logging.info('Searching for new references using statements')
+# search_and_retrieve_keyword('Agentic_sieved_RAG_original', 'new_ref_found_Agentic')
+# time.sleep(60)
 
 """Process new documents, noembed means we are not using embedding in retrieval and generate process but just to semantically chunk"""
 logging.info('Chunking new reference articles')
@@ -56,3 +56,6 @@ agentic_search(collection_processed_name='new_chunked_noembed',new_ref_collectio
 """Debug statement to see all data in excel form"""
 
 send_excel_all(collection_processed_name='new_chunked_noembed',new_ref_collection='new_ref_found_Agentic',valid_collection_name='Agentic_sieved_RAG_new_support_nosupport_confidence',invalid_collection_name='No_match_agentic_new_confidence',not_match='no_match_confidence',top_5='top_5')
+
+"""Function to let expert see a nice nice table hehe"""
+

@@ -1,35 +1,56 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React from 'react';
+import CardComponent from './components/CardComponent';
 
 function App() {
-  const [count, setCount] = useState(0)
+  const cardDataList = [
+    {
+      statement: "This is the first statement.",
+      articleName: "Article 1",
+      date:"2024",
+      authors:"a,b,c",
+      sentiment: "Positive",
+      score: "0.85",
+      summary: "Summary for the first statement.",
+    },
+    {
+      statement: "This is the second statement.",
+      articleName: "Article 2",
+      date:"2024",
+      authors:"a,b,c",
+      sentiment: "Neutral",
+      score: "0.75",
+      summary: "Summary for the second statement.",
+    },
+    {
+      statement: "This is the third statement.",
+      articleName: "Article 3",
+      date:"2024",
+      authors:"a,b,c",
+      sentiment: "Negative",
+      score: "0.65",
+      summary: "Summary for the third statement.",
+    },
+    // Add more items as needed
+  ];
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <div>
+      <h1>Sentiment Analysis</h1>
+      {cardDataList.map((data, index) => (
+        <CardComponent
+          key={index}  // Unique key for each card
+          statement={data.statement}
+          articleName={data.articleName}
+          date={data.date}
+          authors={data.authors}
+          sentiment={data.sentiment}
+          score={data.score}
+          summary={data.summary}
+        />
+      ))}
+    </div>
+  );
 }
 
-export default App
+export default App;
+

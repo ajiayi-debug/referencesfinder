@@ -7,7 +7,7 @@ import ast
 load_dotenv()
 
 
-def search_papers_by_keywords(keywords: str, year: int = None, exclude_name: str = None, fields: str = 'paperId,title,year,externalIds,openAccessPdf,isOpenAccess') -> dict:
+def search_papers_by_keywords(keywords: str, year: int = None, exclude_name: str = None, fields: str = 'paperId,title,year,externalIds,openAccessPdf,isOpenAccess,authors') -> dict:
     url = 'https://api.semanticscholar.org/graph/v1/paper/search'
     query_params = {'query': keywords, 'fields': fields}
     api_key = os.getenv('x-api-key')
@@ -51,7 +51,7 @@ def search_papers_by_keywords(keywords: str, year: int = None, exclude_name: str
     print("Max retries exceeded.")
     return None
 
-def total_search_by_keywords(keywords: str, year: int = None, exclude_name: str = None, fields: str = 'paperId,title,year,externalIds,openAccessPdf,isOpenAccess'):
+def total_search_by_keywords(keywords: str, year: int = None, exclude_name: str = None, fields: str = 'paperId,title,year,externalIds,openAccessPdf,isOpenAccess,authors'):
     """
     Search for papers based on keywords and optionally filter results by publication year,
     then return a list of paper dictionaries from the search results.
@@ -72,7 +72,7 @@ def total_search_by_keywords(keywords: str, year: int = None, exclude_name: str 
     
     return paper_list
 
-def total_search_by_grouped_keywords(keywords: str, year: int = None, exclude_name: str = None, fields: str = 'paperId,title,year,externalIds,openAccessPdf,isOpenAccess'):
+def total_search_by_grouped_keywords(keywords: str, year: int = None, exclude_name: str = None, fields: str = 'paperId,title,year,externalIds,openAccessPdf,isOpenAccess,authors'):
     """
     Search for papers based on keywords and optionally filter results by publication year,
     then return a list of paper dictionaries from the search results.
@@ -136,6 +136,10 @@ def extract_title(metadata_list: List[Dict[str, Any]]) -> List[str]:
 def extract_year(metadata_list: List[Dict[str, Any]]) -> List[str]:
     """Extract year from the metadata list."""
     return [paper['year'] for paper in metadata_list]
+
+def extract_author(metadata_list: List[Dict[str, Any]]) -> List[str]:
+    """Extract authors from the metadata list"""
+    return [paper['authors'] for paper in metadata_list]
 
 
 
@@ -268,7 +272,7 @@ def find_exact_paper_match(title: str, api_key=os.getenv('x-api-key')) -> Option
     # Prepare the query parameters
     params = {
         "query": title,
-        "fields": "paperId,title,year,externalIds,openAccessPdf,isOpenAccess",
+        "fields": "paperId,title,year,externalIds,openAccessPdf,isOpenAccess,authors",
         "limit": 10  # Retrieve more results for comparison
     }
 
@@ -292,7 +296,7 @@ def find_exact_paper_match(title: str, api_key=os.getenv('x-api-key')) -> Option
 
 
 
-def search_papers(keywords: str, year: int = None, exclude_name: str = None, fields: str = 'paperId,title,year,externalIds,openAccessPdf,isOpenAccess') -> dict:
+def search_papers(keywords: str, year: int = None, exclude_name: str = None, fields: str = 'paperId,title,year,externalIds,openAccessPdf,isOpenAccess,authors') -> dict:
     url = 'https://api.semanticscholar.org/graph/v1/paper/search'
     query_params = {'query': keywords, 'fields': fields}
     api_key = os.getenv('x-api-key')
@@ -337,7 +341,7 @@ def search_papers(keywords: str, year: int = None, exclude_name: str = None, fie
     return None
 
 
-def search_exact(keywords: str, year: int = None, exclude_name: str = None, fields: str = 'paperId,title,year,externalIds,openAccessPdf,isOpenAccess'):
+def search_exact(keywords: str, year: int = None, exclude_name: str = None, fields: str = 'paperId,title,year,externalIds,openAccessPdf,isOpenAccess,authors'):
     """
     Search for papers exactly based on title and optionally filter results by publication year,
     then return a list of paper dictionaries from the search results.
