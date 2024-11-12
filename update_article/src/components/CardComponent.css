@@ -38,3 +38,25 @@
     display: block;
   }
   
+  /* Table styling */
+.details-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+}
+
+.details-table th,
+.details-table td {
+  border: 1px solid #ddd; /* Adds lines to the table cells */
+  padding: 8px;
+  text-align: left;
+}
+
+.details-table th {
+  background-color: #f2f2f2; /* Light background for header */
+  font-weight: bold;
+}
+
+.details-table tr:nth-child(even) {
+  background-color: #f9f9f9; /* Alternating row colors */
+}

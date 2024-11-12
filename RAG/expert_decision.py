@@ -26,7 +26,7 @@ async def process_row_async(row):
     chunk=row['Chunk']
     if isinstance(chunk, str):
         chunk = ast.literal_eval(chunk)
-
+    date=row.loc['Date']
     await asyncio.sleep(10)
     # Use the async wrapper to call the GPT service with retry logic
     #ans = await call_summarizer_scorer_async(list_of_sieved_chunks,statement,sentiment)
@@ -39,7 +39,8 @@ async def process_row_async(row):
         'Reference article name': [name],
         'Reference text in main article': [statement],
         'Summary':[ans],
-        'authors':[authors]
+        'authors':[authors],
+        'Date':[date]
     })
     return new_row
 
@@ -88,7 +89,7 @@ def summarize_score(df):
 #then, we take all sieving by gpt 4o to summarize according t how much support/oppose reference text in main article
 #We also need to score how much paper supports/oppose statement as an overall of all top sieved chunks. 
 #include authors for citation
-def make_pretty_for_expert(top_5,new_ref_collection ):
+def make_pretty_for_expert(top_5,new_ref_collection,expert):
     collection_top5 = db[top_5]
     documents = list(
         collection_top5.find(
@@ -138,7 +139,7 @@ def make_pretty_for_expert(top_5,new_ref_collection ):
         lambda title: ', '.join(title_to_authors[title]) if title in title_to_authors else ''
     )
     grouped_chunks = df_top5.groupby(
-        ['Sentiment', 'Reference article name', 'Reference text in main article', 'authors']
+        ['Sentiment', 'Reference article name', 'Reference text in main article', 'authors','Date']
     ).agg({
         'Chunk': list,
         'Sieving by gpt 4o': list
@@ -146,7 +147,15 @@ def make_pretty_for_expert(top_5,new_ref_collection ):
 
     # No need to apply ast.literal_eval on 'Chunk' or 'Sieving by gpt 4o' since they are already text
     print(grouped_chunks.columns)
+
     test=summarize_score(grouped_chunks)
-    send_excel(test,'RAG','test.xlsx')
+    test['score'] = test['Summary'].str.extract(r'\(([^()]+)\)$')[0]  # Capture group for text in parentheses
+
+    # Remove the last occurrence of text in parentheses from the original 'Summary' column
+    test['Summary'] = test['Summary'].str.replace(r'\s*\([^()]*\)$', '', regex=True)
     
-make_pretty_for_expert('top_5','new_ref_found_Agentic')
+    name=expert+'.xlsx'
+    send_excel(test,'RAG',name)
+    records = test.to_dict(orient='records')
+    replace_database_collection(uri, db.name, expert, records)
+    

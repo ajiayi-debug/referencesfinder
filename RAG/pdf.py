@@ -662,3 +662,50 @@ def split_by_paragraph(text):
 def clean_text(text):
     cleaned_text = ''.join(char for char in text if unicodedata.category(char)[0] != 'C')
     return cleaned_text
+
+
+#extract images from pdf
+
+def extract_images_from_pdf(folder_path="main", output_folder="images"):
+    # Find the PDF file in the folder
+    pdf_files = [f for f in os.listdir(folder_path) if f.endswith(".pdf")]
+    
+    if not pdf_files:
+        print("No PDF file found in the folder.")
+        return
+    
+    # Use the first PDF file found
+    pdf_path = os.path.join(folder_path, pdf_files[0])
+    print(f"Processing file: {pdf_path}")
+    
+    # Create the output folder if it doesn't exist
+    os.makedirs(output_folder, exist_ok=True)
+
+    # Open the PDF file
+    doc = fitz.open(pdf_path)
+
+    # Loop through each page to extract images
+    for page_num in range(doc.page_count):
+        page = doc[page_num]
+        images = page.get_images(full=True)  # Get all images on the page
+
+        for img_index, img in enumerate(images):
+            xref = img[0]  # Image XREF (identifier within the PDF)
+            base_image = doc.extract_image(xref)  # Extract image details
+            
+            # Extract image bytes and metadata
+            image_bytes = base_image["image"]
+            image_ext = base_image["ext"]  # Image format (png, jpg, etc.)
+            
+            # Save the image
+            image_filename = f"page_{page_num + 1}_img_{img_index + 1}.{image_ext}"
+            image_path = os.path.join(output_folder, image_filename)
+
+            with open(image_path, "wb") as image_file:
+                image_file.write(image_bytes)
+
+            print(f"Saved {image_filename}")
+
+    print("Image extraction complete.")
+
+
