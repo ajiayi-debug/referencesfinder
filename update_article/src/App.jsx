@@ -1,51 +1,48 @@
-import React from 'react';
+// App.jsx
+import React, { useState } from 'react';
 import CardComponent from './components/CardComponent';
 
 function App() {
+  const [selectedCards, setSelectedCards] = useState([]);
+
   const cardDataList = [
     {
+      id: 1,
       statement: "This is the first statement.",
       articleName: "Article 1",
-      date:"2024",
-      authors:"a,b,c",
+      date: "2024",
+      authors: "a,b,c",
       sentiment: "Positive",
       score: "0.85",
       summary: "Summary for the first statement.",
+      details: [
+        { field: "Field 1", value: "Detail 1" },
+        { field: "Field 2", value: "Detail 2" }
+      ]
     },
-    {
-      statement: "This is the second statement.",
-      articleName: "Article 2",
-      date:"2024",
-      authors:"a,b,c",
-      sentiment: "Neutral",
-      score: "0.75",
-      summary: "Summary for the second statement.",
-    },
-    {
-      statement: "This is the third statement.",
-      articleName: "Article 3",
-      date:"2024",
-      authors:"a,b,c",
-      sentiment: "Negative",
-      score: "0.65",
-      summary: "Summary for the third statement.",
-    },
-    // Add more items as needed
+    // Additional cards here
   ];
+
+  const handleSelectChange = (id, isSelected) => {
+    setSelectedCards(prevSelected => 
+      isSelected ? [...prevSelected, id] : prevSelected.filter(cardId => cardId !== id)
+    );
+  };
+
+  const handleSendToBackend = () => {
+    console.log("Selected papers for updating:", selectedCards);
+    // Example: fetch('/api/sendCards', { method: 'POST', body: JSON.stringify(selectedCards) });
+  };
 
   return (
     <div>
-      <h1>Sentiment Analysis</h1>
-      {cardDataList.map((data, index) => (
+      <h1>Results</h1>
+      <button onClick={handleSendToBackend}>Send selected papers to update article</button>
+      {cardDataList.map((data) => (
         <CardComponent
-          key={index}  // Unique key for each card
-          statement={data.statement}
-          articleName={data.articleName}
-          date={data.date}
-          authors={data.authors}
-          sentiment={data.sentiment}
-          score={data.score}
-          summary={data.summary}
+          key={data.id}
+          {...data}
+          onSelectChange={(isSelected) => handleSelectChange(data.id, isSelected)}
         />
       ))}
     </div>
@@ -53,4 +50,6 @@ function App() {
 }
 
 export default App;
+
+
 

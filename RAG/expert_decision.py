@@ -87,6 +87,7 @@ def summarize_score(df):
 #function to split data according to reference article name, reference text in main article and sentiment
 #then, we take all sieving by gpt 4o to summarize according t how much support/oppose reference text in main article
 #We also need to score how much paper supports/oppose statement as an overall of all top sieved chunks. 
+#include authors for citation
 def make_pretty_for_expert(top_5,new_ref_collection ):
     collection_top5 = db[top_5]
     documents = list(
@@ -132,7 +133,7 @@ def make_pretty_for_expert(top_5,new_ref_collection ):
     # Extract author names for each row and replace the existing 'authors' column
     title_to_authors = df_metadata.set_index('Title of new reference article found')['authors'].to_dict()
 
-    # Step 2: Add authors to df_top5 based on matching titles
+    #Add authors to df_top5 based on matching titles
     df_top5['authors'] = df_top5['Reference article name'].apply(
         lambda title: ', '.join(title_to_authors[title]) if title in title_to_authors else ''
     )
