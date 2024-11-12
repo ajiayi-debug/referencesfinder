@@ -469,7 +469,7 @@ async def summarizer_scorer(list_of_sieved_chunks,statement,sentiment):
         oppose: If the paper actually provides evidence against the statement rather than supporting it.
         Format:
         Summarize the key ideas concisely, directly referencing excerpts with square brackets [ ].
-        End with a final assessment in parentheses, using (strongly support), (Meh), or (oppose).
+        End with a final assessment in parentheses (), using (strongly support), (Meh), or (oppose) in terms of how the evidence support the statement ONLY based on the scoring system.
         Be Concise and Objective:
         Focus on how effectively the excerpts align with the statement.
         Avoid adding extra interpretation beyond the given instructions.
@@ -526,7 +526,7 @@ async def summarizer_scorer(list_of_sieved_chunks,statement,sentiment):
         support: If the paper actually provides evidence in favor of the statement rather than opposing it.
         Format:
         Summarize the key ideas concisely, directly referencing excerpts with square brackets [ ].
-        End with a final assessment in parentheses, using (strongly oppose), (Meh), or (support).
+        End with a final assessment in parentheses (), using (strongly oppose), (Meh), or (support) in terms of how the evidence opposes the statement ONLY based on the scoring system.
         Be Concise and Objective:
         Focus on how effectively the excerpts oppose the statement.
         Avoid adding extra interpretation beyond the given instructions.

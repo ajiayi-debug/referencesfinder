@@ -1,5 +1,4 @@
-// CardComponent.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './CardComponent.css';
 
 const CardComponent = ({ 
@@ -8,23 +7,34 @@ const CardComponent = ({
   date, 
   authors, 
   sentiment, 
-  score, 
+  rating, 
   summary, 
-  details = [], 
+  sievingByGPT4o = [], 
+  chunk = [], 
+  globalViewMode, 
+  globalOverride, 
   onSelectChange 
 }) => {
-  const [isManual, setIsManual] = useState(false); // For toggling between summary and details
-  const [isSelected, setIsSelected] = useState(false); // For selecting the card for processing
+  const [viewMode, setViewMode] = useState("summary"); // Default to summary mode
+  const [isSelected, setIsSelected] = useState(false);
 
-  // Handle manual toggle
-  const handleManualToggle = () => {
-    setIsManual(!isManual);
-  };
+  // Apply the global view mode if globalOverride is true
+  useEffect(() => {
+    if (globalOverride) {
+      setViewMode(globalViewMode);
+    }
+  }, [globalViewMode, globalOverride]);
 
-  // Handle select checkbox
   const handleSelectChange = () => {
     setIsSelected(!isSelected);
-    onSelectChange(!isSelected); // Notify parent of selection change
+    onSelectChange(!isSelected);
+  };
+
+  // Set local view mode only if global override is off
+  const handleLocalViewChange = (mode) => {
+    if (!globalOverride) {
+      setViewMode(mode);
+    }
   };
 
   return (
@@ -35,19 +45,15 @@ const CardComponent = ({
         <div><strong>Year article released:</strong> {date}</div>
         <div><strong>Author(s):</strong> {authors}</div>
         <div><strong>Sentiment:</strong> {sentiment}</div>
-        <div><strong>Score (GPT):</strong> {score}</div>
+        <div><strong>Rating (GPT):</strong> {rating}</div>
       </div>
       
       <div className="card-options">
-        {/* Manual toggle button */}
-        <label>
-          <input 
-            type="checkbox" 
-            checked={isManual} 
-            onChange={handleManualToggle} 
-          />
-          Abstract(s)
-        </label>
+        {/* Individual toggle buttons for each view mode, disabled if globalOverride is on */}
+        <button onClick={() => handleLocalViewChange("summary")} disabled={globalOverride}>Summary</button>
+        <button onClick={() => handleLocalViewChange("sieving")} disabled={globalOverride}>Sieving by GPT-4o</button>
+        <button onClick={() => handleLocalViewChange("chunk")} disabled={globalOverride}>Chunk</button>
+        <button onClick={() => handleLocalViewChange("both")} disabled={globalOverride}>Both</button>
 
         {/* Select for processing checkbox */}
         <label>
@@ -61,25 +67,55 @@ const CardComponent = ({
       </div>
 
       <div className="card-body">
-        {isManual && details.length > 0 ? (
+        {viewMode === "summary" ? (
+          <p>{summary}</p>
+        ) : viewMode === "sieving" ? (
           <table className="details-table">
             <thead>
               <tr>
-                <th>Field</th>
-                <th>Value</th>
+                <th>Sieving by GPT-4o</th>
               </tr>
             </thead>
             <tbody>
-              {details.map((detail, index) => (
+              {sievingByGPT4o.map((text, index) => (
                 <tr key={index}>
-                  <td>{detail.field}</td>
-                  <td>{detail.value}</td>
+                  <td>{text}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : viewMode === "chunk" ? (
+          <table className="details-table">
+            <thead>
+              <tr>
+                <th>Chunk</th>
+              </tr>
+            </thead>
+            <tbody>
+              {chunk.map((text, index) => (
+                <tr key={index}>
+                  <td>{text}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         ) : (
-          <p>{summary}</p>
+          <table className="details-table">
+            <thead>
+              <tr>
+                <th>Sieving by GPT-4o</th>
+                <th>Chunk</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sievingByGPT4o.map((sievingText, index) => (
+                <tr key={index}>
+                  <td>{sievingText}</td>
+                  <td>{chunk[index] || ""}</td> {/* Use empty string if no corresponding chunk */}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
     </div>
