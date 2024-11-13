@@ -29,7 +29,7 @@ The FC Institute recurringly incurs significant costs (~5000 euros per topic upd
 ---
 
 ## **Proposed Solution**
-This project offers **semi-automated updates** for both references and article content, providing a more cost-effective and efficient solution.
+This project offers **semi-automated updates** for both references and article content, providing a more cost-effective and efficient solution. (or a fully automated process if you would like to rely entirely on agents (in progress))
 
 ### Key Benefits:
 - **Automated Reference Retrieval:** Identifies new relevant references using **Semantic Scholar API**.  
