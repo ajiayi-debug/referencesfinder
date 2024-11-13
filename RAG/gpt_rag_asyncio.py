@@ -429,7 +429,7 @@ async def selector(list_of_prompts):
 async def summarizer_scorer(list_of_sieved_chunks,statement,sentiment):
     if sentiment=='support': 
         summarizer_prompt_support="""
-        You are an expert summarizer and evaluator. Your role is to help determine whether a single paper provides strong support for a specific statement based on all its excerpts.
+        You are an expert summarizer and evaluator. Your role is to help determine whether a single paper is relevant in terms of providing support for a specific statement based on all its excerpts.
 
         Instructions:
 
@@ -439,47 +439,27 @@ async def summarizer_scorer(list_of_sieved_chunks,statement,sentiment):
 
         Provide an Overall Assessment:
 
-        strongly support: The paper provides strong support for the statement.
-        Meh: The paper offers limited or only partially relevant support for the statement.
-        oppose: The paper actually opposes the statement rather than supporting it.
+        Relevant: The paper is relevant in providing support for the statement.
+        Irrelevant: The paper is not relevant in supporting the statement (irrelevance to the statement)
+        Oppose: The paper actually opposes the statement, which in this case the sentiments of the extracts are identified wrongly
         Output Format:
 
         Summarize all excerpts concisely.
-        End with the assessment score in brackets (e.g., (strongly support), (Meh), or (oppose)).
-        Only output the summary and the score.
+        End with the assessment score in brackets () (e.g., (Relevant), (Irrelevant), or (Oppose)).
+        Output the summary and the score in brackets () ONLY.
 
         Input:
 
         Statement: {statement}
-        List of Excerpts: {list_of_sieved_chunks}
+        List of Excerpts that supports the statement: {list_of_sieved_chunks}
         """.format(list_of_sieved_chunks=list_of_sieved_chunks,statement=statement)
 
-        system_prompt_support="""
-        You are an expert evaluator and summarizer focused on determining the alignment of research excerpts with a specific statement. Each excerpt you receive is from the same paper, and your job is to evaluate whether the paper, as a whole, provides strong support, partial support, or opposition to the statement.
 
-        Your Task:
-        Summarize the Overall Key Ideas: Based on all excerpts provided, summarize the main ideas in relation to the statement. Look for points that directly support or challenge the statement and highlight these in your summary.
-
-        Use Exact Text: For accuracy, use the EXACT original text from the excerpts in square brackets [ ] within your summary. This direct referencing allows others to see the basis for your conclusions.
-
-        Provide a Final Assessment:
-
-        strongly support: If the paper provides strong, direct evidence in favor of the statement.
-        Meh: If the paper provides only limited or partially relevant support for the statement.
-        oppose: If the paper actually provides evidence against the statement rather than supporting it.
-        Format:
-        Summarize the key ideas concisely, directly referencing excerpts with square brackets [ ].
-        End with a final assessment in parentheses (), using (strongly support), (Meh), or (oppose) in terms of how the evidence support the statement ONLY based on the scoring system.
-        Be Concise and Objective:
-        Focus on how effectively the excerpts align with the statement.
-        Avoid adding extra interpretation beyond the given instructions.
-        Only output the summary and the score.
-        """
+        
 
         data={
             "model":"gpt-4o",
             "messages":[
-                {"role": "system", "content": system_prompt_support},
                 {"role": "user", "content": [{"type": "text","text": summarizer_prompt_support}]}
             ],
             "temperature":0
@@ -487,8 +467,7 @@ async def summarizer_scorer(list_of_sieved_chunks,statement,sentiment):
         response = await async_client.chat.completions.create(**data)
     else:
         summarizer_prompt_oppose="""
-        You are an expert summarizer and evaluator. Your role is to help determine whether a single paper provides strong opposition to a specific statement based on all its excerpts.
-
+        You are an expert summarizer and evaluator. Your role is to help determine whether a single paper is relevant in opposing the statement
         Instructions:
 
         Summarize the Key Idea of All Excerpts: Summarize the overall message conveyed by the excerpts in relation to the statement. Focus on how these excerpts challenge or contradict the statement’s validity.
@@ -497,46 +476,24 @@ async def summarizer_scorer(list_of_sieved_chunks,statement,sentiment):
 
         Provide an Overall Assessment:
 
-        strongly oppose: The paper provides strong opposition to the statement.
-        Meh: The paper offers limited or only partially relevant opposition to the statement.
-        support: The paper actually supports the statement rather than opposing it.
+        Relevant: The paper is relevant in opposing the statement (contradicts or challenges the statement)
+        Irrelevant: The paper is not relevant in opposing the statement (irrelevance to the statement)
+        Support: The paper actually supports the statement instead, which in this case the sentiment of the extracts are identified wrongly
         Output Format:
 
         Summarize all excerpts concisely.
-        End with the assessment score in brackets (e.g., (strongly oppose), (Meh), or (support)).
-        Only output the summary and the score.
+        End with the assessment score in brackets () (e.g., (Relevant), (Irrelevant), or (Support)). 
+        Output the summary and the score in brackets () ONLY.
 
         Input:
 
         Statement: {statement}
-        List of Excerpts: {list_of_sieved_chunks}
+        List of Excerpts that opposes the statement: {list_of_sieved_chunks}
         """.format(list_of_sieved_chunks=list_of_sieved_chunks,statement=statement)
-        system_prompt_oppose="""
-        You are an expert evaluator and summarizer focused on determining whether a single paper provides strong opposition to a specific statement based on its excerpts. Each excerpt you receive is from the same paper, and your job is to assess whether the paper effectively contradicts or challenges the statement.
-
-        Your Task:
-        Summarize the Overall Key Ideas: Based on all excerpts provided, summarize the main ideas in relation to the statement. Focus on points that directly challenge, contradict, or provide counter-evidence to the statement and highlight these in your summary.
-
-        Use Exact Text: For accuracy, use the EXACT original text from the excerpts in square brackets [ ] within your summary. This allows others to see the basis for your conclusions.
-
-        Provide a Final Assessment:
-
-        strongly oppose: If the paper provides strong, direct evidence that contradicts or opposes the statement.
-        Meh: If the paper provides only limited or partially relevant opposition to the statement.
-        support: If the paper actually provides evidence in favor of the statement rather than opposing it.
-        Format:
-        Summarize the key ideas concisely, directly referencing excerpts with square brackets [ ].
-        End with a final assessment in parentheses (), using (strongly oppose), (Meh), or (support) in terms of how the evidence opposes the statement ONLY based on the scoring system.
-        Be Concise and Objective:
-        Focus on how effectively the excerpts oppose the statement.
-        Avoid adding extra interpretation beyond the given instructions.
-        Only output the summary and the score.
-
-        """
+        
         data={
             "model":"gpt-4o",
             "messages":[
-                {"role": "system", "content": system_prompt_oppose},
                 {"role": "user", "content": [{"type": "text","text": summarizer_prompt_oppose}]}
             ],
             "temperature":0

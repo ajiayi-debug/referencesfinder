@@ -112,6 +112,20 @@ def summarize_score(df, got_authors=True):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         return loop.run_until_complete(summarize_score_async(df,got_authors=got_authors))
+    
+
+# switch sentiment due to overall sentiment being different from sentiment of each individual chunks
+def switch_sentiment(df):
+    # Apply function to modify Sentiment column based on Score column
+    def update_sentiment(row):
+        if row['Score'] == 'support':
+            return 'support' if row['Sentiment'] == 'oppose' else 'oppose'
+        return row['Sentiment']
+    
+    # Apply the function to each row and update Sentiment column
+    df['Sentiment'] = df.apply(update_sentiment, axis=1)
+    return df
+
 
 #function to split data according to reference article name, reference text in main article and sentiment
 #then, we take all sieving by gpt 4o to summarize according t how much support/oppose reference text in main article
@@ -177,10 +191,12 @@ def make_pretty_for_expert(top_5,new_ref_collection,expert):
     print(grouped_chunks.columns)
 
     test=summarize_score(grouped_chunks)
-    test['score'] = test['Summary'].str.extract(r'\(([^()]+)\)$')[0]  # Capture group for text in parentheses
+    test['score'] = test['Summary'].str.extract(r'[\(\[]([^()\[\]]+)[\)\]]$')[0]
+
 
     # Remove the last occurrence of text in parentheses from the original 'Summary' column
-    test['Summary'] = test['Summary'].str.replace(r'\s*\([^()]*\)$', '', regex=True)
+    test['Summary'] = test['Summary'].str.replace(r'[\(\[]([^()\[\]]+)[\)\]]$', '', regex=True)
+    
     
     name=expert+'.xlsx'
     send_excel(test,'RAG',name)
@@ -209,12 +225,6 @@ def make_summary_for_comparison(top_5,expert):
         )
     )
     df_top5=pd.DataFrame(documents)
-
-    
-    
-    
-
-    
     grouped_chunks = df_top5.groupby(
         ['Sentiment', 'Reference article name', 'Reference text in main article','Date']
     ).agg({
@@ -226,10 +236,11 @@ def make_summary_for_comparison(top_5,expert):
     print(grouped_chunks.columns)
 
     test=summarize_score(grouped_chunks,got_authors=False)
-    test['score'] = test['Summary'].str.extract(r'\(([^()]+)\)$')[0]  # Capture group for text in parentheses
+    test['score'] = test['Summary'].str.extract(r'[\(\[]([^()\[\]]+)[\)\]]$')[0]
+
 
     # Remove the last occurrence of text in parentheses from the original 'Summary' column
-    test['Summary'] = test['Summary'].str.replace(r'\s*\([^()]*\)$', '', regex=True)
+    test['Summary'] = test['Summary'].str.replace(r'[\(\[]([^()\[\]]+)[\)\]]$', '', regex=True)
     
     name=expert+'.xlsx'
     send_excel(test,'RAG',name)
