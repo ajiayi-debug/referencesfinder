@@ -4,7 +4,10 @@ import os
 from dotenv import load_dotenv
 from bson import ObjectId
 from fastapi.middleware.cors import CORSMiddleware
-
+from pydantic import BaseModel
+from typing import List
+from RAG.call_mongodb import replace_database_collection
+import certifi
 
 load_dotenv()  # Load environment variables
 
@@ -18,11 +21,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-# Connect to MongoDB
-client = AsyncIOMotorClient(os.getenv("uri_mongo"))
-db = client["data"]  # Replace with your actual database name
-collection = db["expert_data"]  # Replace with the collection name you want to fetch
+uri = os.getenv("uri_mongo")
+client = AsyncIOMotorClient(uri, tls=True, tlsCAFile=certifi.where())  # Use AsyncIOMotorClient
+db = client['data']
+collection_take = db["expert_data"] 
+collection_send = db['selected_papers']
 
 # Helper function to convert MongoDB documents to JSON-serializable format
 def serialize_document(document):
@@ -33,12 +36,38 @@ def serialize_document(document):
 @app.get("/data")
 async def get_data():
     try:
-        # Fetch and convert documents
-        documents = await collection.find().to_list(200)
-        data = [serialize_document(doc) for doc in documents]  # Apply conversion to each document
+        documents = await collection_take.find().to_list(200)
+        data = [serialize_document(doc) for doc in documents]
         return data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+
+# Define the data structure
+class Article(BaseModel):
+    id: str
+    sentiment: str
+    sievingByGPT4o: List[str]
+    chunk: List[str]
+    articleName: str
+    statement: str
+    summary: str
+    authors: str
+    date: int
+    rating: str
+
+
+
+@app.post("/save_selected_articles")
+async def save_selected_articles(selected_articles: List[Article]):
+    print("Received articles:", selected_articles)
+    articles_to_insert = [article.dict() for article in selected_articles]
+
+    # Remove `await` if `replace_database_collection` is synchronous
+    replace_database_collection(uri, db.name, 'selected_papers', articles_to_insert)
+
+    return {"message": "Selected articles saved successfully."}
+
 
 # Disconnect from MongoDB when the application stops
 @app.on_event("shutdown")

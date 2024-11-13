@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './CardComponent.css';
 
 const CardComponent = ({ 
+  id,
   statement, 
   articleName, 
   date, 
@@ -13,9 +14,10 @@ const CardComponent = ({
   chunk = [], 
   globalViewMode, 
   globalOverride, 
-  onSelectChange 
+  onSelectChange,
+  isReset
 }) => {
-  const [viewMode, setViewMode] = useState("summary"); // Default to summary mode
+  const [viewMode, setViewMode] = useState("summary");
   const [isSelected, setIsSelected] = useState(false);
 
   // Apply the global view mode if globalOverride is true
@@ -25,12 +27,18 @@ const CardComponent = ({
     }
   }, [globalViewMode, globalOverride]);
 
+  // Reset selection when isReset becomes true
+  useEffect(() => {
+    if (isReset) {
+      setIsSelected(false);
+    }
+  }, [isReset]);
+
   const handleSelectChange = () => {
     setIsSelected(!isSelected);
-    onSelectChange(!isSelected);
+    onSelectChange(id, !isSelected); // Pass the card id and new selection state to parent
   };
 
-  // Set local view mode only if global override is off
   const handleLocalViewChange = (mode) => {
     if (!globalOverride) {
       setViewMode(mode);
@@ -49,13 +57,12 @@ const CardComponent = ({
       </div>
       
       <div className="card-options">
-        {/* Individual toggle buttons for each view mode, disabled if globalOverride is on */}
         <button onClick={() => handleLocalViewChange("summary")} disabled={globalOverride}>Summary</button>
         <button onClick={() => handleLocalViewChange("sieving")} disabled={globalOverride}>Sieving by GPT-4o</button>
         <button onClick={() => handleLocalViewChange("chunk")} disabled={globalOverride}>Chunk</button>
         <button onClick={() => handleLocalViewChange("both")} disabled={globalOverride}>Both</button>
 
-        {/* Select for processing checkbox */}
+        {/* Checkbox to select for updating */}
         <label>
           <input 
             type="checkbox" 
@@ -111,7 +118,7 @@ const CardComponent = ({
               {sievingByGPT4o.map((sievingText, index) => (
                 <tr key={index}>
                   <td>{sievingText}</td>
-                  <td>{chunk[index] || ""}</td> {/* Use empty string if no corresponding chunk */}
+                  <td>{chunk[index] || ""}</td>
                 </tr>
               ))}
             </tbody>
@@ -123,5 +130,3 @@ const CardComponent = ({
 };
 
 export default CardComponent;
-
-

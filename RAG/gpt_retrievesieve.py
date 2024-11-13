@@ -479,6 +479,7 @@ def cleaning(valid_collection_name, not_match, top_5, threshold=75, change_to_ad
 
     # Convert documents to a DataFrame
     df = pd.DataFrame(documents)
+    print(df.columns)
 
     # Initialize lists for valid and invalid rows
     valid_rows = []
@@ -748,4 +749,103 @@ def send_excel_all(collection_processed_name,new_ref_collection,valid_collection
     })))
     name_top_5=top_5+'.xlsx'
     send_excel(df_top_5,'RAG',name_top_5)
+
+
+#cleaning without retry logic since this is initial reference articles so we just     
+def cleaning_initial(valid_collection_name, not_match, top_5, threshold=75, change_to_add=False):
+    # Fetch documents from the collection
+    collection_valid = db[valid_collection_name]
+    documents = list(
+        collection_valid.find(
+            {}, 
+            {
+                'Reference article name': 1, 
+                'Reference text in main article': 1, 
+                'Sieving by gpt 4o': 1, 
+                'Chunk': 1, 
+                'Date': 1
+            }
+        )
+    )
+
+    # Convert documents to a DataFrame
+    df = pd.DataFrame(documents)
+
+    # Initialize lists for valid and invalid rows
+    valid_rows = []
+    invalid_rows = []
+
+    
+
+    # Iterate through rows and classify them
+    for idx, row in df.iterrows():
+        extracted_df = extract_classification(row['Sieving by gpt 4o'])
+
+        if extracted_df is not None:
+            # Add additional columns to the valid DataFrame
+            extracted_df['Reference article name'] = row['Reference article name']
+            extracted_df['Reference text in main article'] = row['Reference text in main article']
+            extracted_df['Chunk'] = row['Chunk']
+            extracted_df['Date'] = row['Date']
+            valid_rows.append(extracted_df)
+        else:
+            # Store invalid rows if no valid classification is found
+            invalid_rows.append(row)
+
+    # Combine valid rows into a DataFrame
+    valid_df = pd.concat(valid_rows, ignore_index=True) if valid_rows else pd.DataFrame()
+
+    # If valid_df is empty, skip filtering and retry logic
+    if valid_df.empty:
+        print("No valid rows found. Skipping filtering and retry logic.")
+        # Export invalid data if required
+        invalid_df = pd.concat([pd.DataFrame(invalid_rows)], ignore_index=True)
+        send_excel(invalid_df, 'RAG', 'test_invalid.xlsx')
+        records3 = invalid_df.to_dict(orient='records')
+        insert_documents(uri, db.name, not_match, records3)
+        return  # Exit the function early as there's no valid data to process further
+
+    # Identify rows where reference text is found within the content and remove them (hallucinations)
+    matches_df = valid_df[valid_df.apply(contains_reference_text, axis=1)]
+    filtered_df = valid_df[~valid_df.apply(contains_reference_text, axis=1)]
+
+    
+
+    # Group the valid rows and apply the top 5 or all top scores logic
+    top_ranked_with_ties_df = (
+        valid_df.groupby(
+            ['Reference article name', 'Reference text in main article', 'Sentiment'], as_index=False
+        ).apply(top_5_or_all_top_scores).reset_index(drop=True)
+    )
+
+    if change_to_add:
+        # Send top-ranked output to an Excel file
+        xlsx = top_5 + '.xlsx'
+        send_excel(top_ranked_with_ties_df, 'RAG', xlsx)
+        records1 = top_ranked_with_ties_df.to_dict(orient='records')
+        upsert_database_and_collection(uri, db.name, top_5, records1)
+        valid_xlsx = valid_collection_name + '.xlsx'
+        # Send the cleaned valid rows to an Excel file
+        send_excel(valid_df, 'RAG', valid_xlsx)
+        records2 = valid_df.to_dict(orient='records')
+        upsert_database_and_collection(uri, db.name, valid_collection_name, records2)
+    else:
+        # Send top-ranked output to an Excel file
+        xlsx = top_5 + '.xlsx'
+        send_excel(top_ranked_with_ties_df, 'RAG', xlsx)
+        records1 = top_ranked_with_ties_df.to_dict(orient='records')
+        replace_database_collection(uri, db.name, top_5, records1)
+        valid_xlsx = valid_collection_name + '.xlsx'
+        # Send the cleaned valid rows to an Excel file
+        send_excel(valid_df, 'RAG', valid_xlsx)
+        records2 = valid_df.to_dict(orient='records')
+        replace_database_collection(uri, db.name, valid_collection_name, records2)
+
+    # Combine invalid rows and matches into one DataFrame
+    invalid_df = pd.concat([pd.DataFrame(invalid_rows), matches_df], ignore_index=True)
+    invalid_xlsx = not_match + '.xlsx'
+    send_excel(invalid_df, 'RAG', invalid_xlsx)
+    records3 = invalid_df.to_dict(orient='records')
+    insert_documents(uri, db.name, not_match, records3)
+
     
