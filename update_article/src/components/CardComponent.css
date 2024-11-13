@@ -1,5 +1,5 @@
 .card {
-    border: 1px solid #ddd;
+    border: 1px solid #ddddddc0;
     padding: 16px;
     border-radius: 8px;
     margin: 10px 0;
@@ -22,17 +22,6 @@
     position: relative;
   }
   
-  .hover-info {
-    display: none;
-    position: absolute;
-    top: 20px;
-    left: 10px;
-    background-color: #f9f9f9;
-    padding: 5px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    width: 200px;
-  }
   
   .card-body:hover .hover-info {
     display: block;
@@ -58,5 +47,5 @@
 }
 
 .details-table tr:nth-child(even) {
-  background-color: #f9f9f9; /* Alternating row colors */
+  background-color: #f9f9f9ea; /* Alternating row colors */
 }

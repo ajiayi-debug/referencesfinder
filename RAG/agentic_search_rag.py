@@ -28,6 +28,12 @@ from expert_decision import *
 # retrieve_sieve_references(collection_processed_name='chunked_noembed',valid_collection_name='Agentic_sieved_RAG_original', invalid_collection_name='No_match_agentic_original')
 # time.sleep(60)
 
+# """Clean the old references for a summary for comparison when updating articles"""
+# cleaning_initial(valid_collection_name='Agentic_sieved_RAG_original', not_match='No_match_agentic_original', top_5='top_5_original')
+
+# """Make pretty for comparison gfor replacement/addition to citation"""
+# make_summary_for_comparison(top_5='top_5_original',expert='Original_reference_expert_data')
+
 # """Finding new references and checking them"""
 # """make keywords from statements then do keyword search and download"""
 # logging.info('Searching for new references using statements')
@@ -61,4 +67,4 @@ from expert_decision import *
 """Make a table for data representation"""
 make_pretty_for_expert('top_5','new_ref_found_Agentic','expert_data')
 
-"""Send the table to frontend for representation"""
+

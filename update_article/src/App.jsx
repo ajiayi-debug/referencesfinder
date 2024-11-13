@@ -4,8 +4,9 @@ import CardComponent from './components/CardComponent';
 function App() {
   const [cardDataList, setCardDataList] = useState(null);
   const [selectedCards, setSelectedCards] = useState([]);
-  const [globalViewMode, setGlobalViewMode] = useState("summary"); // Set default global view mode
-  const [globalOverride, setGlobalOverride] = useState(true); // Set to always apply global view mode
+  const [globalViewMode, setGlobalViewMode] = useState("summary");
+  const [globalOverride, setGlobalOverride] = useState(true);
+  const [sentimentFilter, setSentimentFilter] = useState("all");
 
   useEffect(() => {
     fetch('http://127.0.0.1:8000/data')
@@ -27,7 +28,7 @@ function App() {
       })
       .catch(error => {
         console.error("Error fetching data:", error);
-        setCardDataList([]); // Prevent loading indicator loop if error occurs
+        setCardDataList([]);
       });
   }, []);
 
@@ -38,9 +39,50 @@ function App() {
   };
 
   const handleSendToBackend = () => {
-    console.log("Selected papers for updating:", selectedCards);
-    // Backend send logic here
+    const selectedArticles = cardDataList
+      .filter(card => selectedCards.includes(card.id))
+      .map(card => ({
+        id: card.id,
+        statement: card.statement,
+        articleName: card.articleName,
+        date: card.date,
+        authors: card.authors,
+        sentiment: card.sentiment,
+        rating: card.rating,
+        summary: card.summary,
+        sievingByGPT4o: card.sievingByGPT4o,
+        chunk: card.chunk
+      }));
+
+    console.log("Data being sent:", JSON.stringify(selectedArticles, null, 2));
+
+    fetch('http://127.0.0.1:8000/save_selected_articles', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(selectedArticles)
+    })
+    .then(response => {
+      if (response.ok) {
+        console.log("Selected articles successfully sent to the backend.");
+        alert("Selected articles successfully sent!");
+      } else {
+        console.error("Failed to send selected articles to the backend.");
+        alert("Failed to send selected articles.");
+      }
+    })
+    .catch(error => console.error("Error:", error));
   };
+
+  // Reset function to clear all selected cards
+  const resetSelections = () => {
+    setSelectedCards([]); // Clear selectedCards state
+  };
+
+  const filteredCardDataList = sentimentFilter === "all"
+    ? cardDataList
+    : cardDataList.filter(card => card.sentiment.toLowerCase() === sentimentFilter);
 
   if (cardDataList === null) {
     return <div>Loading data...</div>;
@@ -60,21 +102,28 @@ function App() {
             checked={globalOverride} 
             onChange={() => setGlobalOverride(!globalOverride)} 
           />
-          Override All
+          Override All with Global Mode
         </label>
       </div>
+      <div className="sentiment-filter">
+        <button onClick={() => setSentimentFilter("all")}>Show All</button>
+        <button onClick={() => setSentimentFilter("oppose")}>Show Oppose Only</button>
+        <button onClick={() => setSentimentFilter("support")}>Show Support Only</button>
+      </div>
       <button onClick={handleSendToBackend}>Send selected papers to update article</button>
+      <button onClick={resetSelections}>Clear All Selections</button> {/* New button to reset selections */}
 
-      {cardDataList.length === 0 ? (
+      {filteredCardDataList.length === 0 ? (
         <div>No data available or loading failed.</div>
       ) : (
-        cardDataList.map((data) => (
+        filteredCardDataList.map((data) => (
           <CardComponent
             key={data.id}
             {...data}
             globalViewMode={globalViewMode}
             globalOverride={globalOverride}
             onSelectChange={(isSelected) => handleSelectChange(data.id, isSelected)}
+            isReset={selectedCards.length === 0} // Pass a reset signal to CardComponent
           />
         ))
       )}

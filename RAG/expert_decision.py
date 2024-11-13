@@ -14,50 +14,78 @@ db = client['data']
 loop = asyncio.get_event_loop()
 
 
-async def process_row_async(row):
-    """Async function to process each row in the DataFrame using the async Azure OpenAI call."""
-    list_of_sieved_chunks = row['Sieving by gpt 4o']
-    if isinstance(list_of_sieved_chunks, str):
-        list_of_sieved_chunks = ast.literal_eval(list_of_sieved_chunks)
-    statement=row['Reference text in main article']
-    sentiment = str(row['Sentiment']).strip()
-    name=row['Reference article name']
-    authors=row['authors']
-    chunk=row['Chunk']
-    if isinstance(chunk, str):
-        chunk = ast.literal_eval(chunk)
-    date=row.loc['Date']
-    await asyncio.sleep(10)
-    # Use the async wrapper to call the GPT service with retry logic
-    #ans = await call_summarizer_scorer_async(list_of_sieved_chunks,statement,sentiment)
-    ans = await call_summarizer_scorer_async(chunk,statement,sentiment)
-    
-    new_row = pd.DataFrame({
-        'Sentiment':[sentiment],
-        'Sieving by gpt 4o': [list_of_sieved_chunks],
-        'Chunk':[chunk],
-        'Reference article name': [name],
-        'Reference text in main article': [statement],
-        'Summary':[ans],
-        'authors':[authors],
-        'Date':[date]
-    })
+async def process_row_async(row,got_authors):
+    #for new top 5 where authors are added
+    if got_authors:
+        list_of_sieved_chunks = row['Sieving by gpt 4o']
+        if isinstance(list_of_sieved_chunks, str):
+            list_of_sieved_chunks = ast.literal_eval(list_of_sieved_chunks)
+        statement=row['Reference text in main article']
+        sentiment = str(row['Sentiment']).strip()
+        name=row['Reference article name']
+        authors=row['authors']
+        chunk=row['Chunk']
+        if isinstance(chunk, str):
+            chunk = ast.literal_eval(chunk)
+        date=row.loc['Date']
+        await asyncio.sleep(10)
+        # Use the async wrapper to call the GPT service with retry logic
+        #ans = await call_summarizer_scorer_async(list_of_sieved_chunks,statement,sentiment)
+        ans = await call_summarizer_scorer_async(chunk,statement,sentiment)
+        
+        new_row = pd.DataFrame({
+            'Sentiment':[sentiment],
+            'Sieving by gpt 4o': [list_of_sieved_chunks],
+            'Chunk':[chunk],
+            'Reference article name': [name],
+            'Reference text in main article': [statement],
+            'Summary':[ans],
+            'authors':[authors],
+            'Date':[date]
+        })
+    #for old top 5 where no authors added
+    else:
+        """Async function to process each row in the DataFrame using the async Azure OpenAI call."""
+        list_of_sieved_chunks = row['Sieving by gpt 4o']
+        if isinstance(list_of_sieved_chunks, str):
+            list_of_sieved_chunks = ast.literal_eval(list_of_sieved_chunks)
+        statement=row['Reference text in main article']
+        sentiment = str(row['Sentiment']).strip()
+        name=row['Reference article name']
+        chunk=row['Chunk']
+        if isinstance(chunk, str):
+            chunk = ast.literal_eval(chunk)
+        date=row.loc['Date']
+        await asyncio.sleep(10)
+        # Use the async wrapper to call the GPT service with retry logic
+        #ans = await call_summarizer_scorer_async(list_of_sieved_chunks,statement,sentiment)
+        ans = await call_summarizer_scorer_async(chunk,statement,sentiment)
+        
+        new_row = pd.DataFrame({
+            'Sentiment':[sentiment],
+            'Sieving by gpt 4o': [list_of_sieved_chunks],
+            'Chunk':[chunk],
+            'Reference article name': [name],
+            'Reference text in main article': [statement],
+            'Summary':[ans],
+            'Date':[date]
+        })
     return new_row
 
 
-async def summarize_score_async(df):
+async def summarize_score_async(df,got_authors):
     """Main function to run the parallelized process using asyncio and the async OpenAI client."""
     output=[]
     # Process each row asynchronously using the process_row_async function
     # Define a semaphore to limit the number of concurrent tasks (added because VPN cause my tasks to throttle, you can try to remove from this line onwards to)
     semaphore = asyncio.Semaphore(20)  # Adjust the number as needed
 
-    async def process_row_with_semaphore(row):
+    async def process_row_with_semaphore(row,got_authors=got_authors):
         """Wrapper function to use semaphore for each task."""
         async with semaphore:
-            return await process_row_async(row)
+            return await process_row_async(row,got_authors=got_authors)
     # Create tasks with semaphore-wrapped function
-    tasks = [process_row_with_semaphore(row) for _, row in df.iterrows()]
+    tasks = [process_row_with_semaphore(row,got_authors=got_authors) for _, row in df.iterrows()]
     #this line then replace with
     #tasks = [process_row_async(row) for _, row in df.iterrows()]
     #for quicker times (for context, without the vpn a 8 hours task takes 2 hours)
@@ -71,19 +99,19 @@ async def summarize_score_async(df):
 
     return output_df
 
-def summarize_score(df):
+def summarize_score(df, got_authors=True):
     """Synchronous wrapper function for calling async operations."""
     global loop
 
     # Check if the event loop is already running
     if loop.is_running():
         # Use asyncio.run_coroutine_threadsafe to submit async work to the existing loop
-        return asyncio.run_coroutine_threadsafe(summarize_score_async(df), loop).result()
+        return asyncio.run_coroutine_threadsafe(summarize_score_async(df,got_authors=got_authors), loop).result()
     else:
         # Otherwise, create and run a new event loop
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        return loop.run_until_complete(summarize_score_async(df))
+        return loop.run_until_complete(summarize_score_async(df,got_authors=got_authors))
 
 #function to split data according to reference article name, reference text in main article and sentiment
 #then, we take all sieving by gpt 4o to summarize according t how much support/oppose reference text in main article
@@ -149,6 +177,55 @@ def make_pretty_for_expert(top_5,new_ref_collection,expert):
     print(grouped_chunks.columns)
 
     test=summarize_score(grouped_chunks)
+    test['score'] = test['Summary'].str.extract(r'\(([^()]+)\)$')[0]  # Capture group for text in parentheses
+
+    # Remove the last occurrence of text in parentheses from the original 'Summary' column
+    test['Summary'] = test['Summary'].str.replace(r'\s*\([^()]*\)$', '', regex=True)
+    
+    name=expert+'.xlsx'
+    send_excel(test,'RAG',name)
+    records = test.to_dict(orient='records')
+    replace_database_collection(uri, db.name, expert, records)
+    
+
+
+
+#To make summary of original references in order to compare and see if new references found should supplement or replace the old references based on summary of retrieved content
+def make_summary_for_comparison(top_5,expert):
+    collection_top5 = db[top_5]
+    documents = list(
+        collection_top5.find(
+            {}, 
+            {
+                '_id': 1,
+                'Sentiment':1,
+                'Confidence Score':1,
+                'Sieving by gpt 4o': 1,
+                'Reference article name': 1,
+                'Reference text in main article': 1,
+                'Chunk': 1,
+                'Date': 1
+            }
+        )
+    )
+    df_top5=pd.DataFrame(documents)
+
+    
+    
+    
+
+    
+    grouped_chunks = df_top5.groupby(
+        ['Sentiment', 'Reference article name', 'Reference text in main article','Date']
+    ).agg({
+        'Chunk': list,
+        'Sieving by gpt 4o': list
+    }).reset_index()
+
+    # No need to apply ast.literal_eval on 'Chunk' or 'Sieving by gpt 4o' since they are already text
+    print(grouped_chunks.columns)
+
+    test=summarize_score(grouped_chunks,got_authors=False)
     test['score'] = test['Summary'].str.extract(r'\(([^()]+)\)$')[0]  # Capture group for text in parentheses
 
     # Remove the last occurrence of text in parentheses from the original 'Summary' column
