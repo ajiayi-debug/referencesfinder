@@ -114,16 +114,17 @@ def summarize_score(df, got_authors=True):
         return loop.run_until_complete(summarize_score_async(df,got_authors=got_authors))
     
 
-# switch sentiment due to overall sentiment being different from sentiment of each individual chunks
 def switch_sentiment(df):
-    # Apply function to modify Sentiment column based on Score column
-    def update_sentiment(row):
-        if row['Score'] == 'support':
-            return 'support' if row['Sentiment'] == 'oppose' else 'oppose'
-        return row['Sentiment']
+    # Apply function to modify Sentiment and Score columns based on Score and Sentiment values
+    def update_sentiment_and_score(row):
+        if row['score'] in ['Support', 'Oppose']:
+            # Switch Sentiment and change Score to 'Relevant'
+            new_sentiment = 'support' if row['Sentiment'] == 'oppose' else 'oppose'
+            return pd.Series([new_sentiment, 'Relevant'])
+        return pd.Series([row['Sentiment'], row['score']])
     
-    # Apply the function to each row and update Sentiment column
-    df['Sentiment'] = df.apply(update_sentiment, axis=1)
+    # Apply the function to each row and update Sentiment and Score columns
+    df[['Sentiment', 'score']] = df.apply(update_sentiment_and_score, axis=1)
     return df
 
 
@@ -197,7 +198,8 @@ def make_pretty_for_expert(top_5,new_ref_collection,expert):
     # Remove the last occurrence of text in parentheses from the original 'Summary' column
     test['Summary'] = test['Summary'].str.replace(r'[\(\[]([^()\[\]]+)[\)\]]$', '', regex=True)
     
-    
+    #switch sentiment for wrongly classified chunks (rarely occurs)
+    test=switch_sentiment(test)
     name=expert+'.xlsx'
     send_excel(test,'RAG',name)
     records = test.to_dict(orient='records')
@@ -241,9 +243,84 @@ def make_summary_for_comparison(top_5,expert):
 
     # Remove the last occurrence of text in parentheses from the original 'Summary' column
     test['Summary'] = test['Summary'].str.replace(r'[\(\[]([^()\[\]]+)[\)\]]$', '', regex=True)
-    
+    #switch sentiment for wrongly classified chunks (rarely occurs)
+    test=switch_sentiment(test)
     name=expert+'.xlsx'
     send_excel(test,'RAG',name)
     records = test.to_dict(orient='records')
     replace_database_collection(uri, db.name, expert, records)
     
+#merge selected new data w old data based on statements for comparison
+def merge_old_new(expert_new,expert_old):
+    collection_new = db[expert_new]
+    documents_new = list(
+        collection_new.find(
+            {}, 
+            {
+                'sentiment':1,
+                'sievingByGPT4o':1,
+                'chunk': 1,
+                'articleName': 1,
+                'statement': 1,
+                'summary': 1,
+                'authors': 1,
+                'date':1,
+                'rating':1
+            }
+        )
+    )
+    df_new=pd.DataFrame(documents_new)
+    collection_old = db[expert_old]
+    documents_old = list(
+        collection_old.find(
+            {}, 
+            {
+                'Sentiment':1,
+                'Sieving by gpt 4o':1,
+                'Chunk': 1,
+                'Reference article name': 1,
+                'Reference text in main article': 1,
+                'Summary': 1,
+                'Date':1,
+                'score':1
+            }
+        )
+    )
+    df_old=pd.DataFrame(documents_old)
+    # Rename columns in df_old to add 'existing_' prefix
+    df_old_prefixed = df_old.rename(columns={
+        'Sentiment': 'existing_Sentiment',
+        'Sieving by gpt 4o': 'existing_Sieving by gpt 4o',
+        'Chunk': 'existing_Chunk',
+        'Reference article name': 'existing_Reference article name',
+        'Reference text in main article': 'existing_Reference text in main article',
+        'Summary': 'existing_Summary',
+        'Date': 'existing_Date',
+        'score': 'existing_score'
+    })
+    print(df_old)
+    print(df_old_prefixed)
+     # Filter to keep only rows where 'existing_Sentiment' is support 
+    df_old_prefixed = df_old_prefixed[df_old_prefixed['existing_Sentiment'] == 'support']
+    # Drop 'existing_Sentiment' column after filtering
+    df_old_prefixed = df_old_prefixed.drop(columns=['existing_Sentiment'])
+    print(df_old_prefixed)
+    # Merge df_new and df_old based on the matching condition
+    df_merged = pd.merge(
+        df_new,
+        df_old_prefixed,
+        left_on='statement',
+        right_on='existing_Reference text in main article',
+        how='left'  # Use 'left' join to keep all rows from df_new
+    )
+
+    # Drop the matching key column from df_old after merging if not needed
+    df_merged = df_merged.drop(columns=['existing_Reference text in main article'])
+
+
+    # df_merged now contains df_new with additional columns from df_old where matches were found
+
+    send_excel(df_merged,'RAG','merged.xlsx')
+
+
+merge_old_new('selected_papers','Original_reference_expert_data')

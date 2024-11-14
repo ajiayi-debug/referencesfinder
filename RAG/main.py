@@ -26,13 +26,14 @@ client = AsyncIOMotorClient(uri, tls=True, tlsCAFile=certifi.where())  # Use Asy
 db = client['data']
 collection_take = db["expert_data"] 
 collection_send = db['selected_papers']
+collection_compare = db['compare_new_vs_old']
 
 # Helper function to convert MongoDB documents to JSON-serializable format
 def serialize_document(document):
     document["_id"] = str(document["_id"])  # Convert ObjectId to string
     return document
 
-# Fetch data from MongoDB
+# Fetch data for expert decision from MongoDB
 @app.get("/data")
 async def get_data():
     try:
@@ -42,6 +43,15 @@ async def get_data():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
+#Fetch selected new data w matching old data for comparison from MongoDB
+@app.get("/joindata")
+async def get_select_data():
+    try:
+        documents = await collection_compare.find().to_list(200)
+        data = [serialize_document(doc) for doc in documents]
+        return data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Define the data structure
 class Article(BaseModel):
@@ -57,10 +67,9 @@ class Article(BaseModel):
     rating: str
 
 
-
+#send selected data to mongo db then merge w new data for comparison
 @app.post("/save_selected_articles")
 async def save_selected_articles(selected_articles: List[Article]):
-    print("Received articles:", selected_articles)
     articles_to_insert = [article.dict() for article in selected_articles]
 
     # Remove `await` if `replace_database_collection` is synchronous
