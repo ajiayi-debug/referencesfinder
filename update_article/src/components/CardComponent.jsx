@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import './CardComponent.css';
 
 const CardComponent = ({ 
   id,
@@ -46,8 +45,8 @@ const CardComponent = ({
   };
 
   return (
-    <div className="card">
-      <div className="card-header">
+    <div className="border border-gray-300 rounded-lg p-4 my-4 shadow-md">
+      <div className="flex flex-wrap justify-between mb-4">
         <div><strong>Statement:</strong> {statement}</div>
         <div><strong>Name of Article:</strong> {articleName}</div>
         <div><strong>Year article released:</strong> {date}</div>
@@ -56,73 +55,104 @@ const CardComponent = ({
         <div><strong>Rating (GPT):</strong> {rating}</div>
       </div>
       
-      <div className="card-options">
-        <button onClick={() => handleLocalViewChange("summary")} disabled={globalOverride}>Summary</button>
-        <button onClick={() => handleLocalViewChange("sieving")} disabled={globalOverride}>Sieving by GPT-4o</button>
-        <button onClick={() => handleLocalViewChange("chunk")} disabled={globalOverride}>Chunk</button>
-        <button onClick={() => handleLocalViewChange("both")} disabled={globalOverride}>Both</button>
+      <div className="flex gap-2 mb-4">
+        <button 
+          onClick={() => handleLocalViewChange("summary")} 
+          disabled={globalOverride} 
+          className={`px-4 py-2 rounded ${globalOverride ? 'bg-gray-300' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
+        >
+          Summary
+        </button>
+        <button 
+          onClick={() => handleLocalViewChange("sieving")} 
+          disabled={globalOverride} 
+          className={`px-4 py-2 rounded ${globalOverride ? 'bg-gray-300' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
+        >
+          Sieving by GPT-4o
+        </button>
+        <button 
+          onClick={() => handleLocalViewChange("chunk")} 
+          disabled={globalOverride} 
+          className={`px-4 py-2 rounded ${globalOverride ? 'bg-gray-300' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
+        >
+          Chunk
+        </button>
+        <button 
+          onClick={() => handleLocalViewChange("both")} 
+          disabled={globalOverride} 
+          className={`px-4 py-2 rounded ${globalOverride ? 'bg-gray-300' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
+        >
+          Both
+        </button>
 
         {/* Checkbox to select for updating */}
-        <label>
+        <label className="flex items-center">
           <input 
             type="checkbox" 
             checked={isSelected} 
             onChange={handleSelectChange} 
+            className="mr-2"
           />
           Select for updating
         </label>
       </div>
 
-      <div className="card-body">
+      <div className="relative">
         {viewMode === "summary" ? (
           <p>{summary}</p>
         ) : viewMode === "sieving" ? (
-          <table className="details-table">
-            <thead>
-              <tr>
-                <th>Sieving by GPT-4o</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sievingByGPT4o.map((text, index) => (
-                <tr key={index}>
-                  <td>{text}</td>
+          <div className="overflow-x-auto">
+            <table className="w-full border border-black mt-4">
+              <thead>
+                <tr>
+                  <th className="px-4 py-2 border border-black bg-gray-100 text-left">Sieving by GPT-4o</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {sievingByGPT4o.map((text, index) => (
+                  <tr key={index}>
+                    <td className="px-4 py-2 border border-black">{text}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : viewMode === "chunk" ? (
-          <table className="details-table">
-            <thead>
-              <tr>
-                <th>Chunk</th>
-              </tr>
-            </thead>
-            <tbody>
-              {chunk.map((text, index) => (
-                <tr key={index}>
-                  <td>{text}</td>
+          <div className="overflow-x-auto">
+            <table className="w-full border border-black mt-4">
+              <thead>
+                <tr>
+                  <th className="px-4 py-2 border border-black bg-gray-100 text-left">Chunk</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {chunk.map((text, index) => (
+                  <tr key={index}>
+                    <td className="px-4 py-2 border border-black">{text}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : (
-          <table className="details-table">
-            <thead>
-              <tr>
-                <th>Sieving by GPT-4o</th>
-                <th>Chunk</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sievingByGPT4o.map((sievingText, index) => (
-                <tr key={index}>
-                  <td>{sievingText}</td>
-                  <td>{chunk[index] || ""}</td>
+          <div className="overflow-x-auto">
+            <table className="w-full border border-black mt-4">
+              <thead>
+                <tr>
+                  <th className="px-4 py-2 border border-black bg-gray-100 text-left">Sieving by GPT-4o</th>
+                  <th className="px-4 py-2 border border-black bg-gray-100 text-left">Chunk</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {sievingByGPT4o.map((sievingText, index) => (
+                  <tr key={index}>
+                    <td className="px-4 py-2 border border-black">{sievingText}</td>
+                    <td className="px-4 py-2 border border-black">{chunk[index] || ""}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>
@@ -130,3 +160,4 @@ const CardComponent = ({
 };
 
 export default CardComponent;
+

@@ -217,6 +217,7 @@ async def retriever_and_siever_async(chunk, ref):
         1.	For cited or referenced parts: Extract ALL relevant parts of the ‘Reference Article Text’ that are referenced. Start with ‘Support ([Confidence Score]):’.
         2.	For opposing parts: Extract ALL relevant parts of the ‘Reference Article Text’ that are opposed. Start with ‘Oppose ([Confidence Score]):’.
         3.	If no match exists, respond with ‘no’.
+        4.  If the ‘Reference Article Text’ is a citation, no matter the classification, give it a score lower than 70
 
     Example Outputs with Confidence Scores:
 
@@ -227,7 +228,15 @@ async def retriever_and_siever_async(chunk, ref):
     Output:
     'Support (90): Bacterial fermentation of lactose produces gases like hydrogen, methane, and CO2, impacting GI function.'
 
+    Supporting Example but is citation:
 
+    Input:
+    'Reference Article Text: Improvement of lac-tose digestion by humans following ingestion of unfermented aci-dophilus milk: inﬂuence of bile sensitivity, lactose transport, andacid tolerance of Lactobacillus acidophilus.Journal of Dairy Science80 (8):1537–1545.Odamaki, T., H.Sugahara, and S.Yonezawa. 2012.Effect of the oral intakeof yogurt containing Biﬁdobacterium longum BB536 on the cell num-bers of enterotoxigenic Bacteroides fragilis in microbiota.Anaerobe 18(1):14–18.Ojetti, V., G.Gigante, and M.Gabrielli. 2010.The effect of oral supplemen-tation with Lactobacillus reuteri or tilactase in lactose intolerantpatients: randomized trial.European Review for Medical and Pharma-cological Sciences 14 (3):163–70.Pakdaman, M.N., J.K.Udani, J.P.Molina, and M.Shahani. 2016.
+    Text Referencing The Reference Article: Pre- and probiotics may have a positive effect on lactose tolerance.'
+
+    Output:
+    'Support (60) improvement of lactose digestion by humans following ingestion of unfermented acidophilus milk: influence of bile sensitivity, lactose transport, and acid tolerance of lactobacillus acidophilus.'
+    
     Opposing Example:
     Input:
     'Reference Article Text: “Lactose intolerance affects around 70 percent of the population.'
@@ -235,8 +244,16 @@ async def retriever_and_siever_async(chunk, ref):
     Output:
     'Oppose (85): Lactose intolerance affects around 70 percent of the population.'
 
+    Opposing Example but is citation:
+
+    Input:
+    'Reference Article Text: Dig.Dis. 2018, 36, 271–280. [CrossRef] [PubMed]30.Triggs, C.M.; Munday, K.; Hu, R.; Fraser, A.G.; Gearry, R.B.; Barclay, M.L.; Ferguson, L.R.Dietary factors in chronic inﬂammation:Food tolerances and intolerances of a New Zealand Caucasian Crohn’s disease population.Mutat.Res. 2010, 690, 123–138.[CrossRef]31.Labayen, I.; Forga, L.; Gonzalez, A.; Lenoir-Wijnkoop, I.; Nutr, R.; Martinez, J.A.Relationship between lactose digestion, gastroin-testinal transit time and symptoms in lactose malabsorbers after dairy consumption.Aliment.Pharmacol.Ther. 2001, 15, 543–549.[CrossRef] [PubMed]32.Pelletier, X.; Laure-Boussuge, S.; Donazzolo, Y.Hydrogen excretion upon ingestion of dairy products in lactose-intolerant malesubjects:
+    Text Referencing The Reference Article: A meta-analysis reveals that clinical symptoms (abdominal pain, diarrhoea) or self-reporting are not reliable indices for the diagnosis of lactose intolerance.
+    Output:
+    'Oppose (60) relationship between lactose digestion, gastroin-testinal transit time and symptoms in lactose malabsorbers after dairy consumption.'
 
     Non-Matching Case:
+    
     Input:
     'Reference Article Text: “Lactase persistence is common among Northern Europeans.'
     'Text Referencing The Reference Article: “Fermentation of lactose produces gas.'
@@ -270,6 +287,7 @@ async def retriever_and_siever_async_check(chunk, ref):
     - The match does not need to be exact; it can be a paraphrased or conceptually aligned statement.
     - Consider not only direct references, but also cases where the 'Text Referencing The Reference Article' discusses related facts or concepts in different wording.
     - If no part of the 'Reference Article Text' is cited, respond with 'no'.
+    - If the ‘Reference Article Text’ is a citation, no matter the classification, give it a score lower than 70
 
     Important Note:
     There might be cases where the phrasing between the 'Reference Article Text' and the 'Text Referencing The Reference Article' differs, but the underlying concepts are aligned. For example, if the 'Reference Article Text' discusses gas production due to bacterial fermentation of lactose and the 'Text Referencing The Reference Article' discusses bloating and flatulence after lactose ingestion, these are conceptually aligned, and the relevant portion from the 'Reference Article Text' should be extracted.
@@ -283,6 +301,15 @@ async def retriever_and_siever_async_check(chunk, ref):
 
     Output:
     '(90) Bacterial fermentation of lactose results in production of gases including hydrogen (H2), carbon dioxide (CO2), methane (CH4), and short-chain fatty acids (SCFA) that have effects on GI function (figure 1). Many individuals with LM have no symptoms after ingestion of a standard serving of dairy products (table 1), whereas others develop symptoms (‘intolerance’) such as abdominal pain, borborygmi (rumbling tummy), and bloating after lactose intake (figure 1).'
+
+    Example of Matching Case but is citation:
+
+    Input:
+    'Reference Article Text: Improvement of lac-tose digestion by humans following ingestion of unfermented aci-dophilus milk: inﬂuence of bile sensitivity, lactose transport, andacid tolerance of Lactobacillus acidophilus.Journal of Dairy Science80 (8):1537–1545.Odamaki, T., H.Sugahara, and S.Yonezawa. 2012.Effect of the oral intakeof yogurt containing Biﬁdobacterium longum BB536 on the cell num-bers of enterotoxigenic Bacteroides fragilis in microbiota.Anaerobe 18(1):14–18.Ojetti, V., G.Gigante, and M.Gabrielli. 2010.The effect of oral supplemen-tation with Lactobacillus reuteri or tilactase in lactose intolerantpatients: randomized trial.European Review for Medical and Pharma-cological Sciences 14 (3):163–70.Pakdaman, M.N., J.K.Udani, J.P.Molina, and M.Shahani. 2016.
+    Text Referencing The Reference Article: Pre- and probiotics may have a positive effect on lactose tolerance.'
+
+    Output:
+    '(60) improvement of lactose digestion by humans following ingestion of unfermented acidophilus milk: influence of bile sensitivity, lactose transport, and acid tolerance of lactobacillus acidophilus.'
 
     Example of Non-Matching Case (When to Respond with 'No'):
 
