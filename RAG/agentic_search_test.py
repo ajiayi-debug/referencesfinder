@@ -1,4 +1,4 @@
-from agentic_search_system import *
+from .agentic_search_system import *
 import asyncio
 
 uri = os.getenv("uri_mongo")

@@ -6,8 +6,10 @@ from bson import ObjectId
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List
-from RAG.call_mongodb import replace_database_collection
+from RAG.call_mongodb import *
+from RAG.expert_decision import *
 import certifi
+import datetime as datetime
 
 load_dotenv()  # Load environment variables
 
@@ -25,13 +27,30 @@ uri = os.getenv("uri_mongo")
 client = AsyncIOMotorClient(uri, tls=True, tlsCAFile=certifi.where())  # Use AsyncIOMotorClient
 db = client['data']
 collection_take = db["expert_data"] 
-collection_send = db['selected_papers']
-collection_compare = db['compare_new_vs_old']
+collection_compare = db['merged']
+collection_replace=db['replace']
 
 # Helper function to convert MongoDB documents to JSON-serializable format
 def serialize_document(document):
-    document["_id"] = str(document["_id"])  # Convert ObjectId to string
+    for key, value in document.items():
+        if isinstance(value, ObjectId):
+            document[key] = str(value)
     return document
+
+def serialize_ids(document):
+    """
+    Recursively searches for 'id' or '_id' keys in a nested document
+    and serializes them if they are ObjectIds.
+    """
+    if isinstance(document, dict):
+        return {
+            key: serialize_ids(value) if key not in {"_id", "id"} else str(value) if isinstance(value, ObjectId) else value
+            for key, value in document.items()
+        }
+    elif isinstance(document, list):
+        return [serialize_ids(item) for item in document]
+    else:
+        return document
 
 # Fetch data for expert decision from MongoDB
 @app.get("/data")
@@ -43,17 +62,7 @@ async def get_data():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
-#Fetch selected new data w matching old data for comparison from MongoDB
-@app.get("/joindata")
-async def get_select_data():
-    try:
-        documents = await collection_compare.find().to_list(200)
-        data = [serialize_document(doc) for doc in documents]
-        return data
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
-# Define the data structure
 class Article(BaseModel):
     id: str
     sentiment: str
@@ -66,6 +75,16 @@ class Article(BaseModel):
     date: int
     rating: str
 
+class Reference(BaseModel):
+    id: str
+    articleName: str
+    authors: str
+    date: int
+
+class ReplacementTask(BaseModel):
+    statement: str
+    oldReferences: List[Reference]
+    newReferences: List[Reference]
 
 #send selected data to mongo db then merge w new data for comparison
 @app.post("/save_selected_articles")
@@ -74,9 +93,60 @@ async def save_selected_articles(selected_articles: List[Article]):
 
     # Remove `await` if `replace_database_collection` is synchronous
     replace_database_collection(uri, db.name, 'selected_papers', articles_to_insert)
+    merge_old_new('selected_papers','Original_reference_expert_data','collated_statements_and_citations','merged')
 
     return {"message": "Selected articles saved successfully."}
 
+#Fetch selected new data w matching old data for comparison from MongoDB
+@app.get("/joindata")
+async def get_select_data():
+    try:
+        documents = await collection_compare.find().to_list(200)
+        data = [serialize_ids(doc) for doc in documents]
+        return data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+
+#send replacement pair/one to many to database to update article
+@app.post("/addReplacementTask")
+async def send_replace(task: ReplacementTask):
+    """
+    Handles the addition of a single replacement task.
+    Args:
+        task (ReplacementTask): The JSON payload for the replacement task.
+    Returns:
+        dict: Success message or error details.
+    """
+    try:
+        # Convert the single task to a dictionary
+        task_dict = task.dict()
+
+        # Extract data for logging or further processing
+        statement = task.statement
+        old_references = task.oldReferences
+        new_references = task.newReferences
+
+        # Log the received data for debugging
+        print(f"Statement: {statement}")
+        print(f"Old References: {old_references}")
+        print(f"New References: {new_references}")
+
+        # Insert into MongoDB
+        collection_replace.insert_one(task_dict)
+
+        # Log replacement logic for debugging
+        for old_ref in old_references:
+            for new_ref in new_references:
+                print(f"Replacing {old_ref.articleName} with {new_ref.articleName}")
+
+        # Return success response
+        return {"message": "Replacement task successfully processed", "status": "success"}
+
+    except Exception as e:
+        # Handle any errors during processing
+        print(f"Error occurred: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Disconnect from MongoDB when the application stops
 @app.on_event("shutdown")

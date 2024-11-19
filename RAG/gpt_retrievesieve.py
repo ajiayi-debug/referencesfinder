@@ -1,19 +1,19 @@
-from gpt_rag import *
-from pdf import *
-from embedding import *
+from .gpt_rag import *
+from .pdf import *
+from .embedding import *
 import ast
 import pandas as pd
 from dotenv import load_dotenv
 from pymongo import MongoClient
-from call_mongodb import *
+from .call_mongodb import *
 from tqdm import tqdm
 import certifi
 import time
-from gpt_rag_asyncio import *
+from .gpt_rag_asyncio import *
 import asyncio
 import aiohttp
 from tqdm.asyncio import tqdm_asyncio
-from crossref import *
+from .crossref import *
 import ast
 import re
 from rapidfuzz import fuzz

@@ -1,9 +1,9 @@
-from gpt_rag_asyncio import *
-from call_mongodb import *
+from .gpt_rag_asyncio import *
+from .call_mongodb import *
 import pandas as pd
 from dotenv import load_dotenv
 import ast
-from embedding import *
+from .embedding import *
 import asyncio
 from tqdm.asyncio import tqdm_asyncio
 load_dotenv()
@@ -238,11 +238,11 @@ def make_summary_for_comparison(top_5,expert):
     print(grouped_chunks.columns)
 
     test=summarize_score(grouped_chunks,got_authors=False)
-    test['score'] = test['Summary'].str.extract(r'[\(\[]([^()\[\]]+)[\)\]]$')[0]
+    # Extract 'score' from the last pair of brackets at the end of the text
+    test['score'] = test['Summary'].str.extract(r'\(([^()\[\]]+)\)$')
 
-
-    # Remove the last occurrence of text in parentheses from the original 'Summary' column
-    test['Summary'] = test['Summary'].str.replace(r'[\(\[]([^()\[\]]+)[\)\]]$', '', regex=True)
+    # Remove the last occurrence of parentheses/brackets strictly at the end of the text
+    test['Summary'] = test['Summary'].str.replace(r'\(([^()\[\]]+)\)$', '', regex=True).str.strip()
     #switch sentiment for wrongly classified chunks (rarely occurs)
     test=switch_sentiment(test)
     name=expert+'.xlsx'
@@ -250,77 +250,124 @@ def make_summary_for_comparison(top_5,expert):
     records = test.to_dict(orient='records')
     replace_database_collection(uri, db.name, expert, records)
     
-#merge selected new data w old data based on statements for comparison
-def merge_old_new(expert_new,expert_old):
+#merge selected new data w old data based on inner join statements for comparison
+def merge_old_new(expert_new, expert_old,statements,name):
+    collection_statements=db[statements]
+    documents_statements=list(
+        collection_statements.find(
+            {}, 
+            {
+                'Reference article name': 1, 
+                'Reference text in main article': 1, 
+                'Date': 1,
+                'Name of authors': 1
+            }
+        )
+    )
+    df_statement=pd.DataFrame(documents_statements)
     collection_new = db[expert_new]
     documents_new = list(
         collection_new.find(
             {}, 
             {
-                'sentiment':1,
-                'sievingByGPT4o':1,
+                'sentiment': 1,
+                'sievingByGPT4o': 1,
                 'chunk': 1,
                 'articleName': 1,
                 'statement': 1,
                 'summary': 1,
                 'authors': 1,
-                'date':1,
-                'rating':1
+                'date': 1,
+                'rating': 1
             }
         )
     )
-    df_new=pd.DataFrame(documents_new)
+    df_new = pd.DataFrame(documents_new)
+    df_new['state'] = 'new'  # Add state column for new data
+
+    # Fetch old data
     collection_old = db[expert_old]
     documents_old = list(
         collection_old.find(
             {}, 
             {
-                'Sentiment':1,
-                'Sieving by gpt 4o':1,
+                'Sentiment': 1,
+                'Sieving by gpt 4o': 1,
                 'Chunk': 1,
                 'Reference article name': 1,
                 'Reference text in main article': 1,
                 'Summary': 1,
-                'Date':1,
-                'score':1
+                'Date': 1,
+                'score': 1
             }
         )
     )
-    df_old=pd.DataFrame(documents_old)
-    # Rename columns in df_old to add 'existing_' prefix
-    df_old_prefixed = df_old.rename(columns={
-        'Sentiment': 'existing_Sentiment',
-        'Sieving by gpt 4o': 'existing_Sieving by gpt 4o',
-        'Chunk': 'existing_Chunk',
-        'Reference article name': 'existing_Reference article name',
-        'Reference text in main article': 'existing_Reference text in main article',
-        'Summary': 'existing_Summary',
-        'Date': 'existing_Date',
-        'score': 'existing_score'
+    df_old = pd.DataFrame(documents_old)
+    df_old = df_old.rename(columns={
+        'Sentiment': 'sentiment',
+        'Sieving by gpt 4o': 'sievingByGPT4o',
+        'Chunk': 'chunk',
+        'Reference article name': 'articleName',
+        'Summary': 'summary',
+        'Date': 'date',
+        'score': 'rating',
+        'Reference text in main article': 'statement'
     })
-    print(df_old)
-    print(df_old_prefixed)
-     # Filter to keep only rows where 'existing_Sentiment' is support 
-    df_old_prefixed = df_old_prefixed[df_old_prefixed['existing_Sentiment'] == 'support']
-    # Drop 'existing_Sentiment' column after filtering
-    df_old_prefixed = df_old_prefixed.drop(columns=['existing_Sentiment'])
-    print(df_old_prefixed)
-    # Merge df_new and df_old based on the matching condition
-    df_merged = pd.merge(
-        df_new,
-        df_old_prefixed,
-        left_on='statement',
-        right_on='existing_Reference text in main article',
-        how='left'  # Use 'left' join to keep all rows from df_new
+    df_old['state'] = 'old'
+    df_old['authors'] = df_old.apply(
+        lambda row: ", ".join(
+            df_statement.loc[
+                (df_statement['Reference text in main article'] == row['statement']) &
+                (df_statement['Reference article name'] == row['articleName']), 
+                'Name of authors'
+            ].tolist()
+        ),
+        axis=1
     )
 
-    # Drop the matching key column from df_old after merging if not needed
-    df_merged = df_merged.drop(columns=['existing_Reference text in main article'])
+    # Create a new DataFrame to store matches
+    matched_df = pd.DataFrame(columns=df_new.columns)
+
+    for _, new_row in df_new.iterrows():
+        matching_old_rows = df_old[(df_old['statement'] == new_row['statement']) & (df_old['sentiment'] == 'support')]
+        if not matching_old_rows.empty:
+            # Append the new row
+            matched_df = matched_df._append(new_row, ignore_index=True)
+            # Append all matching old rows where sentiment is 'support'
+            matched_df = matched_df._append(matching_old_rows, ignore_index=True)
 
 
-    # df_merged now contains df_new with additional columns from df_old where matches were found
+    # Format the data for the frontend
+    formatted_data = {}
+    for _, row in matched_df.iterrows():
+        statement = row['statement']
+        ref_data = {
+            "id": row["_id"],
+            "articleName": row["articleName"],
+            "date": row["date"],
+            "sieved": row.get("sievingByGPT4o", []),
+            "chunk": row.get("chunk", []),
+            "summary": row["summary"],
+            "authors": row.get("authors"),
+            "sentiment": row.get("sentiment")
+        }
 
-    send_excel(df_merged,'RAG','merged.xlsx')
+        # Initialize statement group if it doesn't exist
+        if statement not in formatted_data:
+            formatted_data[statement] = {
+                "statement": statement,
+                "oldReferences": [],
+                "newReferences": []
+            }
 
+        # Append to the appropriate list
+        if row["state"] == "old":
+            formatted_data[statement]["oldReferences"].append(ref_data)
+        elif row["state"] == "new":
+            formatted_data[statement]["newReferences"].append(ref_data)
 
-merge_old_new('selected_papers','Original_reference_expert_data')
+    # Convert to list of dictionaries for JSON compatibility
+    formatted_list = list(formatted_data.values())
+    replace_database_collection(uri, db.name, name, formatted_list)
+
+    return formatted_list

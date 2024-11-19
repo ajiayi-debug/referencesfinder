@@ -2,13 +2,13 @@ import requests
 import urllib3
 from fuzzywuzzy import fuzz  # For fuzzy matching
 import pandas as pd
-from embedding import *
+from .embedding import *
 from tqdm import tqdm
 from pymongo import MongoClient
 from dotenv import load_dotenv
 import os
 import certifi
-from call_mongodb import *
+from .call_mongodb import *
 
 load_dotenv()
 uri = os.getenv("uri_mongo")

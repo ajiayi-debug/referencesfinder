@@ -3,11 +3,11 @@ import pandas as pd
 from dotenv import load_dotenv
 from pymongo import MongoClient
 from tqdm import tqdm
-from pdf import *
-from gpt_rag import *
-from embedding import *
-from call_mongodb import *
-from semantic_chunking import *
+from .pdf import *
+from .gpt_rag import *
+from .embedding import *
+from .call_mongodb import *
+from .semantic_chunking import *
 import ast
 
 collection = 'subdocument_retrieved'

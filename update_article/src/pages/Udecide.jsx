@@ -1,79 +1,37 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from "react";
 
 function Udecide() {
+  const [data, setData] = useState([]);
   const [view, setView] = useState("sieved");
   const [statementIndex, setStatementIndex] = useState(0);
   const [replaceMode, setReplaceMode] = useState(false);
+  const [selectedReplacements, setSelectedReplacements] = useState({});
+  const [selectedReplacementNewRefs, setSelectedReplacementNewRefs] = useState({});
+  const [selectedAdditions, setSelectedAdditions] = useState({});
+  const [isLoading, setIsLoading] = useState(true);
   const [editMode, setEditMode] = useState(null);
-  const [additions, setAdditions] = useState({});
+  const [editText, setEditText] = useState({});
 
-  const data = [
-    {
-      statement: "Statement 1",
-      oldReferences: [
-        {
-          id: 1,
-          articleName: "Old Article A",
-          date: 2021,
-          sieved: ["Sieved data row 1 for Old Reference A", "Sieved data row 2 for Old Reference A"],
-          chunk: ["Chunk data row 1 for Old Reference A"],
-          summary: "This is a summary of Old Reference A for Statement 1.",
-        },
-        {
-          id: 2,
-          articleName: "Old Article C",
-          date: 2020,
-          sieved: ["Sieved data row 1 for Old Reference C", "Sieved data row 2 for Old Reference C", "Sieved data row 3 for Old Reference C"],
-          chunk: ["Chunk data row 1 for Old Reference C"],
-          summary: "This is a summary of Old Reference C for Statement 1.",
-        },
-      ],
-      newReferences: [
-        {
-          id: 3,
-          articleName: "New Article B",
-          date: 2022,
-          authors: "Author B",
-          sentiment: "neutral",
-          sieved: ["Sieved data row 1 for New Reference B", "Sieved data row 2 for New Reference B"],
-          chunk: ["Chunk data row 1 for New Reference B", "Chunk data row 2 for New Reference B"],
-          summary: "This is a summary of New Reference B for Statement 1.",
-        },
-      ],
-    },
-    {
-      statement: "Statement 2",
-      oldReferences: [
-        {
-          id: 4,
-          articleName: "Old Article D",
-          date: 2019,
-          sieved: ["Sieved data row 1 for Old Reference D"],
-          chunk: ["Chunk data row 1 for Old Reference D"],
-          summary: "This is a summary of Old Reference D for Statement 2.",
-        }
-      ],
-      newReferences: [
-        {
-          id: 5,
-          articleName: "New Article E",
-          date: 2021,
-          authors: "Author E",
-          sentiment: "positive",
-          sieved: ["Sieved data row 1 for New Reference E", "Sieved data row 2 for New Reference E"],
-          chunk: ["Chunk data row 1 for New Reference E"],
-          summary: "This is a summary of New Reference E for Statement 2.",
-        },
-      ],
-    },
-  ];
+  // Fetch data from backend
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await fetch("http://127.0.0.1:8000/joindata");
+        const result = await response.json();
+        setData(result);
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        setIsLoading(false);
+      }
+    };
 
-  const currentData = data[statementIndex];
+    fetchData();
+  }, []);
 
-  const handleToggleView = (newView) => {
-    setView(newView);
-  };
+  const currentData = data[statementIndex] || {};
 
+  // Handle statement navigation
   const handleNextStatement = () => {
     setStatementIndex((prevIndex) => (prevIndex + 1) % data.length);
   };
@@ -82,19 +40,156 @@ function Udecide() {
     setStatementIndex((prevIndex) => (prevIndex - 1 + data.length) % data.length);
   };
 
-  const handleReplaceClick = () => {
-    setReplaceMode(!replaceMode);
+  // Replace functionality
+  const handleReplaceClick = (refId) => {
+    setSelectedReplacements((prev) => ({
+      ...prev,
+      [refId]: !prev[refId],
+    }));
   };
 
-  const handleEditClick = (id) => {
-    setEditMode(editMode === id ? null : id); // Toggle edit mode for each reference
+  const handleReplaceNewClick = (refId) => {
+    setSelectedReplacementNewRefs((prev) => ({
+      ...prev,
+      [refId]: !prev[refId],
+    }));
   };
 
-  const handleAdditionsChange = (id, text) => {
-    setAdditions(prev => ({ ...prev, [id]: text }));
+  const handleAddReplacementTask = async () => {
+    // Gather all selected old references
+    const selectedOldRefs = Object.entries(selectedReplacements)
+      .filter(([_, isChecked]) => isChecked)
+      .map(([oldRefId]) => {
+        const oldRefData = currentData.oldReferences.find((ref) => ref.id === oldRefId);
+        return {
+          id: oldRefId,
+          articleName: oldRefData?.articleName || "",
+          authors: oldRefData?.authors || [],
+          date: oldRefData?.date || "",
+        };
+      });
+
+    // Gather all selected new references
+    const selectedNewRefs = Object.entries(selectedReplacementNewRefs)
+      .filter(([_, isChecked]) => isChecked)
+      .map(([newRefId]) => {
+        const newRefData = currentData.newReferences.find(
+          (ref) => ref.id === newRefId || ref.id?.$oid === newRefId // Handle MongoDB `$oid`
+        );
+        return {
+          id: newRefId,
+          articleName: newRefData?.articleName || "",
+          authors: newRefData?.authors || [],
+          date: newRefData?.date || "",
+        };
+      });
+
+    if (selectedOldRefs.length === 0 || selectedNewRefs.length === 0) {
+      alert("Please select at least one old reference and one new reference for replacement.");
+      return;
+    }
+
+    try {
+      // Send the mapping of many-to-many replacements
+      const response = await fetch("http://127.0.0.1:8000/addReplacementTask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          statement: currentData.statement,
+          oldReferences: selectedOldRefs, // List of old references
+          newReferences: selectedNewRefs, // List of new references
+        }),
+      });
+
+      if (response.ok) {
+        alert("Replacement task successfully added!");
+        setReplaceMode(false);
+        setSelectedReplacements({});
+        setSelectedReplacementNewRefs({});
+      } else {
+        console.error("Failed to add replacement task");
+      }
+    } catch (error) {
+      console.error("Error sending replacement task:", error);
+    }
   };
 
-  // Render sieved or chunk data as a table
+  // Addition functionality
+  const handleAddClick = (refId) => {
+    setSelectedAdditions((prev) => ({
+      ...prev,
+      [refId]: !prev[refId],
+    }));
+  };
+
+  const handleAddAdditionTask = async () => {
+    const selectedRefs = Object.entries(selectedAdditions)
+      .filter(([_, isChecked]) => isChecked)
+      .map(([refId]) => refId);
+
+    if (selectedRefs.length === 0) {
+      alert("No references selected for addition!");
+      return;
+    }
+
+    try {
+      const response = await fetch("http://127.0.0.1:8000/addAdditionTask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          statementId: currentData.id,
+          selectedReferences: selectedRefs,
+        }),
+      });
+      if (response.ok) {
+        alert("Addition task successfully added!");
+        setSelectedAdditions({});
+      } else {
+        console.error("Failed to add addition task");
+      }
+    } catch (error) {
+      console.error("Error sending addition task:", error);
+    }
+  };
+
+  // Edit functionality
+  const handleEditClick = (refId) => {
+    setEditMode(editMode === refId ? null : refId);
+  };
+
+  const handleEditTextChange = (refId, text) => {
+    setEditText((prev) => ({ ...prev, [refId]: text }));
+  };
+
+  const handleAddEditTask = async (refId) => {
+    if (!editText[refId] || editText[refId].trim() === "") {
+      alert("Please type some text before adding an edit task.");
+      return;
+    }
+
+    try {
+      const response = await fetch("http://127.0.0.1:8000/addEditTask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          referenceId: refId,
+          editText: editText[refId],
+        }),
+      });
+
+      if (response.ok) {
+        alert("Edit task successfully added!");
+        setEditMode(null);
+        setEditText((prev) => ({ ...prev, [refId]: "" }));
+      } else {
+        console.error("Failed to add edit task");
+      }
+    } catch (error) {
+      console.error("Error sending edit task:", error);
+    }
+  };
+
+  // Render tables
   const renderTable = (title, dataRows) => (
     <div>
       <h3 className="text-lg font-semibold mb-2">{title}</h3>
@@ -117,11 +212,44 @@ function Udecide() {
     </div>
   );
 
+  if (isLoading) {
+    return <div className="text-center p-8">Loading...</div>;
+  }
+
+  // Determine if at least one old and one new reference are selected
+  const hasOldSelection = Object.values(selectedReplacements).some((val) => val);
+  const hasNewSelection = Object.values(selectedReplacementNewRefs).some((val) => val);
+
   return (
     <div className="p-8 text-center">
-      <h1 className="text-2xl font-bold mb-6">Statement Comparison</h1>
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">Statement Comparison</h1>
+        <div className="flex gap-4">
+          <button
+            onClick={() => {
+              if (!replaceMode) {
+                setReplaceMode(true);
+              } else {
+                handleAddReplacementTask();
+              }
+            }}
+            className={`px-4 py-2 text-white rounded ${
+              replaceMode ? "bg-green-500 hover:bg-green-600" : "bg-green-500 hover:bg-green-600"
+            }`}
+            disabled={replaceMode && (!hasOldSelection || !hasNewSelection)}
+          >
+            {replaceMode ? "Submit Replacement" : "Replace"}
+          </button>
+          <button
+            onClick={handleAddAdditionTask}
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400"
+            disabled={Object.values(selectedAdditions).every((val) => !val)}
+          >
+            Add Addition Task
+          </button>
+        </div>
+      </div>
 
-      {/* Slider for Statement */}
       <div className="flex justify-center items-center mb-6 gap-4">
         <button
           onClick={handlePreviousStatement}
@@ -129,7 +257,9 @@ function Udecide() {
         >
           Previous
         </button>
-        <span className="text-lg font-medium">{currentData.statement}</span>
+        <span className="text-lg font-medium">
+          {currentData.statement || "No statement available"}
+        </span>
         <button
           onClick={handleNextStatement}
           className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
@@ -138,39 +268,39 @@ function Udecide() {
         </button>
       </div>
 
-      {/* View Toggle Buttons */}
-      <div className="flex justify-center gap-4 mb-8">
-        <button onClick={() => handleToggleView("sieved")} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-          Sieved
-        </button>
-        <button onClick={() => handleToggleView("chunk")} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-          Chunk
-        </button>
-        <button onClick={() => handleToggleView("summary")} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-          Summary
-        </button>
-      </div>
-
-      {/* References Side-by-Side */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Old References */}
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-xl font-semibold mb-4">Old Reference(s)</h2>
-          {currentData.oldReferences.map((ref, index) => (
-            <div key={ref.id} className="mb-6">
+          {(currentData.oldReferences || []).map((ref) => (
+            <div key={ref.id} className="mb-6 border border-black p-4 rounded-md">
               {replaceMode && (
                 <div className="flex items-center mb-2">
-                  <input 
-                    type="checkbox" 
-                    id={`replace-${ref.id}`} 
+                  <input
+                    type="checkbox"
+                    id={`replace-${ref.id}`}
                     className="mr-2"
+                    onChange={() => handleReplaceClick(ref.id)}
                   />
-                  <label htmlFor={`replace-${ref.id}`} className="text-left">Select for Replacement</label>
+                  <label htmlFor={`replace-${ref.id}`} className="text-left">
+                    Select for Replacement
+                  </label>
                 </div>
               )}
-              <p><strong>Article:</strong> {ref.articleName}</p>
-              <p><strong>Date:</strong> {ref.date}</p>
-              {view === "summary" && <p className="mt-4"><strong>Summary:</strong> {ref.summary}</p>}
+              <p>
+                <strong>Article:</strong> {ref.articleName}
+              </p>
+              <p>
+                <strong>Date:</strong> {ref.date}
+              </p>
+              <p>
+                <strong>Authors:</strong> {ref.authors}
+              </p>
+              {view === "summary" && (
+                <p>
+                  <strong>Summary:</strong> {ref.summary}
+                </p>
+              )}
               {view === "sieved" && renderTable("Sieved Data", ref.sieved)}
               {view === "chunk" && renderTable("Chunk Data", ref.chunk)}
             </div>
@@ -180,50 +310,71 @@ function Udecide() {
         {/* New References */}
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-xl font-semibold mb-4">New Reference(s)</h2>
-          {currentData.newReferences.map((ref, index) => (
-            <div key={ref.id} className="mb-6">
-              <p><strong>Article:</strong> {ref.articleName}</p>
-              <p><strong>Date:</strong> {ref.date}</p>
-              <p><strong>Authors:</strong> {ref.authors}</p>
-              <p><strong>Sentiment:</strong> {ref.sentiment}</p>
-              {view === "summary" && <p className="mt-4"><strong>Summary:</strong> {ref.summary}</p>}
+          {(currentData.newReferences || []).map((ref) => (
+            <div key={ref.id} className="mb-6 border border-black p-4 rounded-md">
+              {replaceMode && (
+                <div className="flex items-center mb-2">
+                  <input
+                    type="checkbox"
+                    id={`replace-new-${ref.id}`}
+                    className="mr-2"
+                    onChange={() => handleReplaceNewClick(ref.id)}
+                  />
+                  <label htmlFor={`replace-new-${ref.id}`} className="text-left">
+                    Select for Replacement
+                  </label>
+                </div>
+              )}
+              <p>
+                <strong>Article:</strong> {ref.articleName}
+              </p>
+              <p>
+                <strong>Date:</strong> {ref.date}
+              </p>
+              <p>
+                <strong>Authors:</strong> {ref.authors}
+              </p>
+              <p>
+                <strong>Sentiment:</strong> {ref.sentiment}
+              </p>
+              {view === "summary" && (
+                <p>
+                  <strong>Summary:</strong> {ref.summary}
+                </p>
+              )}
               {view === "sieved" && renderTable("Sieved Data", ref.sieved)}
               {view === "chunk" && renderTable("Chunk Data", ref.chunk)}
-              
-              {/* Action Buttons */}
-              <div className="flex gap-2 mt-4">
-                <button 
-                  onClick={handleReplaceClick} 
-                  className={`px-4 py-2 ${replaceMode ? 'bg-yellow-700' : 'bg-yellow-500'} text-white rounded hover:bg-yellow-600`}
-                >
-                  Replace
-                </button>
-                <button 
-                  onClick={() => handleEditClick(ref.id)} 
+              <div className="mt-4 flex gap-4 justify-center">
+                <button
                   className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                >
-                  Edit
-                </button>
-                <button 
-                  className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                  onClick={() => handleAddClick(ref.id)}
                 >
                   Add
                 </button>
+                <button
+                  className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
+                  onClick={() => handleEditClick(ref.id)}
+                >
+                  Edit
+                </button>
+                {editMode === ref.id && (
+                  <div className="mt-4 flex gap-4 items-center">
+                    <input
+                      type="text"
+                      className="border border-gray-300 p-2 rounded w-full"
+                      placeholder="Type your edit here..."
+                      value={editText[ref.id] || ""}
+                      onChange={(e) => handleEditTextChange(ref.id, e.target.value)}
+                    />
+                    <button
+                      className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                      onClick={() => handleAddEditTask(ref.id)}
+                    >
+                      Add Edit Task
+                    </button>
+                  </div>
+                )}
               </div>
-
-              {/* Show Additions textbox in Edit mode */}
-              {editMode === ref.id && (
-                <div className="mt-4">
-                  <label htmlFor={`additions-${ref.id}`} className="block text-left font-semibold mb-2">Additions:</label>
-                  <textarea
-                    id={`additions-${ref.id}`}
-                    value={additions[ref.id] || ""}
-                    onChange={(e) => handleAdditionsChange(ref.id, e.target.value)}
-                    className="w-full border border-gray-300 rounded p-2"
-                    placeholder="Type your additions here..."
-                  />
-                </div>
-              )}
             </div>
           ))}
         </div>
@@ -233,3 +384,4 @@ function Udecide() {
 }
 
 export default Udecide;
+
