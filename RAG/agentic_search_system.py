@@ -1,13 +1,13 @@
-from process_and_embed import *
-from gpt_retrievesieve import *
-from semantic_scholar_keyword_search import *
-from process_ref import *
+from .process_and_embed import *
+from .gpt_retrievesieve import *
+from .semantic_scholar_keyword_search import *
+from .process_ref import *
 import time
 import logging
 import asyncio
 from pymongo import MongoClient
 from dotenv import load_dotenv
-from agent import *
+from .agent import *
 import logging
 import pandas as pd
 load_dotenv()

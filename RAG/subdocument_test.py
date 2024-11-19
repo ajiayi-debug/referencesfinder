@@ -1,8 +1,8 @@
-from pdf import *
-from gpt_rag import *
-from semantic_chunking import *
+from .pdf import *
+from .gpt_rag import *
+from .semantic_chunking import *
 import pandas as pd
-from embedding import *
+from .embedding import *
 import ast
 
 text=full_cycle('text/heyman.pdf', 'heyman_test')

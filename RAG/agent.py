@@ -1,5 +1,5 @@
-from gpt_rag_asyncio import *
-from call_mongodb import *
+from .gpt_rag_asyncio import *
+from .call_mongodb import *
 from dotenv import load_dotenv
 import asyncio
 load_dotenv()

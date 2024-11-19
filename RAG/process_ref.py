@@ -1,14 +1,14 @@
-from pdf import *
-from gpt_rag import *
-from embedding import *
+from .pdf import *
+from .gpt_rag import *
+from .embedding import *
 import ast
 import pandas as pd
 from dotenv import load_dotenv
 from pymongo import MongoClient
-from call_mongodb import *
+from .call_mongodb import *
 from tqdm import tqdm
 import certifi
-from gpt_rag_asyncio import *
+from .gpt_rag_asyncio import *
 import asyncio
 
 load_dotenv()

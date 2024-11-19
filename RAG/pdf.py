@@ -1,8 +1,8 @@
 import os
-from gpt_rag import *
+from .gpt_rag import *
 from openpyxl import Workbook
 import unicodedata
-from gpt_rag import *
+from .gpt_rag import *
 import fitz  # PyMuPDF
 import glob
 import re

@@ -1,21 +1,21 @@
 from dotenv import load_dotenv
 load_dotenv()
 import pandas as pd
-from gpt_rag import *
-from pdf import *
-from gpt_rag import *
-from embedding import *
-from gpt_rag_asyncio import *
+from .gpt_rag import *
+from .pdf import *
+from .gpt_rag import *
+from .embedding import *
+from .gpt_rag_asyncio import *
 import argparse
 import os
 from requests import Session
 from typing import Generator, Union
 from pymongo import MongoClient
-from call_mongodb import *
+from .call_mongodb import *
 from tqdm import tqdm
-from download_paper_ss import *
+from .download_paper_ss import *
 import urllib3
-from search_ss import *
+from .search_ss import *
 import asyncio
 import certifi
 urllib3.disable_warnings()
