@@ -14,7 +14,7 @@ from .expert_decision import *
 # """Sanity checking"""
 # """Get the statements and their respective reference articles and send to mongodb"""
 # logging.info('Finding initial references')
-get_statements()
+#get_statements()
 # time.sleep(60)
 # """Allow user to add to mongodb for missing statements and their respective references"""
 # #function to add missing statements if necessary
@@ -32,7 +32,7 @@ get_statements()
 # cleaning_initial(valid_collection_name='Agentic_sieved_RAG_original', not_match='No_match_agentic_original', top_5='top_5_original')
 
 """Make pretty for comparison for replacement/addition to citation"""
-#make_summary_for_comparison(top_5='top_5_original',expert='Original_reference_expert_data')
+make_summary_for_comparison(top_5='top_5_original',expert='Original_reference_expert_data')
 
 # """Finding new references and checking them"""
 # """make keywords from statements then do keyword search and download"""

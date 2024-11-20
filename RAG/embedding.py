@@ -92,11 +92,6 @@ def chunking(df, title, tokens):
     return df
 
 
-# df['Text Chunks'] = df["Text Content"].apply(lambda x: chunk_text(x, 8190))
-# df = df.explode('Text Chunks').reset_index(drop=True)
-# df['n_tokens'] = df["Text Chunks"].apply(lambda x: len(tokenizer.encode(x)))
-
-
 #helper function
 def generate_embeddings(text, model=os.getenv("embed_model")): # model = "deployment_name"
     embed=client.embeddings.create(input = [text], model=model).data[0].embedding
@@ -125,20 +120,6 @@ def get_embedding(text, model=os.getenv("embed_model")): # model = "deployment_n
     embed=client.embeddings.create(input = [text], model=model).data[0].embedding
     return embed
 
-# def search_docs_names(df, user_query, top_n=4, to_print=True):
-#     embedding = get_embedding(
-#         user_query,
-#         model=os.getenv("embed_model") # model should be set to the deployment name you chose when you deployed the text-embedding-ada-002 (Version 2) model
-#     )
-    
-#     df["similarities_name"] = df.embed_name.apply(lambda x: cosine_similarity(x, embedding))
-#     res = (
-#         df.sort_values("similarities_name", ascending=False)
-#         .head(top_n)
-#     )
-#     if to_print:
-#         print(res) 
-#     return res
 
 
 #Helper function to convert dtype obj to dtype float
