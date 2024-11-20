@@ -6,12 +6,13 @@ import ast
 from .embedding import *
 import asyncio
 from tqdm.asyncio import tqdm_asyncio
+from .pdf import *
+from rapidfuzz import fuzz, process
 load_dotenv()
 uri = os.getenv("uri_mongo")
 client = MongoClient(uri, tls=True, tlsCAFile=certifi.where())
 db = client['data']
 
-loop = asyncio.get_event_loop()
 
 
 async def process_row_async(row,got_authors):
@@ -101,17 +102,16 @@ async def summarize_score_async(df,got_authors):
 
 def summarize_score(df, got_authors=True):
     """Synchronous wrapper function for calling async operations."""
-    global loop
+    try:
+        # Try to get the running event loop
+        loop = asyncio.get_running_loop()
+        # Submit the coroutine to the existing loop
+        future = asyncio.run_coroutine_threadsafe(summarize_score_async(df, got_authors), loop)
+        return future.result()
+    except RuntimeError:
+        # No running event loop, create a new one
+        return asyncio.run(summarize_score_async(df, got_authors))
 
-    # Check if the event loop is already running
-    if loop.is_running():
-        # Use asyncio.run_coroutine_threadsafe to submit async work to the existing loop
-        return asyncio.run_coroutine_threadsafe(summarize_score_async(df,got_authors=got_authors), loop).result()
-    else:
-        # Otherwise, create and run a new event loop
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        return loop.run_until_complete(summarize_score_async(df,got_authors=got_authors))
     
 
 def switch_sentiment(df):
@@ -371,3 +371,129 @@ def merge_old_new(expert_new, expert_old,statements,name):
     replace_database_collection(uri, db.name, name, formatted_list)
 
     return formatted_list
+
+
+#extract info to be editted
+async def edit_list_async(file_content):
+    """Call the async selector to choose the best prompt in the list"""
+    return await call_extract_to_edit_async(file_content)
+
+
+def edit_list(file_content):
+    """Synchronous wrapper function for calling async operations."""
+    try:
+        # Try to get the running event loop
+        loop = asyncio.get_running_loop()
+        # Submit the coroutine to the existing loop
+        future = asyncio.run_coroutine_threadsafe(edit_list_async(file_content), loop)
+        return future.result()
+    except RuntimeError:
+        # No running event loop, use asyncio.run()
+        return asyncio.run(edit_list_async(file_content))
+
+# Function to clean each reference list in replace db
+def clean_references(ref_list):
+    if not isinstance(ref_list, list):
+        return []
+    cleaned_refs = []
+    for ref in ref_list:
+        # Clean 'date' field
+        if 'date' in ref and isinstance(ref['date'], dict):
+            if '$numberInt' in ref['date']:
+                ref['date'] = int(ref['date']['$numberInt'])
+            elif '$numberLong' in ref['date']:
+                ref['date'] = int(ref['date']['$numberLong'])
+        # Remove 'id' field from the references
+        ref.pop('id', None)
+        cleaned_refs.append(ref)
+    return cleaned_refs
+
+
+
+
+#format whatever human decided with AI for streamlined purposes
+def formatting_human():
+    #main paper data
+    text = read_text_file('extracted.txt')
+    result = edit_list(text)
+    data=ast.literal_eval(result)
+    print(data)
+    # Convert the nested structure to a DataFrame
+    df_main = (
+        pd.DataFrame(data, columns=["Statement", "References"])  # Create DataFrame
+        .explode("References")  # Explode References column
+        .assign(
+            Citation=lambda df: df["References"].map(lambda x: x[0] if isinstance(x, list) else None),
+            Full_Reference=lambda df: df["References"].map(lambda x: x[1] if isinstance(x, list) else None)
+        )  # Extract Citation and Full Reference
+        .drop(columns=["References"])  # Drop the original References column
+    )
+
+    # Explode the "References" column
+    #df_main = df_main.explode("References")
+
+    # # Split the exploded references into citation and full reference
+    # df_main[["Citation", "Full Reference"]] = pd.DataFrame(df_main["References"].tolist(), index=df.index)
+
+    # # Drop the original "References" column
+    # df_main = df_main.drop(columns=["References"])
+    print(df_main)
+        
+
+
+
+    #edits
+    # add=db['add']
+    # edit=db['edit']
+    replace = db['replace']
+    documents_new = list(
+        replace.find(
+            {}, 
+            {
+                '_id': 1,              # Include the statement id
+                'statement': 1,       
+                'oldReferences': 1,   
+                'newReferences': 1,   
+            }
+        )
+    )
+    df = pd.DataFrame(documents_new)
+    df['oldReferences'] = df['oldReferences'].apply(clean_references)
+    df['newReferences'] = df['newReferences'].apply(clean_references)
+    df_melted = df.melt(
+        id_vars=['_id', 'statement'],  # Include '_id' (statement id)
+        value_vars=['oldReferences', 'newReferences'],
+        var_name='referenceType',
+        value_name='references'
+    )
+    df_exploded = df_melted.explode('references')
+    df_exploded = df_exploded.dropna(subset=['references'])
+
+    # Normalize the references
+    references_df = pd.json_normalize(df_exploded['references'])
+    df_final = pd.concat([df_exploded.drop(columns=['references']), references_df], axis=1)
+
+
+    # Rename 'referenceType' values for readability
+    df_final['referenceType'] = df_final['referenceType'].map({
+        'oldReferences': 'Old Reference',
+        'newReferences': 'New Reference'
+    })
+
+    # Rearrange the columns
+    df_replace = df_final[['_id', 'statement', 'referenceType', 'articleName', 'authors', 'date']]
+
+    #change the old ref w new ref 
+    # Perform the replacement and track changes
+    # Perform the replacement and log the changes
+    
+    
+
+    
+    
+
+
+
+
+
+
