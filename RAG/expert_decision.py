@@ -495,6 +495,5 @@ def formatting_human():
 
 
 
-formatting_human()
 
 
