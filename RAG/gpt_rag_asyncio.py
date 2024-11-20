@@ -196,9 +196,13 @@ async def call_selector_async(list_of_prompts):
     result = await async_retry_on_exception(selector, list_of_prompts)
     return result
 
-#
+# summarize and score according to relevance, detects wrong sentiment as well
 async def call_summarizer_scorer_async(list_of_sieved_chunks,statement,sentiment):
     result=await async_retry_on_exception(summarizer_scorer,list_of_sieved_chunks,statement,sentiment)
+    return result
+#extracts info from main .txt fto prep for edits
+async def call_extract_to_edit_async(file_content):
+    result=await async_retry_on_exception(extract_to_edit,file_content)
     return result
 
 # support or oppose included, used to classify the new ref
@@ -588,4 +592,35 @@ async def summarizer_scorer(list_of_sieved_chunks,statement,sentiment):
         response = await async_client.chat.completions.create(**data)
 
 
+    return response.choices[0].message.content
+
+
+async def extract_to_edit(file_content):
+    extraction_prompt = f"""
+    You are an advanced citation and reference extraction assistant.
+
+    Your task is to:
+    1. Extract statements from the provided document that include in-text citations.
+    2. Match the citations in those statements to the corresponding entries in the reference list at the end of the document.
+    3. Return the output as a structured list where:
+       - Each element contains:
+         [Statement, [[citation, Reference in reference list], ...]]
+
+    Here is the content of the document:
+    ----
+    {file_content}
+    ----
+
+    Only output the structured list in the specified format. Do not include explanations or any additional information.
+    """
+    system_prompt = "You are a structured data extraction agent. Extract the requested information and output it as a structured list only."
+    data={
+        "model":"gpt-4o",
+        "messages":[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": [{"type": "text","text": extraction_prompt}]}
+        ],
+        "temperature":0
+    }
+    response = await async_client.chat.completions.create(**data)
     return response.choices[0].message.content
