@@ -7,7 +7,7 @@ from .embedding import *
 import asyncio
 from tqdm.asyncio import tqdm_asyncio
 from .pdf import *
-from rapidfuzz import fuzz, process
+import string
 load_dotenv()
 uri = os.getenv("uri_mongo")
 client = MongoClient(uri, tls=True, tlsCAFile=certifi.where())
@@ -409,6 +409,51 @@ def clean_references(ref_list):
     return cleaned_refs
 
 
+#replace
+import string
+
+def update_references(df_main, replace_df):
+    # Iterate through each unique `_id` in replace_df
+    for _id in replace_df['_id'].unique():
+        # Filter replace_df for the current `_id`
+        ref_data = replace_df[replace_df['_id'] == _id]
+        
+        # Extract the statement
+        statement = ref_data['statement'].iloc[0]
+        
+        # Find the corresponding row in df_main by matching the statement
+        main_row = df_main[df_main['statement'] == statement]
+        if main_row.empty:
+            print(f"Statement not found in df_main for _id {_id}")
+            continue
+        
+        # Normalize function to match articleName
+        def normalize(text):
+            return ''.join(e for e in text.lower() if e not in string.punctuation).replace(" ", "")
+        
+        # Normalize the old reference's articleName
+        old_ref_name = normalize(ref_data[ref_data['referenceType'] == 'Old Reference']['articleName'].iloc[0])
+        
+        # Find and delete the old reference in df_main
+        df_main = df_main[
+            ~((df_main['statement'] == statement) & 
+              (df_main['articleName'].apply(normalize) == old_ref_name))
+        ]
+        
+        # Get the new reference details
+        new_ref = ref_data[ref_data['referenceType'] == 'New Reference'].iloc[0]
+        
+        # Add the new reference to df_main
+        new_row = {
+            'statement': statement,
+            'authors': new_ref['authors'],
+            'date': new_ref['date'],
+            'articleName': new_ref['articleName'],
+            'edits':''
+        }
+        df_main = pd.concat([df_main, pd.DataFrame([new_row])], ignore_index=True)
+    
+    return df_main
 
 
 #format whatever human decided with AI for streamlined purposes
@@ -420,7 +465,7 @@ def formatting_human():
     print(data)
     # Convert the nested structure to a DataFrame
     df_main = (
-        pd.DataFrame(data, columns=["Statement", "References"])  # Create DataFrame
+        pd.DataFrame(data, columns=["statement", "References"])  # Create DataFrame
         .explode("References")  # Explode References column
         .assign(
             Citation=lambda df: df["References"].map(lambda x: x[0] if isinstance(x, list) else None),
@@ -428,20 +473,18 @@ def formatting_human():
         )  # Extract Citation and Full Reference
         .drop(columns=["References"])  # Drop the original References column
     )
+    pattern_removecitation = r"\([^)]*\)\s*$"
 
-    # Explode the "References" column
-    #df_main = df_main.explode("References")
+    df_main['statement']=df_main['statement'].str.replace(pattern_removecitation, "", regex=True)
+    pattern_split = r'^(.*?)(?:,?\s+)?(\d{4})$'
+    df_main[['authors','date']]=df_main['Citation'].str.extract(pattern_split)
 
-    # # Split the exploded references into citation and full reference
-    # df_main[["Citation", "Full Reference"]] = pd.DataFrame(df_main["References"].tolist(), index=df.index)
+    pattern_title =  r'\)\.\s*(.*?)(?:\. [A-Z]|$)'
+    df_main['articleName']=df_main['Full_Reference'].str.extract(pattern_title)
+    df_main=df_main.drop(columns=['Citation','Full_Reference'])
+    df_main['edits']=''
 
-    # # Drop the original "References" column
-    # df_main = df_main.drop(columns=["References"])
     print(df_main)
-        
-
-
-
     #edits
     # add=db['add']
     # edit=db['edit']
@@ -482,18 +525,39 @@ def formatting_human():
 
     # Rearrange the columns
     df_replace = df_final[['_id', 'statement', 'referenceType', 'articleName', 'authors', 'date']]
-
+    send_excel(df_main,'RAG','main.xlsx')
+    send_excel(df_replace,'RAG','replace.xlsx')
     #change the old ref w new ref 
     # Perform the replacement and track changes
-    # Perform the replacement and log the changes
+    updated_df_main = update_references(df_main, df_replace)
+    send_excel(updated_df_main,'RAG','updated.xlsx')
+    records = updated_df_main.to_dict(orient='records')
+    replace_database_collection(uri, db.name, 'to_update', records)
     
     
-
+formatting_human()
     
+#reverse explode by grouping
+def reverse_explode(df, column):
+    """
+    Reverse explode a DataFrame based on a specified column.
+    Group by the column and aggregate all other columns as lists.
     
+    Parameters:
+    - df: pd.DataFrame
+    - column: str, the name of the column to reverse explode on.
+    
+    Returns:
+    - pd.DataFrame: A DataFrame with aggregated data based on the column.
+    """
+    # Group by the specified column and aggregate all other columns as lists
+    reversed_df = df.groupby(column).agg(lambda x: list(x)).reset_index()
+    return reversed_df
 
+def edit_paper(df_main):
+    #get data per statement
 
-
+    return
 
 
 

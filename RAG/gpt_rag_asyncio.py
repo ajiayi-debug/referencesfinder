@@ -600,12 +600,13 @@ async def extract_to_edit(file_content):
     You are an advanced citation and reference extraction assistant.
 
     Your task is to:
-    1. Extract statements from the provided document that include in-text citations.
+    1. Extract statements from the provided document that include in-text citations. 
     2. Match the citations in those statements to the corresponding entries in the reference list at the end of the document.
     3. Return the output as a structured list where:
        - Each element contains:
-         [Statement, [[citation, Reference in reference list], ...]]
-
+         [Statement, [[citation, Name of Reference article in reference list], ...]]
+    Note: Statement means The statement ONLY without the citation!
+    
     Here is the content of the document:
     ----
     {file_content}
@@ -624,3 +625,5 @@ async def extract_to_edit(file_content):
     }
     response = await async_client.chat.completions.create(**data)
     return response.choices[0].message.content
+
+

@@ -23,8 +23,6 @@ uri = os.getenv("uri_mongo")
 client = MongoClient(uri, tls=True, tlsCAFile=certifi.where())
 db = client['data']
 
-loop = asyncio.get_event_loop()
-
 
 
 async def process_row_async(row, code):
@@ -163,34 +161,22 @@ async def retrieve_sieve_async_check(df, code):
 
     return valid_output_df, non_valid_output_df, no_df
 
-
 def retrieve_sieve(df, code):
     """Synchronous wrapper function for calling async operations."""
-    global loop
+    try:
+        return asyncio.run(retrieve_sieve_async(df, code))
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        # Handle exceptions or re-raise
 
-    # Check if the event loop is already running
-    if loop.is_running():
-        # Use asyncio.run_coroutine_threadsafe to submit async work to the existing loop
-        return asyncio.run_coroutine_threadsafe(retrieve_sieve_async(df, code), loop).result()
-    else:
-        # Otherwise, create and run a new event loop
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        return loop.run_until_complete(retrieve_sieve_async(df, code))
-    
 def retrieve_sieve_check(df, code):
     """Synchronous wrapper function for calling async operations."""
-    global loop
+    try:
+        return asyncio.run(retrieve_sieve_async_check(df, code))
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        # Handle exceptions or re-raise
 
-    # Check if the event loop is already running
-    if loop.is_running():
-        # Use asyncio.run_coroutine_threadsafe to submit async work to the existing loop
-        return asyncio.run_coroutine_threadsafe(retrieve_sieve_async_check(df, code), loop).result()
-    else:
-        # Otherwise, create and run a new event loop
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        return loop.run_until_complete(retrieve_sieve_async_check(df, code))
 
 
 #sanity checking existing references

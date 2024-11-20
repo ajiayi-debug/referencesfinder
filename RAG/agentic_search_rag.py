@@ -25,14 +25,14 @@ from .expert_decision import *
 
 # """retrieve and sieve using gpt 4o"""
 # logging.info("Comparing chunks with statements referencing the chunks' reference article in the main article")
-# retrieve_sieve_references(collection_processed_name='chunked_noembed',valid_collection_name='Agentic_sieved_RAG_original', invalid_collection_name='No_match_agentic_original')
+retrieve_sieve_references(collection_processed_name='chunked_noembed',valid_collection_name='Agentic_sieved_RAG_original', invalid_collection_name='No_match_agentic_original')
 # time.sleep(60)
 
 # """Clean the old references for a summary for comparison when updating articles"""
 # cleaning_initial(valid_collection_name='Agentic_sieved_RAG_original', not_match='No_match_agentic_original', top_5='top_5_original')
 
 """Make pretty for comparison for replacement/addition to citation"""
-make_summary_for_comparison(top_5='top_5_original',expert='Original_reference_expert_data')
+#make_summary_for_comparison(top_5='top_5_original',expert='Original_reference_expert_data')
 
 # """Finding new references and checking them"""
 # """make keywords from statements then do keyword search and download"""
@@ -65,7 +65,7 @@ make_summary_for_comparison(top_5='top_5_original',expert='Original_reference_ex
 # send_excel_all(collection_processed_name='new_chunked_noembed',new_ref_collection='new_ref_found_Agentic',valid_collection_name='Agentic_sieved_RAG_new_support_nosupport_confidence',invalid_collection_name='No_match_agentic_new_confidence',not_match='no_match_confidence',top_5='top_5')
 
 """Make a table for data representation"""
-make_pretty_for_expert('top_5','new_ref_found_Agentic','expert_data')
+#make_pretty_for_expert('top_5','new_ref_found_Agentic','expert_data')
 
 
 
