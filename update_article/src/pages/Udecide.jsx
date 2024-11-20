@@ -249,6 +249,34 @@ function Udecide() {
           </button>
         </div>
       </div>
+      {/* Add Toggle Buttons */}
+      <div className="flex justify-center mb-6">
+        <button
+          onClick={() => setView("summary")}
+          className={`px-4 py-2 mx-2 rounded ${
+            view === "summary" ? "bg-blue-500 text-white" : "bg-gray-200 hover:bg-gray-300"
+          }`}
+        >
+          Summary
+        </button>
+        <button
+          onClick={() => setView("sieved")}
+          className={`px-4 py-2 mx-2 rounded ${
+            view === "sieved" ? "bg-blue-500 text-white" : "bg-gray-200 hover:bg-gray-300"
+          }`}
+        >
+          Sieved
+        </button>
+        <button
+          onClick={() => setView("chunk")}
+          className={`px-4 py-2 mx-2 rounded ${
+            view === "chunk" ? "bg-blue-500 text-white" : "bg-gray-200 hover:bg-gray-300"
+          }`}
+        >
+          Chunk
+        </button>
+      </div>
+
 
       <div className="flex justify-center items-center mb-6 gap-4">
         <button
