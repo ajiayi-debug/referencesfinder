@@ -708,4 +708,6 @@ def extract_images_from_pdf(folder_path="main", output_folder="images"):
 
     print("Image extraction complete.")
 
-
+# Split the text into paragraphs or logical chunks
+def split_text_into_chunks(text, delimiter="\n\n"):
+    return text.split(delimiter)
