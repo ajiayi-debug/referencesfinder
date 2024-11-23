@@ -200,10 +200,32 @@ async def call_selector_async(list_of_prompts):
 async def call_summarizer_scorer_async(list_of_sieved_chunks,statement,sentiment):
     result=await async_retry_on_exception(summarizer_scorer,list_of_sieved_chunks,statement,sentiment)
     return result
-#extracts info from main .txt fto prep for edits
+#extracts info from main .txt to prep for edits
 async def call_extract_to_edit_async(file_content):
     result=await async_retry_on_exception(extract_to_edit,file_content)
     return result
+
+"""Edit final text prompts"""
+#Converts the final df to an output to replace the text w regex
+async def call_convert_to_replace(row,text):
+    result=await async_retry_on_exception(convert_to_replace,row,text)
+    return result
+
+#Locate which text in list of text contains the statement and citation and edit accordingly
+async def call_find_to_edit_statement(text,list_statement):
+    result=await async_retry_on_exception(find_to_edit_statement,text,list_statement)
+    return result
+
+#Locate reference list from text for removal
+async def call_find_reference_list(text):
+    result=await async_retry_on_exception(find_reference_list,text)
+    return result
+
+#Edit the reference list
+async def call_replace_reference_list(reference_list,list_of_list_references):
+    result=await async_retry_on_exception(replace_reference_list,reference_list,list_of_list_references)
+    return result
+
 
 # support or oppose included, used to classify the new ref
 # Classification included
@@ -627,3 +649,133 @@ async def extract_to_edit(file_content):
     return response.choices[0].message.content
 
 
+async def convert_to_replace(row,text):
+    replace_prompt = f"""
+    You are an advanced citation generator tasked with creating structured citations and references. Use the following document as your reference source:
+
+    ----
+    {text}
+    ----
+    The row is formatted as follows:
+    [Statement with Author and year pair, Reference article names in a list]
+
+    Based on the data provided in the row, generate citations and references in the same format as those in the document. If the row already contains the exact same citations and references as the document, simply repeat the same output. Otherwise, use the row's information to create new citations and references.
+    For example: 
+    In document;
+    Statement with citation: ' A meta-analysis reveals that clinical symptoms (abdominal pain, diarrhoea) or self-reporting are not reliable indices for the diagnosis of lactose intolerance (Jellema et al., 2010).'
+    Reference: 'Jellema P. et al. (2010). Lactose malabsorption and intolerance: a systematic review on the diagnostic value of gastrointestinal symptoms and self-reported milk intolerance. Q J Med; 103:555-572.'
+
+
+    Your input from the row:
+    ['A meta-analysis reveals that clinical symptoms (abdominal pain, diarrhoea) or self-reporting are not reliable indices for the diagnosis of lactose intolerance (Salah M Bakry, Ziad Banoun, Ammar Abdulfattah, Fawaz M Alkhatib, Mussad Almhmadi, Mohammed Alharbi, Adel A Alluhaybi, M. O. Krenshi, Fahad Alharthi, S. Ekram, 2023).',['Comparison of Knowledge of Lactose Intolerance and Cow’s Milk Allergy Among the Medical Students at Two Universities in Saudi Arabia']]
+    Your output:
+
+    ['A meta-analysis reveals that clinical symptoms (abdominal pain, diarrhoea) or self-reporting are not reliable indices for the diagnosis of lactose intolerance (Salah M Bakry et al., 2023).',['(Salah M Bakry et al., 2023). Comparison of Knowledge of Lactose Intolerance and Cow’s Milk Allergy Among the Medical Students at Two Universities in Saudi Arabia']].
+
+    Take note that you replace the original references and citations with whatever is in the row. WHatever is in the row can include old and new references or just new references. Just follow suit.
+    Row data:
+    {row}
+
+    **Output format**:
+    ['Statement(citation)',['Reference 1',...]]
+    Take note that even if single reference, still need quotation around it in a list
+
+    Ensure the output strictly follows the format above, with accurate citations and references aligned to the style in the document.
+
+    """
+    system_prompt = """You are an advanced citation and reference generator. Your task is to generate structured citations and references based on the provided input. 
+
+                    - Ensure all citations and references strictly align with the requested format and style.
+                    - Ensure statements match exactly for regex-based comparisons.
+                    - If matching references are found, output them in the exact same format as they appear in the document to enable regex matching.
+                    - Use only the information from the provided document and row data to create the output.
+                    - If the input data matches the existing references in the document, repeat them exactly.
+                    - Respond with the output **only** in the specified structured format: [Statement(citation), Reference].
+                    """
+    data={
+        "model":"gpt-4o",
+        "messages":[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": [{"type": "text","text": replace_prompt}]}
+        ],
+        "temperature":0
+    }
+    response = await async_client.chat.completions.create(**data)
+    return response.choices[0].message.content
+
+
+
+async def find_to_edit_statement(text,statement_list):
+    extraction_prompt = f"""
+    You are a citation editor. With reference to the list of statements with citation, edit the text by 
+    1) Removing citations from the text that are missing in the list of statements with citation. 
+    2) Adding citations in the list of statements of citations not in text. 
+    3) Adding additional text behind statement and citation due to their presence behind statement and citation in list of statements with citations that are not found in text.
+    Output the edited text only with the exact same format as the original text. YOU CAN DO ALL 1,2 AND 3 SIMULTANEOUSLY IF NEEDED.
+
+    ----
+    The text is:
+    {text}
+    The list of statements with citation is:
+    {statement_list}
+    ----
+
+    """
+    system_prompt = "You are a statement and citation locator and editor. Locate the statements and edit the statements and citations in the text based on the list of statements and output the edited text. ONLY OUTPUT THE EDITED TEXT."
+    data={
+        "model":"gpt-4o",
+        "messages":[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": [{"type": "text","text": extraction_prompt}]}
+        ],
+        "temperature":0
+    }
+    response = await async_client.chat.completions.create(**data)
+    return response.choices[0].message.content
+
+
+async def find_reference_list(text):
+    extraction_prompt = f"""
+    You are a reference list locator. You locate the reference list and output the heading of the reference list as well as all references as it is. Make sure it is the exact wording.
+    ----
+    The text is:
+    {text}
+    ----
+
+    """
+    system_prompt = "You are a reference list locator. Output the located reference list exactly as it is in the text."
+    data={
+        "model":"gpt-4o",
+        "messages":[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": [{"type": "text","text": extraction_prompt}]}
+        ],
+        "temperature":0
+    }
+    response = await async_client.chat.completions.create(**data)
+    return response.choices[0].message.content
+
+
+async def replace_reference_list(reference_list,list_of_list_references):
+    replacement_list_prompt = f"""
+    You are a reference editor. With reference to the list of list of references, edit the reference list by 
+    1) Removing references from the reference list that are missing in the list of list references 
+    2) Adding references found in list of list and NOT found in reference list TO reference list 
+    Output the edited reference list only with the exact same format as the original reference list. YOU CAN DO BOTH 1 AND 2 at ONCE, especially when you are replacing a reference!!!
+    Reference list:
+    {reference_list}
+    List of list of references:
+    {list_of_list_references}
+
+    """
+    system_prompt = "You are a reference list editor. You edit the reference list with reference to a list of list of references and output ONLY the edited reference list."
+    data={
+        "model":"gpt-4o",
+        "messages":[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": [{"type": "text","text": replacement_list_prompt}]}
+        ],
+        "temperature":0
+    }
+    response = await async_client.chat.completions.create(**data)
+    return response.choices[0].message.content

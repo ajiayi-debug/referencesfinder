@@ -37,7 +37,7 @@ retrieve_sieve_references(collection_processed_name='chunked_noembed',valid_coll
 # """Finding new references and checking them"""
 # """make keywords from statements then do keyword search and download"""
 # logging.info('Searching for new references using statements')
-# search_and_retrieve_keyword('Agentic_sieved_RAG_original', 'new_ref_found_Agentic')
+search_and_retrieve_keyword('Agentic_sieved_RAG_original', 'new_ref_found_Agentic')
 # time.sleep(60)
 
 # """Process new documents, noembed means we are not using embedding in retrieval and generate process but just to semantically chunk"""

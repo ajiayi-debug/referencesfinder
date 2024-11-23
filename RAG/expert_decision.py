@@ -8,6 +8,12 @@ import asyncio
 from tqdm.asyncio import tqdm_asyncio
 from .pdf import *
 import string
+from tqdm import tqdm
+from difflib import SequenceMatcher
+import nltk
+from nltk.tokenize import sent_tokenize
+
+nltk.download('punkt')
 load_dotenv()
 uri = os.getenv("uri_mongo")
 client = MongoClient(uri, tls=True, tlsCAFile=certifi.where())
@@ -15,7 +21,54 @@ db = client['data']
 
 
 
-async def process_row_async(row,got_authors):
+async def process_row_async_final(row,text):
+    ans=await call_convert_to_replace(row,text)
+    newrow=ast.literal_eval(ans)
+    new_row=pd.DataFrame({
+        'Statement':[newrow[0]],
+        'Reference':[newrow[1]]
+    })
+    return new_row
+
+async def final_async(df,text):
+    """Main function to run the parallelized process using asyncio and the async OpenAI client."""
+    output=[]
+    # Process each row asynchronously using the process_row_async function
+    # Define a semaphore to limit the number of concurrent tasks (added because VPN cause my tasks to throttle, you can try to remove from this line onwards to)
+    semaphore = asyncio.Semaphore(20)  # Adjust the number as needed
+
+    async def process_row_with_semaphore(row,text):
+        """Wrapper function to use semaphore for each task."""
+        async with semaphore:
+            return await process_row_async_final(row,text)
+    # Create tasks with semaphore-wrapped function
+    tasks = [process_row_with_semaphore(row,text) for _, row in df.iterrows()]
+    #this line then replace with
+    #tasks = [process_row_async(row) for _, row in df.iterrows()]
+    #for quicker times (for context, without the vpn a 8 hours task takes 2 hours)
+    
+    # Use tqdm_asyncio to track progress of async tasks
+    for new_row in await tqdm_asyncio.gather(*tasks, desc='Processing rows in parallel'):
+        output.append(new_row)
+    # Concatenate valid rows
+    output_df = pd.concat(output, ignore_index=True) if output else pd.DataFrame()
+
+
+    return output_df
+
+def finalize(df, text):
+    """Synchronous wrapper function for calling async operations."""
+    try:
+        # Try to get the running event loop
+        loop = asyncio.get_running_loop()
+        # Submit the coroutine to the existing loop
+        future = asyncio.run_coroutine_threadsafe(final_async(df, text), loop)
+        return future.result()
+    except RuntimeError:
+        # No running event loop, create a new one
+        return asyncio.run(final_async(df, text))
+
+async def process_row_async_summary(row,got_authors):
     #for new top 5 where authors are added
     if got_authors:
         list_of_sieved_chunks = row['Sieving by gpt 4o']
@@ -84,7 +137,7 @@ async def summarize_score_async(df,got_authors):
     async def process_row_with_semaphore(row,got_authors=got_authors):
         """Wrapper function to use semaphore for each task."""
         async with semaphore:
-            return await process_row_async(row,got_authors=got_authors)
+            return await process_row_async_summary(row,got_authors=got_authors)
     # Create tasks with semaphore-wrapped function
     tasks = [process_row_with_semaphore(row,got_authors=got_authors) for _, row in df.iterrows()]
     #this line then replace with
@@ -390,6 +443,66 @@ def edit_list(file_content):
     except RuntimeError:
         # No running event loop, use asyncio.run()
         return asyncio.run(edit_list_async(file_content))
+    
+#extract reference list and edit it
+async def find_reference_async(text):
+    """Find reference list"""
+    return await call_find_reference_list(text)
+
+async def edit_reference_async(reference_list,list_of_list_references):
+    """Edit the reference list"""
+    return await call_replace_reference_list(reference_list,list_of_list_references)
+
+#edit citations of statement
+async def edit_citation(text,list_statement):
+    """Edits citations"""
+    return await call_find_to_edit_statement(text,list_statement)
+
+async def process_reference_list_async(text, list_of_list_references):
+    """
+    Find the reference list in the text and edit it using the provided references, 
+    then insert the edited reference list at the exact same spot.
+
+    Args:
+        text (str): The text to process.
+        list_of_list_references (list): List of references to replace the original references.
+
+    Returns:
+        str: The updated text with the edited reference list in the original spot.
+    """
+    # Step 1: Find the reference list in the text
+    reference_list = await find_reference_async(text)
+    
+    # Step 2: Edit the reference list using the provided references
+    edited_reference_list = await edit_reference_async(reference_list, list_of_list_references)
+
+    
+    # Step 3: Replace the reference list in the exact same spot
+    if reference_list in text:
+        updated_text = text.replace(reference_list, edited_reference_list)
+        print('Reference list replaced')
+    else:
+        # If reference list is not found, append the new reference list at the end
+        updated_text = text.strip() + "\n\n" + edited_reference_list.strip()
+        print('Reference list appended at the end (original not found)')
+    
+
+
+
+    return updated_text
+
+    
+def find_edit_references(text,list_of_list_references):
+    """Synchronous wrapper function for calling async operations."""
+    try:
+        # Try to get the running event loop
+        loop = asyncio.get_running_loop()
+        # Submit the coroutine to the existing loop
+        future = asyncio.run_coroutine_threadsafe(process_reference_list_async(text,list_of_list_references), loop)
+        return future.result()
+    except RuntimeError:
+        # No running event loop, use asyncio.run()
+        return asyncio.run(process_reference_list_async(text,list_of_list_references))
 
 # Function to clean each reference list in replace db
 def clean_references(ref_list):
@@ -408,9 +521,6 @@ def clean_references(ref_list):
         cleaned_refs.append(ref)
     return cleaned_refs
 
-
-#replace
-import string
 
 def update_references(df_main, replace_df):
     # Iterate through each unique `_id` in replace_df
@@ -456,8 +566,121 @@ def update_references(df_main, replace_df):
     return df_main
 
 
-#format whatever human decided with AI for streamlined purposes
-def formatting_human():
+def preprocess_text(text):
+    """
+    Preprocesses the text by removing hyphenation at line breaks,
+    removing newlines, and condensing multiple spaces into one.
+    """
+    # Remove hyphenation at line breaks
+    text = re.sub(r'-\s+', '', text)
+    # Replace multiple spaces with a single space
+    text = re.sub(r'\s+', ' ', text)
+    return text.strip()
+
+def extract_citation(statement):
+    """
+    Extracts the citation from a statement.
+    Returns the bare statement and the citation separately.
+    """
+    match = re.search(r'\s*\(([^\)]*)\)$', statement)
+    if match:
+        citation = match.group(0)  # Including parentheses
+        bare_statement = statement[:match.start()].strip()
+        return bare_statement, citation
+    else:
+        return statement, ''
+
+def find_best_match(bare_statement, sentences):
+    """
+    Finds the best matching sentence in the list of sentences
+    for the given bare_statement using approximate string matching.
+    Returns the best matching sentence and its similarity ratio.
+    """
+    best_ratio = 0
+    best_sentence = ''
+    for sent in sentences:
+        sent_clean = sent.strip()
+        ratio = SequenceMatcher(None, bare_statement, sent_clean).ratio()
+        if ratio > best_ratio:
+            best_ratio = ratio
+            best_sentence = sent_clean
+    return best_sentence, best_ratio
+
+def update_citations(processed_text, statements_with_citations, threshold=0.75):
+    """
+    Updates the citations in the processed_text based on the statements_with_citations list.
+    If the citation in the text differs from the one in the list, it replaces it.
+    """
+    # Split the processed_text into sentences using NLTK
+    sentences = sent_tokenize(processed_text)
+    for statement in statements_with_citations:
+        bare_statement, citation = extract_citation(statement)
+        # Preprocess the bare statement
+        bare_statement = bare_statement.strip()
+        # Find the best matching sentence
+        best_sentence, best_ratio = find_best_match(bare_statement, sentences)
+        # If the similarity ratio is above the threshold, proceed
+        if best_ratio > threshold:
+            # Find the position of the best_sentence in the text
+            start_idx = processed_text.find(best_sentence)
+            end_idx = start_idx + len(best_sentence)
+            # Try to extract the citation in the text following the sentence
+            following_text = processed_text[end_idx:end_idx+100]
+            match = re.search(r'^\s*\(([^\)]*)\)', following_text)
+            if match:
+                text_citation = match.group(0)
+                if text_citation != citation:
+                    # Replace the citation in the text
+                    full_statement_in_text = processed_text[start_idx:end_idx + match.end()]
+                    new_full_statement = bare_statement + ' ' + citation
+                    processed_text = processed_text.replace(full_statement_in_text, new_full_statement)
+            else:
+                # No citation found, add the citation
+                full_statement_in_text = processed_text[start_idx:end_idx]
+                new_full_statement = bare_statement + ' ' + citation
+                processed_text = processed_text.replace(full_statement_in_text, new_full_statement)
+    return processed_text
+
+
+def edit_paper(df_main,text):
+    #get data per statementfor regex matching then edit the paper itself
+    #1. Reformat the df to be one statement has one row only
+    # Redo the process ensuring the second column is included with the respective article name
+
+    # Adjust the grouping process to remove the extra quotes around the references
+    grouped_df_with_simple_references = df_main.groupby('statement').apply(
+        lambda group: {
+            'Statement': f"{group['statement'].iloc[0]} ({'; '.join(group['authors'] + ', ' + group['date'].astype(str))})",
+            'ArticleNames': [article for article in group['articleName']]
+        }
+    ).apply(pd.Series).reset_index(drop=True)
+
+    # Ensure the resulting dataframe has the correct columns
+    final_df = grouped_df_with_simple_references.rename(
+        columns={'Statement': 'Statement', 'ArticleNames': 'ArticleName'}
+    )
+    final_df=finalize(final_df,text)
+    #edit reference list to update list, find statements and citations to update:
+    list_of_list_reference=final_df['Reference'].tolist()
+    list_statements=final_df['Statement'].tolist()
+    flattened_unique_list = list(set(item for sublist in list_of_list_reference for item in sublist))
+    new_text=find_edit_references(text,flattened_unique_list)
+    new=update_citations(new_text,list_statements)
+    # Full file path
+    file_path = f"output_txt/output.txt"
+
+    # Write the text to the file
+    with open(file_path, "w") as file:
+        file.write(new)
+    print('Answer has been sent as output.txt to output_txt')
+
+    return new
+
+
+
+
+#format based on selection
+def formatting():
     #main paper data
     text = read_text_file('extracted.txt')
     result = edit_list(text)
@@ -484,16 +707,19 @@ def formatting_human():
     df_main=df_main.drop(columns=['Citation','Full_Reference'])
     df_main['edits']=''
 
-    print(df_main)
     #edits
     # add=db['add']
     # edit=db['edit']
+
+    """
+    For replacement
+    """
     replace = db['replace']
     documents_new = list(
         replace.find(
             {}, 
             {
-                '_id': 1,              # Include the statement id
+                '_id': 1,             
                 'statement': 1,       
                 'oldReferences': 1,   
                 'newReferences': 1,   
@@ -530,34 +756,12 @@ def formatting_human():
     #change the old ref w new ref 
     # Perform the replacement and track changes
     updated_df_main = update_references(df_main, df_replace)
-    send_excel(updated_df_main,'RAG','updated.xlsx')
+    # send_excel(updated_df_main,'RAG','updated.xlsx')
+
+    #Perform finak edited table to insert for regex matching
+    edit_paper(updated_df_main,text)
     records = updated_df_main.to_dict(orient='records')
     replace_database_collection(uri, db.name, 'to_update', records)
-    
-    
-formatting_human()
-    
-#reverse explode by grouping
-def reverse_explode(df, column):
-    """
-    Reverse explode a DataFrame based on a specified column.
-    Group by the column and aggregate all other columns as lists.
-    
-    Parameters:
-    - df: pd.DataFrame
-    - column: str, the name of the column to reverse explode on.
-    
-    Returns:
-    - pd.DataFrame: A DataFrame with aggregated data based on the column.
-    """
-    # Group by the specified column and aggregate all other columns as lists
-    reversed_df = df.groupby(column).agg(lambda x: list(x)).reset_index()
-    return reversed_df
+   
 
-def edit_paper(df_main):
-    #get data per statement
-
-    return
-
-
-
+formatting()
