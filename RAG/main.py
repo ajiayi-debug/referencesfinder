@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 from dotenv import load_dotenv
@@ -157,6 +158,19 @@ def finalize_data():
         return {"message": "Formatting and reference update completed successfully."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+    
+#arranging directories
+PROJECT_ROOT = Path(__file__).resolve().parent.parent  # Project root directory
+
+@app.get("/file/{subpath:path}")
+async def get_file(subpath: str):
+    """
+    Serve files from the project root and its subdirectories.
+    """
+    file_path = PROJECT_ROOT / subpath
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(file_path)
 
 # Disconnect from MongoDB when the application stops
 @app.on_event("shutdown")
