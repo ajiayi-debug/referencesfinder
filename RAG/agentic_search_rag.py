@@ -30,8 +30,8 @@ from .expert_decision import *
 # """Clean the old references for a summary for comparison when updating articles"""
 # cleaning_initial(valid_collection_name='Agentic_sieved_RAG_original', not_match='No_match_agentic_original', top_5='top_5_original')
 
-"""Make pretty for comparison for replacement/addition to citation"""
-make_summary_for_comparison(top_5='top_5_original',expert='Original_reference_expert_data')
+# """Make pretty for comparison for replacement/addition to citation"""
+# make_summary_for_comparison(top_5='top_5_original',expert='Original_reference_expert_data')
 
 # """Finding new references and checking them"""
 # """make keywords from statements then do keyword search and download"""
@@ -69,3 +69,4 @@ make_summary_for_comparison(top_5='top_5_original',expert='Original_reference_ex
 
 
 
+formatting()
