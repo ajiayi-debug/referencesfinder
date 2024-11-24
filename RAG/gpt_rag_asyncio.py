@@ -667,10 +667,10 @@ async def convert_to_replace(row,text):
 
 
     Your input from the row:
-    ['A meta-analysis reveals that clinical symptoms (abdominal pain, diarrhoea) or self-reporting are not reliable indices for the diagnosis of lactose intolerance (Salah M Bakry, Ziad Banoun, Ammar Abdulfattah, Fawaz M Alkhatib, Mussad Almhmadi, Mohammed Alharbi, Adel A Alluhaybi, M. O. Krenshi, Fahad Alharthi, S. Ekram, 2023).',['Comparison of Knowledge of Lactose Intolerance and Cow’s Milk Allergy Among the Medical Students at Two Universities in Saudi Arabia']]
+    ['A meta-analysis reveals that clinical symptoms (abdominal pain, diarrhoea) or self-reporting are not reliable indices for the diagnosis of lactose intolerance. (Salah M Bakry, Ziad Banoun, Ammar Abdulfattah, Fawaz M Alkhatib, Mussad Almhmadi, Mohammed Alharbi, Adel A Alluhaybi, M. O. Krenshi, Fahad Alharthi, S. Ekram (2023); Julia Leszkowicz, K. Plata-Nazar, A. Szlagatys-Sidorkiewicz (2022); Muhammad Yousuf, Beenish Khanzada, Mehvish Jabeen Channa, Autif Hussain Mangi, Fahim Ullah Khan (2024); Julia Leszkowicz, K. Plata-Nazar, A. Szlagatys-Sidorkiewicz (2022); Julia Leszkowicz, K. Plata-Nazar, A. Szlagatys-Sidorkiewicz (2022); Muhammad Yousuf, Beenish Khanzada, Mehvish Jabeen Channa, Autif Hussain Mangi, Fahim Ullah Khan (2024))',['Comparison of Knowledge of Lactose Intolerance and Cow’s Milk Allergy Among the Medical Students at Two Universities in Saudi Arabia', 'Can Lactose Intolerance Be a Cause of Constipation? A Narrative Review', 'Clinical Assessment and Demographic Insights of Lactose Intolerance Among Diarrheal Children at Hyderabad, Pakistan', 'Can Lactose Intolerance Be a Cause of Constipation? A Narrative Review', 'Can Lactose Intolerance Be a Cause of Constipation? A Narrative Review', 'Clinical Assessment and Demographic Insights of Lactose Intolerance Among Diarrheal Children at Hyderabad, Pakistan']]
     Your output:
 
-    ['A meta-analysis reveals that clinical symptoms (abdominal pain, diarrhoea) or self-reporting are not reliable indices for the diagnosis of lactose intolerance (Salah M Bakry et al., 2023).',['(Salah M Bakry et al., 2023). Comparison of Knowledge of Lactose Intolerance and Cow’s Milk Allergy Among the Medical Students at Two Universities in Saudi Arabia']].
+    ['A meta-analysis reveals that clinical symptoms (abdominal pain, diarrhea) or self-reporting are not reliable indices for the diagnosis of lactose intolerance (Bakry et al., 2023; Leszkowicz et al., 2022; Yousuf et al., 2024).',['(Salah M Bakry et al., 2023). Comparison of Knowledge of Lactose Intolerance and Cow’s Milk Allergy Among the Medical Students at Two Universities in Saudi Arabia']].
 
     Take note that you replace the original references and citations with whatever is in the row. WHatever is in the row can include old and new references or just new references. Just follow suit.
     Row data:
@@ -758,14 +758,34 @@ async def find_reference_list(text):
 
 async def replace_reference_list(reference_list,list_of_list_references):
     replacement_list_prompt = f"""
-    You are a reference editor. With reference to the list of list of references, edit the reference list by 
-    1) Removing references from the reference list that are missing in the list of list references 
-    2) Adding references found in list of list and NOT found in reference list TO reference list 
-    Output the edited reference list only with the exact same format as the original reference list. YOU CAN DO BOTH 1 AND 2 at ONCE, especially when you are replacing a reference!!!
+    You are a reference editor. Your task is to update the `reference list` based on the `list of list of references`. Here’s what you need to do:
+
+    1. **Remove**: Identify and remove any references in the `reference list` that are NOT found in the `list of list of references`.
+    2. **Add**: Identify and add any references from the `list of list of references` that are NOT already in the `reference list`.
+
+    ### Important Notes:
+    - Perform steps 1 and 2 simultaneously whenever applicable.
+    - If **only removal** is required (no additions are needed), perform only the removal.
+    - If **only addition** is required (no removals are needed), perform only the addition.
+    - Always ensure the final `reference list` has the same format and structure as the original `reference list`.
+    - Output only the updated `reference list`.
+    
+    e.g: step 1 and 2 together:
+    reference list:
+    A,B
+    list of list of references:
+    [[A],[C]]
+
+    
+    ### Input:
     Reference list:
     {reference_list}
+
     List of list of references:
     {list_of_list_references}
+
+    ### Output:
+    Updated reference list:
 
     """
     system_prompt = "You are a reference list editor. You edit the reference list with reference to a list of list of references and output ONLY the edited reference list."

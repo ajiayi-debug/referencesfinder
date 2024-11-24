@@ -23,7 +23,8 @@ db = client['data']
 
 
 async def process_row_async_final(row,text):
-    ans=await call_convert_to_replace(row,text)
+    r=[row['Statement'],row['ArticleName']]
+    ans=await call_convert_to_replace(r,text)
     newrow=ast.literal_eval(ans)
     new_row=pd.DataFrame({
         'Statement':[newrow[0]],
@@ -560,6 +561,7 @@ def clean_references(ref_list):
 
 
 def update_references(df_main, replace_df):
+    import string
     # Iterate through each unique `_id` in replace_df
     for _id in replace_df['_id'].unique():
         # Filter replace_df for the current `_id`
@@ -587,20 +589,22 @@ def update_references(df_main, replace_df):
               (df_main['articleName'].apply(normalize) == old_ref_name))
         ]
         
-        # Get the new reference details
-        new_ref = ref_data[ref_data['referenceType'] == 'New Reference'].iloc[0]
+        # Get all new reference details
+        new_refs = ref_data[ref_data['referenceType'] == 'New Reference']
         
-        # Add the new reference to df_main
-        new_row = {
-            'statement': statement,
-            'authors': new_ref['authors'],
-            'date': new_ref['date'],
-            'articleName': new_ref['articleName'],
-            'edits':''
-        }
-        df_main = pd.concat([df_main, pd.DataFrame([new_row])], ignore_index=True)
-    
+        # Add all new references to df_main
+        for idx, new_ref in new_refs.iterrows():
+            new_row = {
+                'statement': statement,
+                'authors': new_ref['authors'],
+                'date': new_ref['date'],
+                'articleName': new_ref['articleName'],
+                'edits': ''
+            }
+            df_main = pd.concat([df_main, pd.DataFrame([new_row])], ignore_index=True)
+        
     return df_main
+
 
 
 def preprocess_text(text):
@@ -684,13 +688,13 @@ def edit_paper(df_main,text):
     #1. Reformat the df to be one statement has one row only
     # Redo the process ensuring the second column is included with the respective article name
 
-    # Adjust the grouping process to remove the extra quotes around the references
     grouped_df_with_simple_references = df_main.groupby('statement').apply(
-        lambda group: {
-            'Statement': f"{group['statement'].iloc[0]} ({'; '.join(group['authors'] + ', ' + group['date'].astype(str))})",
-            'ArticleNames': [article for article in group['articleName']]
+    lambda group: {
+        'Statement': f"{group['statement'].iloc[0]} ({'; '.join((group['authors'] + ' (' + group['date'].astype(str) + ')').tolist())})",
+        'ArticleNames': group['articleName'].tolist()
         }
     ).apply(pd.Series).reset_index(drop=True)
+
 
     # Ensure the resulting dataframe has the correct columns
     final_df = grouped_df_with_simple_references.rename(
@@ -699,12 +703,22 @@ def edit_paper(df_main,text):
     final_df=finalize(final_df,text)
     #edit reference list to update list, find statements and citations to update:
     list_of_list_reference=final_df['Reference'].tolist()
+    flattened_references = [ref for sublist in list_of_list_reference for ref in sublist]
+
+    # Remove duplicates by converting to a set and back to a list
+    unique_references = list(set(flattened_references))
+    unique_references.sort()
+    print(unique_references)
     list_statements=final_df['Statement'].tolist()
-    flattened_unique_list = list(set(item for sublist in list_of_list_reference for item in sublist))
-    new_text=find_edit_references(text,flattened_unique_list)
+    print(list_statements)
+
+    new_text=find_edit_references(text,unique_references)
     new=update_citations(new_text,list_statements)
     # Full file path
     file_path = f"output_txt/output.txt"
+    directory= os.path.dirname(file_path)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
 
     # Write the text to the file
     with open(file_path, "w") as file:
@@ -777,7 +791,11 @@ def formatting():
 
     # Normalize the references
     references_df = pd.json_normalize(df_exploded['references'])
-    df_final = pd.concat([df_exploded.drop(columns=['references']), references_df], axis=1)
+    df_final = pd.concat([
+    df_exploded.drop(columns=['references']).reset_index(drop=True),
+            references_df.reset_index(drop=True)
+        ], axis=1)
+
 
 
     # Rename 'referenceType' values for readability
@@ -795,7 +813,7 @@ def formatting():
     updated_df_main = update_references(df_main, df_replace)
     # send_excel(updated_df_main,'RAG','updated.xlsx')
 
-    #Perform finak edited table to insert for regex matching
+    #Perform final edited table to insert for regex matching
     edit_paper(updated_df_main,text)
     records = updated_df_main.to_dict(orient='records')
     replace_database_collection(uri, db.name, 'to_update', records)

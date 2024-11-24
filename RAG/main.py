@@ -148,6 +148,16 @@ async def send_replace(task: ReplacementTask):
         print(f"Error occurred: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+#Send selected data to edit the .txt 
+@app.post("/finalize")
+def finalize_data():
+    try:
+        # Call the formatting function
+        formatting()
+        return {"message": "Formatting and reference update completed successfully."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
 # Disconnect from MongoDB when the application stops
 @app.on_event("shutdown")
 async def shutdown_db_client():
