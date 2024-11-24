@@ -35,11 +35,11 @@ tokenizer = tiktoken.get_encoding("cl100k_base")
 # excel_file = 'processed.xlsx'
 # df = pd.read_excel(excel_file)
 
-""" call this function to read excel file """
-def read_file(excel_file, directory):
-    input_path = os.path.join(directory, excel_file)
-    df=pd.read_excel(input_path)
-    return df
+# """ call this function to read excel file """
+# def read_file(excel_file, directory):
+#     input_path = os.path.join(directory, excel_file)
+#     df=pd.read_excel(input_path)
+#     return df
 #helper function
 def normalize_text(s, sep_token = " \n "):
   s = re.sub(r'\s+',  ' ', s).strip()
@@ -51,12 +51,12 @@ def normalize_text(s, sep_token = " \n "):
   s = s.strip()
     
   return s
-#helper function
-def split_text_by_page_marker(text: str):
-  chunks = text.split('Text on page ')
-  # Adding back the 'Text on page' marker to each chunk except the first one
-  chunks = [chunks[0]] + ['Text on page ' + chunk for chunk in chunks[1:]]
-  return 
+# #helper function
+# def split_text_by_page_marker(text: str):
+#   chunks = text.split('Text on page ')
+#   # Adding back the 'Text on page' marker to each chunk except the first one
+#   chunks = [chunks[0]] + ['Text on page ' + chunk for chunk in chunks[1:]]
+#   return 
 
 """ call this function to split the text as well as normalize them """
 def splitting(df, title):
@@ -193,12 +193,12 @@ def retrieve_pdf(df,name_and_text_and_year):
 
 
 
-""" Call this function to obtain top n similiar texts in abstract based on cosine similiarity. Output is a dataframe."""
+# """ Call this function to obtain top n similiar texts in abstract based on cosine similiarity. Output is a dataframe."""
 
-def retrieve_similiar_text(new_df,name_and_text_and_year, top_n):
-    text=name_and_text_and_year[0]
-    sd=search_docs_text(new_df, text, top_n)
-    return sd
+# def retrieve_similiar_text(new_df,name_and_text_and_year, top_n):
+#     text=name_and_text_and_year[0]
+#     sd=search_docs_text(new_df, text, top_n)
+#     return sd
 
 """ Call this function to obtain top n and >0.5 similiar texts in abstract based on cosine similiarity. Output is a dataframe."""
 def retrieve_similar_text_threshold(new_df, name_and_text, top_n, threshold):
@@ -220,10 +220,10 @@ def retrieve_similar_text_threshold_text_only(new_df, text, top_n, threshold):
 
 #res = search_docs(df, "At birth, almost every infant produces enough lactase to digest the lactose in breast milk. The production of lactase decreases gradually after the age of 3 years.", top_n=4)
 
-"""" Call this function to get top row of focused df to get top cosine similiarity for gpt to find the sentence with closest meaning OR Call this function to get Text content of each PDF (non-embed df)"""
-def focus_on_best(df):
-    ans=df.iloc[0]['Text Content']
-    return ans
+# """" Call this function to get top row of focused df to get top cosine similiarity for gpt to find the sentence with closest meaning OR Call this function to get Text content of each PDF (non-embed df)"""
+# def focus_on_best(df):
+#     ans=df.iloc[0]['Text Content']
+#     return ans
 
 
 

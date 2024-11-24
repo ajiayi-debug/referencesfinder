@@ -206,15 +206,3 @@ async def process_and_download(filtered_metadata_list, directory):
 
     # Optionally: Return the lists if you need to use them later
     return failed_downloads, successful_downloads
-
-
-
-# if __name__ == '__main__':
-#     # Example metadata list
-#     paper_metadata_list = [
-#         {'paperId': '0f5f83d40b55d04b0c259f4538b1b55a3141dea0', 'externalIds': {'DOI': '10.1002/bies.202200243', 'CorpusId': 258238766, 'PubMed': '37075758'}, 'title': 'Proposed mechanism for the selection of lactase persistence in childhood', 'year': 2023, 'isOpenAccess': True, 'openAccessPdf': {'url': 'https://onlinelibrary.wiley.com/doi/pdfdirect/10.1002/bies.202200243', 'status': 'HYBRID'}},
-#         {'paperId': '820373f462d545a6669134bff467cb0eb7254133', 'externalIds': {'DOI': '10.12775/jehs.2024.69.49393', 'CorpusId': 269887302}, 'title': 'Lactase Deficiency and Lactose Intolerance: Current Understanding and Future Directions', 'year': 2024, 'isOpenAccess': True, 'openAccessPdf': {'url': 'https://apcz.umk.pl/JEHS/article/download/49393/38556', 'status': 'GOLD'}},
-#         {'paperId': '35a9462b1ef7c513d61811907016a0452906384a', 'externalIds': {'DOI': '10.1093/ecco-jcc/jjad212.0449', 'CorpusId': 267251685}, 'title': 'P319 Genetic polymorphism of lactose intolerance in patients with Inflammatory Bowel Disease', 'year': 2024, 'isOpenAccess': True, 'openAccessPdf': {'url': 'https://academic.oup.com/ecco-jcc/article-pdf/18/Supplement_1/i703/56347667/jjad212.0449.pdf', 'status': 'BRONZE'}}
-#     ]
-
-#     asyncio.run(process_and_download(paper_metadata_list, 'pp_test'))

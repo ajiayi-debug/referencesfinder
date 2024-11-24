@@ -2,9 +2,10 @@ from .gpt_rag_asyncio import *
 from .call_mongodb import *
 from dotenv import load_dotenv
 import asyncio
+from .mongo_client import MongoDBClient
 load_dotenv()
 uri = os.getenv("uri_mongo")
-client = MongoClient(uri, tls=True, tlsCAFile=certifi.where())
+client = MongoDBClient.get_client()
 db = client['data']
 
 async def generate_improved_prompt(old_prompt):

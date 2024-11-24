@@ -18,13 +18,14 @@ import urllib3
 from .search_ss import *
 import asyncio
 import certifi
+from .mongo_client import MongoDBClient
 urllib3.disable_warnings()
 
 S2_API_KEY = os.getenv('x-api-key')
 
 uri = os.getenv("uri_mongo")
-client = MongoClient(uri, tls=True, tlsCAFile=certifi.where())
-db = client['data']  
+client = MongoDBClient.get_client()
+db = client['data'] 
 database = 'data'
 # collection = db['find_ref']
 # collection1 ='new_ref_found' #meta data database

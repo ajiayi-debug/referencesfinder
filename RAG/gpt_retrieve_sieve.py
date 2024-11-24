@@ -8,26 +8,26 @@ import asyncio
 
 """Sanity checking"""
 """Get the statements and their respective reference articles and send to mongodb"""
-# logging.info('Finding initial references')
+logging.info('Finding initial references')
 get_statements()
-# asyncio.run(asyncio.sleep(60))
+asyncio.run(asyncio.sleep(60))
 """Allow user to add to mongodb for missing statements and their respective references"""
 
 """process documents, noembed means we are not using embedding in retrieval and generate process but just to semantically chunk"""
-# logging.info('Chunking Initial reference articles')
-# process_pdfs_to_mongodb_noembed(files_directory='text', collection1='chunked_noembed')
-# asyncio.run(asyncio.sleep(60))
+logging.info('Chunking Initial reference articles')
+process_pdfs_to_mongodb_noembed(files_directory='text', collection1='chunked_noembed')
+asyncio.run(asyncio.sleep(60))
 
-# """retrieve and sieve using gpt 4o"""
-# logging.info("Comparing chunks with statements referencing the chunks' reference article in the main article")
-# retrieve_sieve_references(collection_processed_name='chunked_noembed',valid_collection_name='Agentic_sieved_RAG_original', invalid_collection_name='No_match_agentic_original')
-# asyncio.run(asyncio.sleep(60))
+"""retrieve and sieve using gpt 4o"""
+logging.info("Comparing chunks with statements referencing the chunks' reference article in the main article")
+retrieve_sieve_references(collection_processed_name='chunked_noembed',valid_collection_name='Agentic_sieved_RAG_original', invalid_collection_name='No_match_agentic_original')
+asyncio.run(asyncio.sleep(60))
 
-# """Finding new references and checking them"""
-# """make keywords from statements then do keyword search and download"""
-# logging.info('Searching for new references using statements')
-# search_and_retrieve_keyword('Agentic_sieved_RAG_original', 'new_ref_found_Agentic_3')
-# asyncio.run(asyncio.sleep(60))
+"""Finding new references and checking them"""
+"""make keywords from statements then do keyword search and download"""
+logging.info('Searching for new references using statements')
+search_and_retrieve_keyword('Agentic_sieved_RAG_original', 'new_ref_found_Agentic_3')
+asyncio.run(asyncio.sleep(60))
 
 """Process new documents, noembed means we are not using embedding in retrieval and generate process but just to semantically chunk"""
 logging.info('Chunking new reference articles')

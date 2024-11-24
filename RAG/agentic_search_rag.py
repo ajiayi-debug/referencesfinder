@@ -8,13 +8,12 @@ import asyncio
 from .agentic_search_system import *
 from .expert_decision import *
 
-#time start: 
-#time end: 
+
 
 # """Sanity checking"""
 # """Get the statements and their respective reference articles and send to mongodb"""
 # logging.info('Finding initial references')
-#get_statements()
+# get_statements()
 # time.sleep(60)
 # """Allow user to add to mongodb for missing statements and their respective references"""
 # #function to add missing statements if necessary
@@ -25,19 +24,19 @@ from .expert_decision import *
 
 # """retrieve and sieve using gpt 4o"""
 # logging.info("Comparing chunks with statements referencing the chunks' reference article in the main article")
-retrieve_sieve_references(collection_processed_name='chunked_noembed',valid_collection_name='Agentic_sieved_RAG_original', invalid_collection_name='No_match_agentic_original')
+# retrieve_sieve_references(collection_processed_name='chunked_noembed',valid_collection_name='Agentic_sieved_RAG_original', invalid_collection_name='No_match_agentic_original')
 # time.sleep(60)
 
 # """Clean the old references for a summary for comparison when updating articles"""
 # cleaning_initial(valid_collection_name='Agentic_sieved_RAG_original', not_match='No_match_agentic_original', top_5='top_5_original')
 
 """Make pretty for comparison for replacement/addition to citation"""
-#make_summary_for_comparison(top_5='top_5_original',expert='Original_reference_expert_data')
+make_summary_for_comparison(top_5='top_5_original',expert='Original_reference_expert_data')
 
 # """Finding new references and checking them"""
 # """make keywords from statements then do keyword search and download"""
 # logging.info('Searching for new references using statements')
-search_and_retrieve_keyword('Agentic_sieved_RAG_original', 'new_ref_found_Agentic')
+# search_and_retrieve_keyword('Agentic_sieved_RAG_original', 'new_ref_found_Agentic')
 # time.sleep(60)
 
 # """Process new documents, noembed means we are not using embedding in retrieval and generate process but just to semantically chunk"""
@@ -64,8 +63,8 @@ search_and_retrieve_keyword('Agentic_sieved_RAG_original', 'new_ref_found_Agenti
 
 # send_excel_all(collection_processed_name='new_chunked_noembed',new_ref_collection='new_ref_found_Agentic',valid_collection_name='Agentic_sieved_RAG_new_support_nosupport_confidence',invalid_collection_name='No_match_agentic_new_confidence',not_match='no_match_confidence',top_5='top_5')
 
-"""Make a table for data representation"""
-#make_pretty_for_expert('top_5','new_ref_found_Agentic','expert_data')
+# """Make a table for data representation"""
+# make_pretty_for_expert('top_5','new_ref_found_Agentic','expert_data')
 
 
 

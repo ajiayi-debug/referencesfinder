@@ -189,6 +189,27 @@ function Udecide() {
     }
   };
 
+  const handleFinalizeClick = async () => {
+    try {
+      const response = await fetch("http://127.0.0.1:8000/finalize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // Include a body if necessary
+      });
+      if (response.ok) {
+        // Assuming the backend process is successful
+        // Redirect to another app or page
+        window.location.href = "http://your-new-app-url.com"; // Replace with the actual URL
+      } else {
+        console.error("Failed to finalize");
+      }
+    } catch (error) {
+      console.error("Error during finalize:", error);
+    }
+  };
+  
+  
+
   // Render tables
   const renderTable = (title, dataRows) => (
     <div>
@@ -247,6 +268,12 @@ function Udecide() {
           >
             Add Addition Task
           </button>
+          <button
+            onClick={handleFinalizeClick}
+            className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+          >
+            Finalize
+          </button>
         </div>
       </div>
       {/* Add Toggle Buttons */}
@@ -257,6 +284,7 @@ function Udecide() {
             view === "summary" ? "bg-blue-500 text-white" : "bg-gray-200 hover:bg-gray-300"
           }`}
         >
+      
           Summary
         </button>
         <button

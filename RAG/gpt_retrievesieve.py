@@ -17,10 +17,10 @@ from .crossref import *
 import ast
 import re
 from rapidfuzz import fuzz
+from .mongo_client import MongoDBClient
 
 load_dotenv()
-uri = os.getenv("uri_mongo")
-client = MongoClient(uri, tls=True, tlsCAFile=certifi.where())
+client = MongoDBClient.get_client()
 db = client['data']
 
 
