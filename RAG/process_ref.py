@@ -10,12 +10,13 @@ from tqdm import tqdm
 import certifi
 from .gpt_rag_asyncio import *
 import asyncio
+from .mongo_client import MongoDBClient
 
 load_dotenv()
 #main pdf
 pdf_to_check = os.getenv("PDF")
 uri = os.getenv("uri_mongo")
-client = MongoClient(uri, tls=True, tlsCAFile=certifi.where())
+client = MongoDBClient.get_client()
 db = client['data']
 
 #chunked and embedded original refs database, new database name to store output
@@ -202,15 +203,5 @@ def get_statements():
     # Use asyncio.run to execute the async function
     return asyncio.run(_get_statements_async())
 
-def existing():
-    files_directory='text_download'
-    directory='doc'
-    pdf_list = read_pdf_file_list(files_directory)
-    
-    # Process and save PDFs
-    process_and_save_pdfs(pdf_list, directory)
-    filenames = get_txt_names(files_directory)
 
-    processed_texts = read_processed_texts(directory, filenames)
-    processed_name = get_names(filenames, directory)
     

@@ -12,11 +12,12 @@ from tqdm import tqdm
 from difflib import SequenceMatcher
 import nltk
 from nltk.tokenize import sent_tokenize
+from .mongo_client import MongoDBClient
 
 nltk.download('punkt')
 load_dotenv()
 uri = os.getenv("uri_mongo")
-client = MongoClient(uri, tls=True, tlsCAFile=certifi.where())
+client = MongoDBClient.get_client()
 db = client['data']
 
 
@@ -287,9 +288,6 @@ def make_summary_for_comparison(top_5,expert):
         'Sieving by gpt 4o': list
     }).reset_index()
 
-    # No need to apply ast.literal_eval on 'Chunk' or 'Sieving by gpt 4o' since they are already text
-    print(grouped_chunks.columns)
-
     test=summarize_score(grouped_chunks,got_authors=False)
     # Extract 'score' from the last pair of brackets at the end of the text
     test['score'] = test['Summary'].str.extract(r'\(([^()\[\]]+)\)$')
@@ -298,30 +296,57 @@ def make_summary_for_comparison(top_5,expert):
     test['Summary'] = test['Summary'].str.replace(r'\(([^()\[\]]+)\)$', '', regex=True).str.strip()
     #switch sentiment for wrongly classified chunks (rarely occurs)
     test=switch_sentiment(test)
+    #redo summary for those reference text and reference article that are not unique - means sentiment has changed
+    #take out duplicates 
+    duplicates = test[test.duplicated(subset=['Reference article name', 'Reference text in main article'], keep=False)]
+    unique_df = test.drop_duplicates(subset=['Reference article name', 'Reference text in main article'], keep=False)
+    #drop summary then merge the list of sieved chunk and chunk tgt (with the rest being the same)
+    df = duplicates.drop(columns=['Summary', 'Score'], errors='ignore')
+    grouped = df.groupby(['Reference article name', 'Reference text in main article']).agg({
+        'Sentiment': 'first',  # Take the first sentiment (or you can modify as needed)
+        'Chunk': lambda x: sum(x, []),  # Combine lists of 'Chunk'
+        'Sieving by gpt 4o': lambda x: sum(x, []),  # Combine lists of 'Sieving by gpt 4o'
+        'Date': 'first',  # Take the first date
+    }).reset_index()
+    print(grouped)
+    #Redo summary 
+    new=summarize_score(grouped,got_authors=False)
+    new['score'] = new['Summary'].str.extract(r'[\(\[]([^()\[\]]+)[\)\]]$')[0]
+
+
+    # Remove the last occurrence of text in parentheses from the original 'Summary' column
+    new['Summary'] = new['Summary'].str.replace(r'[\(\[]([^()\[\]]+)[\)\]]$', '', regex=True)
+    
+    #switch sentiment for wrongly classified chunks (rarely occurs)
+    new=switch_sentiment(new)
+    #append old unaffected with new affected 
+    final=pd.concat([unique_df, new], ignore_index=True)
     name=expert+'.xlsx'
-    send_excel(test,'RAG',name)
-    records = test.to_dict(orient='records')
+    send_excel(final,'RAG',name)
+    records = final.to_dict(orient='records')
     replace_database_collection(uri, db.name, expert, records)
     
 #merge selected new data w old data based on inner join statements for comparison
-def merge_old_new(expert_new, expert_old,statements,name):
-    collection_statements=db[statements]
-    documents_statements=list(
+def merge_old_new(expert_new, expert_old, statements, name):
+    collection_statements = db[statements]
+    documents_statements = list(
         collection_statements.find(
-            {}, 
+            {},
             {
-                'Reference article name': 1, 
-                'Reference text in main article': 1, 
+                'Reference article name': 1,
+                'Reference text in main article': 1,
                 'Date': 1,
                 'Name of authors': 1
             }
         )
     )
-    df_statement=pd.DataFrame(documents_statements)
+    df_statement = pd.DataFrame(documents_statements)
+
+    # Fetch new data
     collection_new = db[expert_new]
     documents_new = list(
         collection_new.find(
-            {}, 
+            {},
             {
                 'sentiment': 1,
                 'sievingByGPT4o': 1,
@@ -342,7 +367,7 @@ def merge_old_new(expert_new, expert_old,statements,name):
     collection_old = db[expert_old]
     documents_old = list(
         collection_old.find(
-            {}, 
+            {},
             {
                 'Sentiment': 1,
                 'Sieving by gpt 4o': 1,
@@ -371,59 +396,71 @@ def merge_old_new(expert_new, expert_old,statements,name):
         lambda row: ", ".join(
             df_statement.loc[
                 (df_statement['Reference text in main article'] == row['statement']) &
-                (df_statement['Reference article name'] == row['articleName']), 
+                (df_statement['Reference article name'] == row['articleName']),
                 'Name of authors'
             ].tolist()
         ),
         axis=1
     )
 
-    # Create a new DataFrame to store matches
-    matched_df = pd.DataFrame(columns=df_new.columns)
+    # Filter old references with sentiment 'support'
+    df_old_support = df_old[df_old['sentiment'] == 'support']
 
-    for _, new_row in df_new.iterrows():
-        matching_old_rows = df_old[(df_old['statement'] == new_row['statement']) & (df_old['sentiment'] == 'support')]
-        if not matching_old_rows.empty:
-            # Append the new row
-            matched_df = matched_df._append(new_row, ignore_index=True)
-            # Append all matching old rows where sentiment is 'support'
-            matched_df = matched_df._append(matching_old_rows, ignore_index=True)
+    # Get unique statements from new data
+    unique_statements = df_new['statement'].unique()
+
+    # Initialize formatted data list
+    formatted_data = []
+
+    for statement in unique_statements:
+        # Get new references for the statement
+        new_refs = df_new[df_new['statement'] == statement]
+        # Get old references for the statement
+        old_refs = df_old_support[df_old_support['statement'] == statement].drop_duplicates(subset=['articleName', 'statement'])
 
 
-    # Format the data for the frontend
-    formatted_data = {}
-    for _, row in matched_df.iterrows():
-        statement = row['statement']
-        ref_data = {
-            "id": row["_id"],
-            "articleName": row["articleName"],
-            "date": row["date"],
-            "sieved": row.get("sievingByGPT4o", []),
-            "chunk": row.get("chunk", []),
-            "summary": row["summary"],
-            "authors": row.get("authors"),
-            "sentiment": row.get("sentiment")
+        statement_entry = {
+            'statement': statement,
+            'oldReferences': [],
+            'newReferences': []
         }
 
-        # Initialize statement group if it doesn't exist
-        if statement not in formatted_data:
-            formatted_data[statement] = {
-                "statement": statement,
-                "oldReferences": [],
-                "newReferences": []
+        # Add new references
+        for _, row in new_refs.iterrows():
+            ref_data = {
+                "id": row["_id"],
+                "articleName": row["articleName"],
+                "date": row["date"],
+                "sieved": row.get("sievingByGPT4o", []),
+                "chunk": row.get("chunk", []),
+                "summary": row["summary"],
+                "authors": row.get("authors"),
+                "sentiment": row.get("sentiment")
             }
+            statement_entry['newReferences'].append(ref_data)
 
-        # Append to the appropriate list
-        if row["state"] == "old":
-            formatted_data[statement]["oldReferences"].append(ref_data)
-        elif row["state"] == "new":
-            formatted_data[statement]["newReferences"].append(ref_data)
+        # Add old references without duplicates
+        for _, row in old_refs.iterrows():
+            ref_data = {
+                "id": row["_id"],
+                "articleName": row["articleName"],
+                "date": row["date"],
+                "sieved": row.get("sievingByGPT4o", []),
+                "chunk": row.get("chunk", []),
+                "summary": row["summary"],
+                "authors": row.get("authors"),
+                "sentiment": row.get("sentiment")
+            }
+            # Avoid adding duplicates
+            if ref_data not in statement_entry['oldReferences']:
+                statement_entry['oldReferences'].append(ref_data)
 
-    # Convert to list of dictionaries for JSON compatibility
-    formatted_list = list(formatted_data.values())
-    replace_database_collection(uri, db.name, name, formatted_list)
+        formatted_data.append(statement_entry)
 
-    return formatted_list
+    # Replace the collection in the database with the formatted list
+    replace_database_collection(uri, db.name, name, formatted_data)
+
+    return formatted_data
 
 
 #extract info to be editted
@@ -763,5 +800,3 @@ def formatting():
     records = updated_df_main.to_dict(orient='records')
     replace_database_collection(uri, db.name, 'to_update', records)
    
-
-formatting()
