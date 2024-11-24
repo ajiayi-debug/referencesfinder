@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import ClipLoader from 'react-spinners/ClipLoader';
 
 function Udecide() {
   const [data, setData] = useState([]);
@@ -11,6 +12,7 @@ function Udecide() {
   const [isLoading, setIsLoading] = useState(true);
   const [editMode, setEditMode] = useState(null);
   const [editText, setEditText] = useState({});
+  const [finalizeLoading, setFinalizeLoading] = useState(false);
 
   // Fetch data from backend
   useEffect(() => {
@@ -190,6 +192,7 @@ function Udecide() {
   };
 
   const handleFinalizeClick = async () => {
+    setFinalizeLoading(true);
     try {
       const response = await fetch("http://127.0.0.1:8000/finalize", {
         method: "POST",
@@ -197,17 +200,27 @@ function Udecide() {
         // Include a body if necessary
       });
       if (response.ok) {
-        // Assuming the backend process is successful
-        // Redirect to another app or page
-        window.location.href = "http://your-new-app-url.com"; // Replace with the actual URL
+        alert("Finalize successful! Redirecting..."); // Success message
+        navigate("/fileviewer"); // Redirect to FileViewer
       } else {
+        alert("Finalize failed. Please try again.");
         console.error("Failed to finalize");
       }
     } catch (error) {
       console.error("Error during finalize:", error);
+      alert("An error occurred during finalization.");
+    } finally {
+      setFinalizeLoading(false); // Stop loading spinner/message
     }
   };
-  
+  // Spinner for global loading or Finalize processing
+  if (isLoading || finalizeLoading) {
+    return (
+      <div className="fixed inset-0 bg-white bg-opacity-80 flex items-center justify-center z-50">
+        <ClipLoader color="#123abc" loading={true} size={50} />
+      </div>
+    );
+  }
   
 
   // Render tables
@@ -271,8 +284,9 @@ function Udecide() {
           <button
             onClick={handleFinalizeClick}
             className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+            disabled={finalizeLoading} // Disable Finalize button while loading
           >
-            Finalize
+            {finalizeLoading ? "Finalizing..." : "Finalize"} {/* Dynamic button text */}
           </button>
         </div>
       </div>
