@@ -9,7 +9,13 @@ from tqdm.asyncio import tqdm_asyncio
 from .pdf import *
 import string
 from tqdm import tqdm
-from difflib import SequenceMatcher
+import pandas as pd
+import string
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 from .mongo_client import MongoDBClient
 
@@ -23,15 +29,17 @@ db = client['data']
 
 async def process_row_async_final(row,text):
     r=[row['Statement'],row['ArticleName']]
+    original_statement=row['Statement']
     ans=await call_convert_to_replace(r,text)
     newrow=ast.literal_eval(ans)
     new_row=pd.DataFrame({
+        'statement':[original_statement],
         'Statement':[newrow[0]],
         'Reference':[newrow[1]]
     })
     return new_row
 
-async def final_async(df,text):
+async def final_async(df_replacee,text):
     """Main function to run the parallelized process using asyncio and the async OpenAI client."""
     output=[]
     # Process each row asynchronously using the process_row_async function
@@ -43,9 +51,9 @@ async def final_async(df,text):
         async with semaphore:
             return await process_row_async_final(row,text)
     # Create tasks with semaphore-wrapped function
-    tasks = [process_row_with_semaphore(row,text) for _, row in df.iterrows()]
+    tasks = [process_row_with_semaphore(row,text) for _, row in df_replacee.iterrows()]
     #this line then replace with
-    #tasks = [process_row_async(row) for _, row in df.iterrows()]
+    #tasks = [process_row_async(row) for _, row in df_replacee.iterrows()]
     #for quicker times (for context, without the vpn a 8 hours task takes 2 hours)
     
     # Use tqdm_asyncio to track progress of async tasks
@@ -57,17 +65,68 @@ async def final_async(df,text):
 
     return output_df
 
-def finalize(df, text):
+def finalize(df_replacee, text):
     """Synchronous wrapper function for calling async operations."""
     try:
         # Try to get the running event loop
         loop = asyncio.get_running_loop()
         # Submit the coroutine to the existing loop
-        future = asyncio.run_coroutine_threadsafe(final_async(df, text), loop)
+        future = asyncio.run_coroutine_threadsafe(final_async(df_replacee, text), loop)
         return future.result()
     except RuntimeError:
         # No running event loop, create a new one
-        return asyncio.run(final_async(df, text))
+        return asyncio.run(final_async(df_replacee, text))
+
+
+async def process_row_async_edit(row,text):
+    r=[row['Edit'],row['ArticleName']]
+    statement=row['statement']
+    ans=await call_edit_citationer(r,text)
+    newrow=ast.literal_eval(ans)
+    new_row=pd.DataFrame({
+        'statement':[statement],
+        'Edit':[newrow[0]],
+        'Reference':[newrow[1]]
+    })
+    return new_row
+
+async def edit_async(df_edit,text):
+    """Main function to run the parallelized process using asyncio and the async OpenAI client."""
+    output=[]
+    # Process each row asynchronously using the process_row_async function
+    # Define a semaphore to limit the number of concurrent tasks (added because VPN cause my tasks to throttle, you can try to remove from this line onwards to)
+    semaphore = asyncio.Semaphore(20)  # Adjust the number as needed
+
+    async def process_row_with_semaphore(row,text):
+        """Wrapper function to use semaphore for each task."""
+        async with semaphore:
+            return await process_row_async_edit(row,text)
+    # Create tasks with semaphore-wrapped function
+    tasks = [process_row_with_semaphore(row,text) for _, row in df_edit.iterrows()]
+    #this line then replace with
+    #tasks = [process_row_async(row) for _, row in df_replacee.iterrows()]
+    #for quicker times (for context, without the vpn a 8 hours task takes 2 hours)
+    
+    # Use tqdm_asyncio to track progress of async tasks
+    for new_row in await tqdm_asyncio.gather(*tasks, desc='Processing rows in parallel'):
+        output.append(new_row)
+    # Concatenate valid rows
+    output_df = pd.concat(output, ignore_index=True) if output else pd.DataFrame()
+
+
+    return output_df
+# create citations for edits
+def edited(df_edit, text):
+    """Synchronous wrapper function for calling async operations."""
+    try:
+        # Try to get the running event loop
+        loop = asyncio.get_running_loop()
+        # Submit the coroutine to the existing loop
+        future = asyncio.run_coroutine_threadsafe(edit_async(df_edit, text), loop)
+        return future.result()
+    except RuntimeError:
+        # No running event loop, create a new one
+        return asyncio.run(edit_async(df_edit, text))
 
 async def process_row_async_summary(row,got_authors):
     #for new top 5 where authors are added
@@ -128,7 +187,7 @@ async def process_row_async_summary(row,got_authors):
     return new_row
 
 
-async def summarize_score_async(df,got_authors):
+async def summarize_score_async(df_replacee,got_authors):
     """Main function to run the parallelized process using asyncio and the async OpenAI client."""
     output=[]
     # Process each row asynchronously using the process_row_async function
@@ -140,9 +199,9 @@ async def summarize_score_async(df,got_authors):
         async with semaphore:
             return await process_row_async_summary(row,got_authors=got_authors)
     # Create tasks with semaphore-wrapped function
-    tasks = [process_row_with_semaphore(row,got_authors=got_authors) for _, row in df.iterrows()]
+    tasks = [process_row_with_semaphore(row,got_authors=got_authors) for _, row in df_replacee.iterrows()]
     #this line then replace with
-    #tasks = [process_row_async(row) for _, row in df.iterrows()]
+    #tasks = [process_row_async(row) for _, row in df_replacee.iterrows()]
     #for quicker times (for context, without the vpn a 8 hours task takes 2 hours)
     
     # Use tqdm_asyncio to track progress of async tasks
@@ -154,21 +213,21 @@ async def summarize_score_async(df,got_authors):
 
     return output_df
 
-def summarize_score(df, got_authors=True):
+def summarize_score(df_replacee, got_authors=True):
     """Synchronous wrapper function for calling async operations."""
     try:
         # Try to get the running event loop
         loop = asyncio.get_running_loop()
         # Submit the coroutine to the existing loop
-        future = asyncio.run_coroutine_threadsafe(summarize_score_async(df, got_authors), loop)
+        future = asyncio.run_coroutine_threadsafe(summarize_score_async(df_replacee, got_authors), loop)
         return future.result()
     except RuntimeError:
         # No running event loop, create a new one
-        return asyncio.run(summarize_score_async(df, got_authors))
+        return asyncio.run(summarize_score_async(df_replacee, got_authors))
 
     
 
-def switch_sentiment(df):
+def switch_sentiment(df_replacee):
     # Apply function to modify Sentiment and Score columns based on Score and Sentiment values
     def update_sentiment_and_score(row):
         if row['score'] in ['Support', 'Oppose']:
@@ -178,8 +237,8 @@ def switch_sentiment(df):
         return pd.Series([row['Sentiment'], row['score']])
     
     # Apply the function to each row and update Sentiment and Score columns
-    df[['Sentiment', 'score']] = df.apply(update_sentiment_and_score, axis=1)
-    return df
+    df_replacee[['Sentiment', 'score']] = df_replacee.apply(update_sentiment_and_score, axis=1)
+    return df_replacee
 
 
 #function to split data according to reference article name, reference text in main article and sentiment
@@ -301,8 +360,8 @@ def make_summary_for_comparison(top_5,expert):
     duplicates = test[test.duplicated(subset=['Reference article name', 'Reference text in main article'], keep=False)]
     unique_df = test.drop_duplicates(subset=['Reference article name', 'Reference text in main article'], keep=False)
     #drop summary then merge the list of sieved chunk and chunk tgt (with the rest being the same)
-    df = duplicates.drop(columns=['Summary', 'Score'], errors='ignore')
-    grouped = df.groupby(['Reference article name', 'Reference text in main article']).agg({
+    df_replacee = duplicates.drop(columns=['Summary', 'Score'], errors='ignore')
+    grouped = df_replacee.groupby(['Reference article name', 'Reference text in main article']).agg({
         'Sentiment': 'first',  # Take the first sentiment (or you can modify as needed)
         'Chunk': lambda x: sum(x, []),  # Combine lists of 'Chunk'
         'Sieving by gpt 4o': lambda x: sum(x, []),  # Combine lists of 'Sieving by gpt 4o'
@@ -593,7 +652,20 @@ def clean_references(ref_list):
 
 
 def update_references(df_main, replace_df):
-    import string
+    """
+    Updates the main DataFrame by replacing old references, adding new references, and handling edits.
+
+    Parameters:
+    - df_main (pd.DataFrame): The main DataFrame containing statements and references.
+    - replace_df (pd.DataFrame): The DataFrame containing replacement tasks and edits.
+
+    Returns:
+    - pd.DataFrame: The updated main DataFrame with references replaced, added, or updated with edits.
+    """
+    # Define the normalization function
+    def normalize(text):
+        return ''.join(e for e in text.lower() if e not in string.punctuation).replace(" ", "")
+    
     # Iterate through each unique `_id` in replace_df
     for _id in replace_df['_id'].unique():
         # Filter replace_df for the current `_id`
@@ -605,37 +677,55 @@ def update_references(df_main, replace_df):
         # Find the corresponding row in df_main by matching the statement
         main_row = df_main[df_main['statement'] == statement]
         if main_row.empty:
-            print(f"Statement not found in df_main for _id {_id}")
+            print(f"Statement '{statement}' not found in df_main for _id {_id}.")
             continue
         
-        # Normalize function to match articleName
-        def normalize(text):
-            return ''.join(e for e in text.lower() if e not in string.punctuation).replace(" ", "")
-        
-        # Normalize the old reference's articleName
-        old_ref_name = normalize(ref_data[ref_data['referenceType'] == 'Old Reference']['articleName'].iloc[0])
-        
-        # Find and delete the old reference in df_main
-        df_main = df_main[
-            ~((df_main['statement'] == statement) & 
-              (df_main['articleName'].apply(normalize) == old_ref_name))
-        ]
-        
+        # Extract the old reference's articleName, if it exists
+        old_ref_series = ref_data[ref_data['referenceType'] == 'Old Reference']['articleName']
+        if not old_ref_series.empty:
+            old_ref_name = normalize(old_ref_series.iloc[0])
+            # Check if the old reference exists in df_main
+            condition = (df_main['statement'] == statement) & (df_main['articleName'].apply(normalize) == old_ref_name)
+            if not df_main[condition].empty:
+                # Remove the old reference if it exists
+                df_main = df_main[~condition]
+                print(f"Old reference '{old_ref_name}' removed from statement '{statement}'.")
+            else:
+                print(f"Old reference '{old_ref_name}' not found in statement '{statement}'. Adding new references.")
+        else:
+            print(f"No 'Old Reference' specified for statement '{statement}'. Adding new references.")
+
         # Get all new reference details
         new_refs = ref_data[ref_data['referenceType'] == 'New Reference']
         
         # Add all new references to df_main
-        for idx, new_ref in new_refs.iterrows():
+        for _, new_ref in new_refs.iterrows():
             new_row = {
                 'statement': statement,
                 'authors': new_ref['authors'],
                 'date': new_ref['date'],
                 'articleName': new_ref['articleName'],
-                'edits': ''
+                'edits': new_ref.get('edits', '')  # Include edits if available
             }
             df_main = pd.concat([df_main, pd.DataFrame([new_row])], ignore_index=True)
-        
+            print(f"Added new reference '{new_ref['articleName']}' with edits to statement '{statement}'.")
+
+        # Add edits for the matching statement
+        edit_series = ref_data[ref_data['referenceType'] == 'New Reference']['edits']
+        if not edit_series.empty:
+            for edit in edit_series:
+                edit_row = {
+                    'statement': statement,
+                    'authors': new_ref['authors'],
+                    'date': new_ref['date'],
+                    'articleName': new_ref['articleName'],
+                    'edits': edit
+                }
+                df_main = pd.concat([df_main, pd.DataFrame([edit_row])], ignore_index=True)
+                print(f"Added new row with edits '{edit}' for statement '{statement}'.")
+    
     return df_main
+
 
 
 
@@ -650,18 +740,85 @@ def preprocess_text(text):
     text = re.sub(r'\s+', ' ', text)
     return text.strip()
 
+#add edits behind statements as well as the references
+def merge_statements_and_references(df1, df2):
+    """
+    Matches statements between two DataFrames, appends content in the `Edits` row to the `Statement` row,
+    and concatenates the `Reference` lists.
+
+    Parameters:
+    - df1 (pd.DataFrame): The main DataFrame with `Statement` and `Reference`.
+    - df2 (pd.DataFrame): The second DataFrame with `Statement`, `Edits`, and `Reference`.
+
+    Returns:
+    - pd.DataFrame: Updated DataFrame with merged `Statement` and concatenated `Reference`.
+    """
+    # Ensure both DataFrames have the necessary columns
+    required_columns_df1 = {'statement', 'Reference'}
+    required_columns_df2 = {'statement', 'Edit', 'Reference'}
+
+    if not required_columns_df1.issubset(df1.columns):
+        raise ValueError(f"df1 must contain the columns: {required_columns_df1}")
+    if not required_columns_df2.issubset(df2.columns):
+        raise ValueError(f"df2 must contain the columns: {required_columns_df2}")
+
+    # Convert Reference columns to lists if they are not already
+    df1['Reference'] = df1['Reference'].apply(lambda x: x if isinstance(x, list) else [])
+    df2['Reference'] = df2['Reference'].apply(lambda x: x if isinstance(x, list) else [])
+
+    # Iterate through rows in df2
+    for _, row in df2.iterrows():
+        matching_statements = df1[df1['statement'] == row['statement']]
+        
+        if not matching_statements.empty:
+            # Append the content of Edit to Statement
+            idx = matching_statements.index[0]  # Assuming one match per statement
+            df1.at[idx, 'Statement'] += f" {row['Edits']}"
+
+            # Concatenate Reference lists
+            df1.at[idx, 'Reference'] = list(set(df1.at[idx, 'Reference'] + row['Reference']))
+            print(f"After updating, df1.at[{idx}, 'Statement']: {df1.at[idx, 'Statement']}")
+            print(f"After updating, df1.at[{idx}, 'Reference']: {df1.at[idx, 'Reference']}")
+        else:
+            # If no match, add the row from df2 to df1
+            new_row = {
+                'statement': row['statement'] + f" {row['Edit']}",
+                'Reference': row['Reference']
+            }
+            df1 = pd.concat([df1, pd.DataFrame([new_row])], ignore_index=True)
+
+    return df1
 
 
 def edit_paper(df_main,text):
     #get got to :
     #edit reference list
     #edit statement's citations
-    #add new statements behind existing statements
+    #add new statements behind existing statements with their citations
 
-    grouped_df_with_simple_references = df_main.groupby('statement').apply(
-    lambda group: {
-        'Statement': f"{group['statement'].iloc[0]} ({'; '.join((group['authors'] + ' (' + group['date'].astype(str) + ')').tolist())})",
-        'ArticleNames': group['articleName'].tolist()
+    #Seperate out statements with edits. we will need to add the edits later
+    # Separate rows with edits into a new DataFrame
+    df_with_edits = df_main[df_main['edits'] != '']
+    grouped_df_edit = df_with_edits.groupby('statement').apply(
+        lambda group: {
+            'statement':f"{group['statement'].iloc[0]}",
+            'Edit': f"{group['edits'].iloc[0]} ({'; '.join((group['authors'] + ' (' + group['date'].astype(str) + ')').tolist())})",
+            'ArticleName': group['articleName'].tolist()
+        }
+    ).apply(pd.Series).reset_index(drop=True)
+    edit_df = grouped_df_edit.rename(
+            columns={'statement': 'statement','Edit':'Edit', 'ArticleName': 'ArticleName'}
+        )
+    print(edit_df)
+    edit_df=edited(edit_df,text)
+
+    df_without_edits = df_main[df_main['edits'] == '']
+
+    # Group the DataFrame without edits for processing
+    grouped_df_with_simple_references = df_without_edits.groupby('statement').apply(
+        lambda group: {
+            'Statement': f"{group['statement'].iloc[0]} ({'; '.join((group['authors'] + ' (' + group['date'].astype(str) + ')').tolist())})",
+            'ArticleNames': group['articleName'].tolist()
         }
     ).apply(pd.Series).reset_index(drop=True)
 
@@ -671,19 +828,23 @@ def edit_paper(df_main,text):
         columns={'Statement': 'Statement', 'ArticleNames': 'ArticleName'}
     )
     final_df=finalize(final_df,text)
+    final=merge_statements_and_references(final_df,edit_df)
+
     #edit reference list to update list, find statements and citations to update:
-    list_of_list_reference=final_df['Reference'].tolist()
+    list_of_list_reference=final['Reference'].tolist()
     flattened_references = [ref for sublist in list_of_list_reference for ref in sublist]
 
     # Remove duplicates by converting to a set and back to a list
     unique_references = list(set(flattened_references))
     unique_references.sort()
     print(unique_references)
-    list_statements=final_df['Statement'].tolist()
+    list_statements=final['Statement'].tolist()
     print(list_statements)
 
     new_text=find_edit_references(text,unique_references)
+    print(new_text)
     new=old_state_cite(new_text,list_statements)
+    print(new)
     # Full file path
     file_path = f"output_txt/output.txt"
     directory= os.path.dirname(file_path)
@@ -691,7 +852,7 @@ def edit_paper(df_main,text):
         os.makedirs(directory)
 
     # Write the text to the file
-    with open(file_path, "w") as file:
+    with open(file_path, "w",encoding="utf-8") as file:
         file.write(new)
     print('Answer has been sent as output.txt to output_txt')
 
@@ -713,8 +874,8 @@ def formatting():
         pd.DataFrame(data, columns=["statement", "References"])  # Create DataFrame
         .explode("References")  # Explode References column
         .assign(
-            Citation=lambda df: df["References"].map(lambda x: x[0] if isinstance(x, list) else None),
-            Full_Reference=lambda df: df["References"].map(lambda x: x[1] if isinstance(x, list) else None)
+            Citation=lambda df_replacee: df_replacee["References"].map(lambda x: x[0] if isinstance(x, list) else None),
+            Full_Reference=lambda df_replacee: df_replacee["References"].map(lambda x: x[1] if isinstance(x, list) else None)
         )  # Extract Citation and Full Reference
         .drop(columns=["References"])  # Drop the original References column
     )
@@ -730,9 +891,84 @@ def formatting():
     df_main=df_main.drop(columns=['Citation','Full_Reference'])
     df_main['edits']=''
 
-    #edits
-    # add=db['add']
-    # edit=db['edit']
+    """FOr edits"""
+    edit=db['edit']
+    documents_edit=list(list(
+        edit.find(
+            {},
+            {
+               'statement': 1,
+               'edits':1,
+               'newReferences': 1,  
+            }
+        )
+    ))
+    df_edit=pd.DataFrame(documents_edit)
+    if df_edit.empty:
+        df_edition=df_edit
+    else:
+        df_edit['newReferences'] = df_edit['newReferences'].apply(clean_references)
+        df_melted_edit = df_edit.melt(
+            id_vars=['_id', 'statement','edits'],  
+            value_vars=['newReferences'],
+            var_name='referenceType',
+            value_name='references'
+        )
+        df_exploded_edit = df_melted_edit.explode('references')
+        df_exploded_edit = df_exploded_edit.dropna(subset=['references'])
+        # Normalize the references
+        references_df_edit = pd.json_normalize(df_exploded_edit['references'])
+        df_final_edit = pd.concat([
+        df_exploded_edit.drop(columns=['references']).reset_index(drop=True),
+                references_df_edit.reset_index(drop=True)
+            ], axis=1)
+        df_final_edit['referenceType'] = df_final_edit['referenceType'].map({
+            'newReferences': 'New Reference'
+        })
+        df_edition = df_final_edit[['_id', 'statement','edits', 'referenceType', 'articleName', 'authors', 'date']]
+
+    send_excel(df_edition,'RAG','edit.xlsx')
+    
+
+
+    """For addition"""
+    addition=db['addition']
+    documents_add=list(list(
+        addition.find(
+                {}, 
+                {
+                    '_id': 1,             
+                    'statement': 1,       
+                    'newReferences': 1,   
+                }
+            )
+        )
+    )
+    df_add = pd.DataFrame(documents_add)
+    if df_add.empty:
+        df_addition=df_main
+    else:
+        df_add['newReferences'] = df_add['newReferences'].apply(clean_references)
+        df_melted_add = df_add.melt(
+            id_vars=['_id', 'statement'],  # Include '_id' (statement id)
+            value_vars=['newReferences'],
+            var_name='referenceType',
+            value_name='references'
+        )
+        df_exploded_add = df_melted_add.explode('references')
+        df_exploded_add = df_exploded_add.dropna(subset=['references'])
+        # Normalize the references
+        references_df_add = pd.json_normalize(df_exploded_add['references'])
+        df_final_add = pd.concat([
+        df_exploded_add.drop(columns=['references']).reset_index(drop=True),
+                references_df_add.reset_index(drop=True)
+            ], axis=1)
+        df_final_add['referenceType'] = df_final_add['referenceType'].map({
+            'oldReferences': 'Old Reference',
+            'newReferences': 'New Reference'
+        })
+        df_addition = df_final_add[['_id', 'statement', 'referenceType', 'articleName', 'authors', 'date']]
+        df_addition['edits']=''
 
     """
     For replacement
@@ -749,41 +985,70 @@ def formatting():
             }
         )
     )
-    df = pd.DataFrame(documents_new)
-    df['oldReferences'] = df['oldReferences'].apply(clean_references)
-    df['newReferences'] = df['newReferences'].apply(clean_references)
-    df_melted = df.melt(
-        id_vars=['_id', 'statement'],  # Include '_id' (statement id)
-        value_vars=['oldReferences', 'newReferences'],
-        var_name='referenceType',
-        value_name='references'
-    )
-    df_exploded = df_melted.explode('references')
-    df_exploded = df_exploded.dropna(subset=['references'])
+    df_replacee = pd.DataFrame(documents_new)
+    if df_replacee.empty:
+        df_replace=df_replacee
+    else:
+        df_replacee['oldReferences'] = df_replacee['oldReferences'].apply(clean_references)
+        df_replacee['newReferences'] = df_replacee['newReferences'].apply(clean_references)
+        df_melted = df_replacee.melt(
+            id_vars=['_id', 'statement'],  # Include '_id' (statement id)
+            value_vars=['oldReferences', 'newReferences'],
+            var_name='referenceType',
+            value_name='references'
+        )
+        df_exploded = df_melted.explode('references')
+        df_exploded = df_exploded.dropna(subset=['references'])
 
-    # Normalize the references
-    references_df = pd.json_normalize(df_exploded['references'])
-    df_final = pd.concat([
-    df_exploded.drop(columns=['references']).reset_index(drop=True),
-            references_df.reset_index(drop=True)
-        ], axis=1)
+        # Normalize the references
+        references_df = pd.json_normalize(df_exploded['references'])
+        df_final = pd.concat([
+        df_exploded.drop(columns=['references']).reset_index(drop=True),
+                references_df.reset_index(drop=True)
+            ], axis=1)
 
 
 
-    # Rename 'referenceType' values for readability
-    df_final['referenceType'] = df_final['referenceType'].map({
-        'oldReferences': 'Old Reference',
-        'newReferences': 'New Reference'
-    })
+        # Rename 'referenceType' values for readability
+        df_final['referenceType'] = df_final['referenceType'].map({
+            'oldReferences': 'Old Reference',
+            'newReferences': 'New Reference'
+        })
 
-    # Rearrange the columns
-    df_replace = df_final[['_id', 'statement', 'referenceType', 'articleName', 'authors', 'date']]
-    send_excel(df_main,'RAG','main.xlsx')
-    send_excel(df_replace,'RAG','replace.xlsx')
-    #change the old ref w new ref 
-    # Perform the replacement and track changes
-    updated_df_main = update_references(df_main, df_replace)
-    # send_excel(updated_df_main,'RAG','updated.xlsx')
+        # Rearrange the columns
+        df_replace = df_final[['_id', 'statement', 'referenceType', 'articleName', 'authors', 'date']]
+        df_replace['edits']=''
+        send_excel(df_main,'RAG','main.xlsx')
+        send_excel(df_replace,'RAG','replace.xlsx')
+        #change the old ref w new ref 
+        # Perform the replacement and track changes
+    if df_replace.empty and df_addition.empty and df_edition.empty:
+        updated_df_main = df_main
+        print('replace, addition, and edition dfs are empty')
+    elif df_replace.empty and df_addition.empty:
+        df_changes = df_edition
+        print('replace and addition dfs are empty')
+    elif df_replace.empty and df_edition.empty:
+        df_changes = df_addition
+        print('replace and edition dfs are empty')
+    elif df_addition.empty and df_edition.empty:
+        df_changes = df_replace
+        print('addition and edition dfs are empty')
+    elif df_replace.empty:
+        df_changes = pd.concat([df_addition, df_edition], ignore_index=True)
+        print('replace df empty')
+    elif df_addition.empty:
+        df_changes = pd.concat([df_replace, df_edition], ignore_index=True)
+        print('addition df empty')
+    elif df_edition.empty:
+        df_changes = pd.concat([df_replace, df_addition], ignore_index=True)
+        print('edition df empty')
+    else:
+        df_changes = pd.concat([df_replace, df_addition, df_edition], ignore_index=True)
+        print('all dfs have data')
+
+    updated_df_main = update_references(df_main, df_changes)
+    send_excel(updated_df_main,'RAG','updated.xlsx')
 
     #Perform final edited table to insert for regex matching
     edit_paper(updated_df_main,text)

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from 'react-router-dom';
 import ClipLoader from 'react-spinners/ClipLoader';
 
 function Udecide() {
@@ -13,6 +14,9 @@ function Udecide() {
   const [editMode, setEditMode] = useState(null);
   const [editText, setEditText] = useState({});
   const [finalizeLoading, setFinalizeLoading] = useState(false);
+  const [addLoading, setAddLoading] = useState(false);
+
+  const navigate = useNavigate();
 
   // Fetch data from backend
   useEffect(() => {
@@ -125,71 +129,108 @@ function Udecide() {
   };
 
   const handleAddAdditionTask = async () => {
+    setAddLoading(true); // Start loading
+  
     const selectedRefs = Object.entries(selectedAdditions)
       .filter(([_, isChecked]) => isChecked)
-      .map(([refId]) => refId);
-
+      .map(([refId]) => {
+        const refData = currentData.newReferences.find(
+          (ref) => ref.id === refId || ref.id?.$oid === refId
+        );
+        return {
+          id: refId,
+          articleName: refData?.articleName || "",
+          authors: refData?.authors || [],
+          date: refData?.date || "",
+        };
+      });
+  
     if (selectedRefs.length === 0) {
       alert("No references selected for addition!");
+      setAddLoading(false); // Stop loading
       return;
     }
-
+  
     try {
       const response = await fetch("http://127.0.0.1:8000/addAdditionTask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          statementId: currentData.id,
-          selectedReferences: selectedRefs,
+          statement: currentData.statement,
+          newReferences: selectedRefs,
         }),
       });
+  
       if (response.ok) {
         alert("Addition task successfully added!");
-        setSelectedAdditions({});
+        setSelectedAdditions({}); // Reset selections
       } else {
         console.error("Failed to add addition task");
+        alert("Failed to add addition task");
       }
     } catch (error) {
       console.error("Error sending addition task:", error);
+      alert("Error sending addition task");
+    } finally {
+      setAddLoading(false); // Stop loading
     }
   };
+  
 
   // Edit functionality
-  const handleEditClick = (refId) => {
-    setEditMode(editMode === refId ? null : refId);
+  const handleEditClick = (statement, newRefId) => {
+    setEditMode(editMode === `${statement}-${newRefId}` ? null : `${statement}-${newRefId}`); // Combine statement and newRefId
   };
 
-  const handleEditTextChange = (refId, text) => {
-    setEditText((prev) => ({ ...prev, [refId]: text }));
+  const handleEditTextChange = (statement, newRefId, text) => {
+    setEditText((prev) => ({ ...prev, [`${statement}-${newRefId}`]: text })); // Key by statement-newRefId
   };
 
-  const handleAddEditTask = async (refId) => {
-    if (!editText[refId] || editText[refId].trim() === "") {
+  const handleAddEditTask = async (statement, newRefId) => {
+    const editKey = `${statement}-${newRefId}`;
+    if (!editText[editKey] || editText[editKey].trim() === "") {
       alert("Please type some text before adding an edit task.");
       return;
     }
-
+  
+    const newReference = currentData.newReferences.find((ref) => ref.id === newRefId);
+  
+    if (!newReference) {
+      alert("New reference not found!");
+      return;
+    }
+  
+    const payload = {
+      statement: statement,
+      edits: editText[editKey],
+      newReferences: [newReference], // Send as a list
+    };
+  
+    // Log the payload to verify its structure
+    console.log("Payload being sent to backend:", payload);
+  
     try {
       const response = await fetch("http://127.0.0.1:8000/addEditTask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          referenceId: refId,
-          editText: editText[refId],
-        }),
+        body: JSON.stringify(payload),
       });
-
+  
       if (response.ok) {
         alert("Edit task successfully added!");
         setEditMode(null);
-        setEditText((prev) => ({ ...prev, [refId]: "" }));
+        setEditText((prev) => ({ ...prev, [editKey]: "" }));
       } else {
-        console.error("Failed to add edit task");
+        const errorData = await response.json();
+        console.error("Failed to add edit task:", errorData);
+        alert(`Failed to add edit task: ${errorData.detail || "Unknown error."}`);
       }
     } catch (error) {
       console.error("Error sending edit task:", error);
+      alert("Error sending edit task.");
     }
   };
+  
 
   const handleFinalizeClick = async () => {
     setFinalizeLoading(true);
@@ -213,6 +254,7 @@ function Udecide() {
       setFinalizeLoading(false); // Stop loading spinner/message
     }
   };
+  
   // Spinner for global loading or Finalize processing
   if (isLoading || finalizeLoading) {
     return (
@@ -221,7 +263,6 @@ function Udecide() {
       </div>
     );
   }
-  
 
   // Render tables
   const renderTable = (title, dataRows) => (
@@ -276,10 +317,16 @@ function Udecide() {
           </button>
           <button
             onClick={handleAddAdditionTask}
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400"
-            disabled={Object.values(selectedAdditions).every((val) => !val)}
+            className={`px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center justify-center ${
+              addLoading ? "opacity-50 cursor-not-allowed" : ""
+            }`}
+            disabled={addLoading || Object.values(selectedAdditions).every((val) => !val)}
           >
-            Add Addition Task
+            {addLoading ? (
+              <ClipLoader color="#fff" loading={true} size={20} />
+            ) : (
+              "Add Addition Task"
+            )}
           </button>
           <button
             onClick={handleFinalizeClick}
@@ -298,7 +345,6 @@ function Udecide() {
             view === "summary" ? "bg-blue-500 text-white" : "bg-gray-200 hover:bg-gray-300"
           }`}
         >
-      
           Summary
         </button>
         <button
@@ -318,7 +364,6 @@ function Udecide() {
           Chunk
         </button>
       </div>
-
 
       <div className="flex justify-center items-center mb-6 gap-4">
         <button
@@ -423,22 +468,24 @@ function Udecide() {
                 </button>
                 <button
                   className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
-                  onClick={() => handleEditClick(ref.id)}
+                  onClick={() => handleEditClick(currentData.statement, ref.id)} // Pass both parameters
                 >
                   Edit
                 </button>
-                {editMode === ref.id && (
+                {editMode === `${currentData.statement}-${ref.id}` && ( // Use ref.id
                   <div className="mt-4 flex gap-4 items-center">
                     <input
                       type="text"
                       className="border border-gray-300 p-2 rounded w-full"
                       placeholder="Type your edit here..."
-                      value={editText[ref.id] || ""}
-                      onChange={(e) => handleEditTextChange(ref.id, e.target.value)}
+                      value={editText[`${currentData.statement}-${ref.id}`] || ""}
+                      onChange={(e) =>
+                        handleEditTextChange(currentData.statement, ref.id, e.target.value) // Use ref.id
+                      }
                     />
                     <button
                       className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                      onClick={() => handleAddEditTask(ref.id)}
+                      onClick={() => handleAddEditTask(currentData.statement, ref.id)} // Use ref.id
                     >
                       Add Edit Task
                     </button>
@@ -454,4 +501,3 @@ function Udecide() {
 }
 
 export default Udecide;
-

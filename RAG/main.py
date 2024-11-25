@@ -11,6 +11,7 @@ from RAG.call_mongodb import *
 from RAG.expert_decision import *
 import certifi
 import datetime as datetime
+from .models import *
 
 load_dotenv()  # Load environment variables
 
@@ -30,6 +31,9 @@ db = client['data']
 collection_take = db["expert_data"] 
 collection_compare = db['merged']
 collection_replace=db['replace']
+collection_addition=db['addition']
+collection_edit=db['edit']
+
 
 # Helper function to convert MongoDB documents to JSON-serializable format
 def serialize_document(document):
@@ -62,30 +66,8 @@ async def get_data():
         return data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
 
-class Article(BaseModel):
-    id: str
-    sentiment: str
-    sievingByGPT4o: List[str]
-    chunk: List[str]
-    articleName: str
-    statement: str
-    summary: str
-    authors: str
-    date: int
-    rating: str
 
-class Reference(BaseModel):
-    id: str
-    articleName: str
-    authors: str
-    date: int
-
-class ReplacementTask(BaseModel):
-    statement: str
-    oldReferences: List[Reference]
-    newReferences: List[Reference]
 
 #send selected data to mongo db then merge w new data for comparison
 @app.post("/save_selected_articles")
@@ -98,7 +80,7 @@ async def save_selected_articles(selected_articles: List[Article]):
 
     return {"message": "Selected articles saved successfully."}
 
-#Fetch selected new data w matching old data for comparison from MongoDB
+#Fetch selected new data w matching old data for comparison from MongoDB (after selection page)
 @app.get("/joindata")
 async def get_select_data():
     try:
@@ -107,7 +89,46 @@ async def get_select_data():
         return data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
+
+
+#add and send addition task to database to update article
+@app.post("/addAdditionTask")
+async def send_add(task: AdditionTask):
+    """
+    Handles the addition of a single addition task.
+    Args:
+        task (AdditionTask): The JSON payload for the addition task.
+    Returns:
+        dict: Success message or error details.
+    """
+    try:
+        # Convert the single task to a dictionary
+        task_dict = task.dict()
+
+        # Extract data for logging or further processing
+        statement = task.statement
+        new_references = task.newReferences
+
+        # Log the received data for debugging
+        print(f"Statement: {statement}")
+        print(f"New References: {new_references}")
+
+        # Insert into MongoDB
+        collection_addition.insert_one(task_dict)
+
+        # Log replacement logic for debugging
+        
+        for new_ref in new_references:
+            print(f"Adding {new_ref.articleName}")
+
+        # Return success response
+        return {"message": "Addition task successfully processed", "status": "success"}
+
+    except Exception as e:
+        # Handle any errors during processing
+        print(f"Error occurred: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 #send replacement pair/one to many to database to update article
 @app.post("/addReplacementTask")
@@ -148,18 +169,56 @@ async def send_replace(task: ReplacementTask):
         # Handle any errors during processing
         print(f"Error occurred: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+#send edits to update article
+@app.post("/addEditTask")
+async def send_edit(task: EditTask):
+    print("Received Task:", task.dict())
+    """
+    Handles the addition of a single edit task.
+    Args:
+        task (AdditionTask): The JSON payload for the addition task.
+    Returns:
+        dict: Success message or error details.
+    """
+    try:
+        # Convert the single task to a dictionary
+        task_dict = task.dict()
 
-#Send selected data to edit the .txt 
+        # Extract data for logging or further processing
+        statement = task.statement
+        edits = task.edits
+        newref=task.newReferences
+        # Log the received data for debugging
+        print(f"Statement: {statement}")
+        print(f"Edits: {edits}")
+        print(f'new ref:{newref}')
+
+        # Insert into MongoDB
+        collection_edit.insert_one(task_dict)
+
+
+        # Return success response
+        return {"message": "Addition task successfully processed", "status": "success"}
+
+    except Exception as e:
+        # Handle any errors during processing
+        print(f"Error occurred: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+#Send selected data to update article 
 @app.post("/finalize")
 def finalize_data():
     try:
         # Call the formatting function
         formatting()
         collection_replace.drop()
+        collection_addition.drop()
+        collection_edit.drop()
         return {"message": "Formatting and reference update completed successfully."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
     
+
 #arranging directories
 PROJECT_ROOT = Path(__file__).resolve().parent.parent  # Project root directory
 

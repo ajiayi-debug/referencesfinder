@@ -235,6 +235,11 @@ async def call_citation_extractor(whole_statement):
     result=await async_retry_on_exception(citation_extractor,whole_statement)
     return result
 
+#append edits behind statement and cite them 
+async def call_edit_citationer(row,text):
+    result=await async_retry_on_exception(edit_citationer,row,text)
+    return result
+
 
 # support or oppose included, used to classify the new ref
 # Classification included
@@ -661,40 +666,65 @@ async def extract_statement_citation(text,new_statements):
     extraction_prompt = f"""
     You are an expert text editor.
 
-    Your task is to replace all old citations in the provided text with the updated citations from the new statements list as well as add any new text in the new statement list behind the existing statement(citation) in the text and behind the statement(citation) in the new statement list IF ANY. If a matching sentence in the text does not have a citation, append the updated citation to the sentence.
-    Formats:
-    text: a whole paper 
-    new_statements: [statement(citation),...]
+    ### Task:
+    Your task is to replace all old citations in the provided text with updated citations from the new statements list. Additionally, incorporate any new text appended to the new statements into the corresponding sentences in the text.
 
+    ### Input Formats:
+    - **Text**: A document or paragraph that contains sentences with or without citations.
+    - **New Statements**: A list of updated statements in the format:
+    [statement (citation), ...]
+    
     ### Instructions:
-    1. Match each new statement to its corresponding sentence in the provided text.
-    2. Replace the old citation in the matching sentence with the updated citation from the new statement.
-    3. If no citation exists in the matching sentence, append the updated citation to the sentence.
-    4. Ensure all sentences remain grammatically correct and retain their original meaning.
-    5. Do this for all new statements at once and return the fully updated text.
+    1. **Match Statements**:
+    - Identify the sentence in the text that corresponds to each new statement in the `New Statements` list.
 
-    For example:
-    Input:
-    Text: 
+    2. **Replace Citations**:
+    - Replace any old citations in the matching sentence with the updated citation(s) from the new statement.
+
+    3. **Append New Text**:
+    - If the new statement includes additional text behind the original sentence, append this new text, including its citation, to the sentence in the text.
+
+    4. **Handle Missing Citations**:
+    - If a matching sentence in the text does not contain a citation, append the updated citation(s) from the new statement to the end of the sentence.
+
+    5. **Ensure Grammatical Integrity**:
+    - The updated sentence must remain grammatically correct and retain its original meaning.
+
+    6. **Apply Changes to All Statements**:
+    - Perform this process for all new statements in the `New Statements` list and return the fully updated text.
+
+    ---
+
+    ### Example:
+
+    #### Input:
+    **Text**:  
     "The bacteria in the large intestine ferment the lactose, resulting in gas formation which can cause symptoms such as bloating and flatulence after lactose ingestion (Misselwitz, 2019). A proportion of the world’s population is able to tolerate lactose as they have a genetic variation that ensures they continue to produce sufficient quantities of the enzyme lactase after childhood (Heyman, 2006; Schaafsma, 2008; Storhaug, 2017)."
 
-    New Statements: 
+    **New Statements**:  
     [
-        "The bacteria in the large intestine ferment the lactose, resulting in gas formation which can cause symptoms such as bloating and flatulence after lactose ingestion (Leszkowicz et al., 2022; Yousuf et al., 2024).",
-        "A proportion of the world’s population is able to tolerate lactose as they have a genetic variation that ensures they continue to produce sufficient quantities of the enzyme lactase after childhood (Heyman, 2006; Schaafsma, 2008; Storhaug, 2017; Ibrahim et al., 2021)."
+    "The bacteria in the large intestine ferment the lactose, resulting in gas formation which can cause symptoms such as bloating and flatulence after lactose ingestion (Leszkowicz et al., 2022; Yousuf et al., 2024). Hi (Julia, 2023)",
+    "A proportion of the world’s population is able to tolerate lactose as they have a genetic variation that ensures they continue to produce sufficient quantities of the enzyme lactase after childhood (Heyman, 2006; Schaafsma, 2008; Storhaug, 2017; Ibrahim et al., 2021)."
     ]
 
-    Output:
-    "The bacteria in the large intestine ferment the lactose, resulting in gas formation which can cause symptoms such as bloating and flatulence after lactose ingestion (Leszkowicz et al., 2022; Yousuf et al., 2024)."
+    #### Output:
+    "
+    The bacteria in the large intestine ferment the lactose, resulting in gas formation which can cause symptoms such as bloating and flatulence after lactose ingestion (Leszkowicz et al., 2022; Yousuf et al., 2024). Hi (Julia, 2023). A proportion of the world’s population is able to tolerate lactose as they have a genetic variation that ensures they continue to produce sufficient quantities of the enzyme lactase after childhood (Heyman, 2006; Schaafsma, 2008; Storhaug, 2017; Ibrahim et al., 2021).
+    "
+
+    ---
+
     ### Input:
-    Text: 
+    **Text**:  
     {text}
 
-    New Statements: 
+    **New Statements**:  
     {new_statements}
 
+    ---
+
     ### Output:
-    Return the updated version of the text with all citations replaced.
+
 
     """
     system_prompt = "You are a text editor. You edit the text based on a list of sentences as well as the user prompt."
@@ -865,4 +895,49 @@ async def citation_extractor(whole_statement):
     return response.choices[0].message.content
 
 
-    
+async def edit_citationer(row,text):
+    replace_prompt = f"""
+    You are an advanced citation generator tasked with creating structured citations and references. Use the following document as your reference source:
+
+    ----
+    {text}
+    ----
+    The row is formatted as:
+    1. **Edits**: Edits and additional information to append to the statement.
+    2. **References**: A list of article names to cite in the edits.
+
+    Process:
+    1. Check if the row's citations and references already match the document.
+    - If they match, repeat the same citations and references in the output.
+    2. If new edits or references exist, update the statement by:
+    - Appending the edits to the statement.
+    - Adding new citations for the edits.
+    3. Return the updated statement and references in the following format:
+    ['Statement (existing citations) Edits (new citations)', ['Reference 1', 'Reference 2']]
+
+    Example row:
+    ['Edits and additional information (Author 1, Author 2, ..., Year)', ['Reference Article Name 1']]
+        Your output must strictly follow the format above. Ensure citations and references align with the style in the document.
+        
+    ---
+
+    This version explicitly defines the structure, format, and examples, reducing ambiguity and reinforcing the requirement to append edits with citations to the statement. Let me know if further refinement is needed!
+
+
+    """
+    system_prompt = """You are an advanced citation and reference generator. Your task is to generate structured citations and references based on the provided input. 
+
+                    - Ensure all citations and references strictly align with the requested format and style.
+                    - Use only the information from the provided document and row data to create the output.
+                    - Respond with the output **only** in the specified structured format: [Statement(citation), [Reference]].
+                    """
+    data={
+        "model":"gpt-4o",
+        "messages":[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": [{"type": "text","text": replace_prompt}]}
+        ],
+        "temperature":0
+    }
+    response = await async_client.chat.completions.create(**data)
+    return response.choices[0].message.content
