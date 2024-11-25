@@ -205,6 +205,11 @@ async def call_extract_to_edit_async(file_content):
     result=await async_retry_on_exception(extract_to_edit,file_content)
     return result
 
+#replace old w new citations
+async def call_extract_statement_citation(text,new_statements):
+    result=await async_retry_on_exception(extract_statement_citation,text,new_statements)
+    return result
+
 """Edit final text prompts"""
 #Converts the final df to an output to replace the text w regex
 async def call_convert_to_replace(row,text):
@@ -224,6 +229,10 @@ async def call_find_reference_list(text):
 #Edit the reference list
 async def call_replace_reference_list(reference_list,list_of_list_references):
     result=await async_retry_on_exception(replace_reference_list,reference_list,list_of_list_references)
+    return result
+#extract citations
+async def call_citation_extractor(whole_statement):
+    result=await async_retry_on_exception(citation_extractor,whole_statement)
     return result
 
 
@@ -648,6 +657,58 @@ async def extract_to_edit(file_content):
     response = await async_client.chat.completions.create(**data)
     return response.choices[0].message.content
 
+async def extract_statement_citation(text,new_statements):
+    extraction_prompt = f"""
+    You are an expert text editor.
+
+    Your task is to replace all old citations in the provided text with the updated citations from the new statements list as well as add any new text in the new statement list behind the existing statement(citation) in the text and behind the statement(citation) in the new statement list IF ANY. If a matching sentence in the text does not have a citation, append the updated citation to the sentence.
+    Formats:
+    text: a whole paper 
+    new_statements: [statement(citation),...]
+
+    ### Instructions:
+    1. Match each new statement to its corresponding sentence in the provided text.
+    2. Replace the old citation in the matching sentence with the updated citation from the new statement.
+    3. If no citation exists in the matching sentence, append the updated citation to the sentence.
+    4. Ensure all sentences remain grammatically correct and retain their original meaning.
+    5. Do this for all new statements at once and return the fully updated text.
+
+    For example:
+    Input:
+    Text: 
+    "The bacteria in the large intestine ferment the lactose, resulting in gas formation which can cause symptoms such as bloating and flatulence after lactose ingestion (Misselwitz, 2019). A proportion of the world’s population is able to tolerate lactose as they have a genetic variation that ensures they continue to produce sufficient quantities of the enzyme lactase after childhood (Heyman, 2006; Schaafsma, 2008; Storhaug, 2017)."
+
+    New Statements: 
+    [
+        "The bacteria in the large intestine ferment the lactose, resulting in gas formation which can cause symptoms such as bloating and flatulence after lactose ingestion (Leszkowicz et al., 2022; Yousuf et al., 2024).",
+        "A proportion of the world’s population is able to tolerate lactose as they have a genetic variation that ensures they continue to produce sufficient quantities of the enzyme lactase after childhood (Heyman, 2006; Schaafsma, 2008; Storhaug, 2017; Ibrahim et al., 2021)."
+    ]
+
+    Output:
+    "The bacteria in the large intestine ferment the lactose, resulting in gas formation which can cause symptoms such as bloating and flatulence after lactose ingestion (Leszkowicz et al., 2022; Yousuf et al., 2024)."
+    ### Input:
+    Text: 
+    {text}
+
+    New Statements: 
+    {new_statements}
+
+    ### Output:
+    Return the updated version of the text with all citations replaced.
+
+    """
+    system_prompt = "You are a text editor. You edit the text based on a list of sentences as well as the user prompt."
+    data={
+        "model":"gpt-4o",
+        "messages":[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": [{"type": "text","text": extraction_prompt}]}
+        ],
+        "temperature":0
+    }
+    response = await async_client.chat.completions.create(**data)
+    return response.choices[0].message.content
+
 
 async def convert_to_replace(row,text):
     replace_prompt = f"""
@@ -758,25 +819,9 @@ async def find_reference_list(text):
 
 async def replace_reference_list(reference_list,list_of_list_references):
     replacement_list_prompt = f"""
-    You are a reference editor. Your task is to update the `reference list` based on the `list of list of references`. Here’s what you need to do:
-
-    1. **Remove**: Identify and remove any references in the `reference list` that are NOT found in the `list of list of references`.
-    2. **Add**: Identify and add any references from the `list of list of references` that are NOT already in the `reference list`.
-
-    ### Important Notes:
-    - Perform steps 1 and 2 simultaneously whenever applicable.
-    - If **only removal** is required (no additions are needed), perform only the removal.
-    - If **only addition** is required (no removals are needed), perform only the addition.
-    - Always ensure the final `reference list` has the same format and structure as the original `reference list`.
-    - Output only the updated `reference list`.
-    
-    e.g: step 1 and 2 together:
-    reference list:
-    A,B
-    list of list of references:
-    [[A],[C]]
-
-    
+    You are a reference list creator. Create a reference list from the `list of list of references` with respect to the format of `reference list`.
+    Make sure to output the reference list ONLY and include ALL REFERENCES IN THE LIST OF LIST OF REFERENCES.
+    ONLY USE THE REFERENCE LIST AS A REFERENCE FOR THE FORMATTING
     ### Input:
     Reference list:
     {reference_list}
@@ -785,10 +830,10 @@ async def replace_reference_list(reference_list,list_of_list_references):
     {list_of_list_references}
 
     ### Output:
-    Updated reference list:
+    Reference list:
 
     """
-    system_prompt = "You are a reference list editor. You edit the reference list with reference to a list of list of references and output ONLY the edited reference list."
+    system_prompt = "You are a reference list creator. You create the reference list with reference to a list of list of references and output ONLY the created reference list."
     data={
         "model":"gpt-4o",
         "messages":[
@@ -799,3 +844,25 @@ async def replace_reference_list(reference_list,list_of_list_references):
     }
     response = await async_client.chat.completions.create(**data)
     return response.choices[0].message.content
+
+async def citation_extractor(whole_statement):
+    finder_prompt = f"""
+    You are a citation extractor. You extract citations (including parenthesis) from the sentences and output the citations.
+    Sentences:
+    {whole_statement}
+
+    """
+    system_prompt = "You are a citation extractor. You extract citations together with their brackets. You return the citations ONLY"
+    data={
+        "model":"gpt-4o",
+        "messages":[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": [{"type": "text","text": finder_prompt}]}
+        ],
+        "temperature":0
+    }
+    response = await async_client.chat.completions.create(**data)
+    return response.choices[0].message.content
+
+
+    

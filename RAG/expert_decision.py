@@ -10,11 +10,10 @@ from .pdf import *
 import string
 from tqdm import tqdm
 from difflib import SequenceMatcher
-import nltk
-from nltk.tokenize import sent_tokenize
+
 from .mongo_client import MongoDBClient
 
-nltk.download('punkt')
+
 load_dotenv()
 uri = os.getenv("uri_mongo")
 client = MongoDBClient.get_client()
@@ -462,13 +461,21 @@ def merge_old_new(expert_new, expert_old, statements, name):
     replace_database_collection(uri, db.name, name, formatted_data)
 
     return formatted_data
+#extract citation for matching
+async def citation_extract(whole_statement):
+    return await call_citation_extractor(whole_statement)
 
-
-#extract info to be editted
-async def edit_list_async(file_content):
-    """Call the async selector to choose the best prompt in the list"""
-    return await call_extract_to_edit_async(file_content)
-
+def cite_extract(whole_statement):
+    """Synchronous wrapper function for calling async operations."""
+    try:
+        # Try to get the running event loop
+        loop = asyncio.get_running_loop()
+        # Submit the coroutine to the existing loop
+        future = asyncio.run_coroutine_threadsafe(citation_extract(whole_statement), loop)
+        return future.result()
+    except RuntimeError:
+        # No running event loop, use asyncio.run()
+        return asyncio.run(citation_extract(whole_statement))
 
 def edit_list(file_content):
     """Synchronous wrapper function for calling async operations."""
@@ -481,6 +488,30 @@ def edit_list(file_content):
     except RuntimeError:
         # No running event loop, use asyncio.run()
         return asyncio.run(edit_list_async(file_content))
+
+
+#extract info to be editted
+async def edit_list_async(file_content):
+    """Call the async selector to choose the best prompt in the list"""
+    return await call_extract_to_edit_async(file_content)
+
+#extract statement citation
+async def old_statement_citation_async(text,new_statements):
+    return await call_extract_statement_citation(text,new_statements)
+
+
+def old_state_cite(text,new_statements):
+    """Synchronous wrapper function for calling async operations."""
+    try:
+        # Try to get the running event loop
+        loop = asyncio.get_running_loop()
+        # Submit the coroutine to the existing loop
+        future = asyncio.run_coroutine_threadsafe(old_statement_citation_async(text,new_statements), loop)
+        return future.result()
+    except RuntimeError:
+        # No running event loop, use asyncio.run()
+        return asyncio.run(old_statement_citation_async(text,new_statements))
+
     
 #extract reference list and edit it
 async def find_reference_async(text):
@@ -498,7 +529,8 @@ async def edit_citation(text,list_statement):
 
 async def process_reference_list_async(text, list_of_list_references):
     """
-    Find the reference list in the text and edit it using the provided references, 
+    Find the reference list in the text and edit it using the provided references,
+    edit the text without reference list, 
     then insert the edited reference list at the exact same spot.
 
     Args:
@@ -618,75 +650,13 @@ def preprocess_text(text):
     text = re.sub(r'\s+', ' ', text)
     return text.strip()
 
-def extract_citation(statement):
-    """
-    Extracts the citation from a statement.
-    Returns the bare statement and the citation separately.
-    """
-    match = re.search(r'\s*\(([^\)]*)\)$', statement)
-    if match:
-        citation = match.group(0)  # Including parentheses
-        bare_statement = statement[:match.start()].strip()
-        return bare_statement, citation
-    else:
-        return statement, ''
-
-def find_best_match(bare_statement, sentences):
-    """
-    Finds the best matching sentence in the list of sentences
-    for the given bare_statement using approximate string matching.
-    Returns the best matching sentence and its similarity ratio.
-    """
-    best_ratio = 0
-    best_sentence = ''
-    for sent in sentences:
-        sent_clean = sent.strip()
-        ratio = SequenceMatcher(None, bare_statement, sent_clean).ratio()
-        if ratio > best_ratio:
-            best_ratio = ratio
-            best_sentence = sent_clean
-    return best_sentence, best_ratio
-
-def update_citations(processed_text, statements_with_citations, threshold=0.75):
-    """
-    Updates the citations in the processed_text based on the statements_with_citations list.
-    If the citation in the text differs from the one in the list, it replaces it.
-    """
-    # Split the processed_text into sentences using NLTK
-    sentences = sent_tokenize(processed_text)
-    for statement in statements_with_citations:
-        bare_statement, citation = extract_citation(statement)
-        # Preprocess the bare statement
-        bare_statement = bare_statement.strip()
-        # Find the best matching sentence
-        best_sentence, best_ratio = find_best_match(bare_statement, sentences)
-        # If the similarity ratio is above the threshold, proceed
-        if best_ratio > threshold:
-            # Find the position of the best_sentence in the text
-            start_idx = processed_text.find(best_sentence)
-            end_idx = start_idx + len(best_sentence)
-            # Try to extract the citation in the text following the sentence
-            following_text = processed_text[end_idx:end_idx+100]
-            match = re.search(r'^\s*\(([^\)]*)\)', following_text)
-            if match:
-                text_citation = match.group(0)
-                if text_citation != citation:
-                    # Replace the citation in the text
-                    full_statement_in_text = processed_text[start_idx:end_idx + match.end()]
-                    new_full_statement = bare_statement + ' ' + citation
-                    processed_text = processed_text.replace(full_statement_in_text, new_full_statement)
-            else:
-                # No citation found, add the citation
-                full_statement_in_text = processed_text[start_idx:end_idx]
-                new_full_statement = bare_statement + ' ' + citation
-                processed_text = processed_text.replace(full_statement_in_text, new_full_statement)
-    return processed_text
 
 
 def edit_paper(df_main,text):
-    #get data per statementfor regex matching then edit the paper itself
-    #1. Reformat the df to be one statement has one row only
-    # Redo the process ensuring the second column is included with the respective article name
+    #get got to :
+    #edit reference list
+    #edit statement's citations
+    #add new statements behind existing statements
 
     grouped_df_with_simple_references = df_main.groupby('statement').apply(
     lambda group: {
@@ -713,7 +683,7 @@ def edit_paper(df_main,text):
     print(list_statements)
 
     new_text=find_edit_references(text,unique_references)
-    new=update_citations(new_text,list_statements)
+    new=old_state_cite(new_text,list_statements)
     # Full file path
     file_path = f"output_txt/output.txt"
     directory= os.path.dirname(file_path)
@@ -737,6 +707,7 @@ def formatting():
     result = edit_list(text)
     data=ast.literal_eval(result)
     print(data)
+
     # Convert the nested structure to a DataFrame
     df_main = (
         pd.DataFrame(data, columns=["statement", "References"])  # Create DataFrame
@@ -747,6 +718,7 @@ def formatting():
         )  # Extract Citation and Full Reference
         .drop(columns=["References"])  # Drop the original References column
     )
+
     pattern_removecitation = r"\([^)]*\)\s*$"
 
     df_main['statement']=df_main['statement'].str.replace(pattern_removecitation, "", regex=True)

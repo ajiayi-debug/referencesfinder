@@ -155,6 +155,7 @@ def finalize_data():
     try:
         # Call the formatting function
         formatting()
+        collection_replace.drop()
         return {"message": "Formatting and reference update completed successfully."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
