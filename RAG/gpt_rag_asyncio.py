@@ -235,11 +235,16 @@ async def call_citation_extractor(whole_statement):
     result=await async_retry_on_exception(citation_extractor,whole_statement)
     return result
 
-#append edits behind statement and cite them 
+#create citations behind edits
 async def call_edit_citationer(row,text):
     result=await async_retry_on_exception(edit_citationer,row,text)
     return result
 
+
+#append edits with citations behind statements
+async def call_add_edits(list,text):
+    result=await async_retry_on_exception(add_edits,list,text)
+    return result
 
 # support or oppose included, used to classify the new ref
 # Classification included
@@ -897,38 +902,45 @@ async def citation_extractor(whole_statement):
 
 async def edit_citationer(row,text):
     replace_prompt = f"""
-    You are an advanced citation generator tasked with creating structured citations and references. Use the following document as your reference source:
-
+    You are an advanced citation generator tasked with creating structured citations and references. Use the following document only as a style reference for formatting citations and references:
     ----
     {text}
     ----
     The row is formatted as:
-    1. **Edits**: Edits and additional information to append to the statement.
-    2. **References**: A list of article names to cite in the edits.
 
-    Process:
-    1. Check if the row's citations and references already match the document.
-    - If they match, repeat the same citations and references in the output.
-    2. If new edits or references exist, update the statement by:
-    - Appending the edits to the statement.
-    - Adding new citations for the edits.
-    3. Return the updated statement and references in the following format:
-    ['Statement (existing citations) Edits (new citations)', ['Reference 1', 'Reference 2']]
+    Edits: A text.
+    References: A list of article names to be cited for the edits.
 
-    Example row:
-    ['Edits and additional information (Author 1, Author 2, ..., Year)', ['Reference Article Name 1']]
-        Your output must strictly follow the format above. Ensure citations and references align with the style in the document.
-        
-    ---
+    Rules:
+    1. Do Not Use Content from the Document:
 
-    This version explicitly defines the structure, format, and examples, reducing ambiguity and reinforcing the requirement to append edits with citations to the statement. Let me know if further refinement is needed!
+        The document serves only as a style guide for formatting citations and references.
+        Do not extract or infer content (statements or references) from the document unless explicitly specified.
+    2. Use the Row Data Exclusively:
 
+        Generate the updated statement and references using only the data provided in the row (Edits and References).
+    3. Check for Proper Formatting:
+
+        Ensure citations in the Edits follow the citation style in the document (e.g., "Author et al., Year").
+        Ensure references in the References are formatted to match the style in the document.
+    Output Requirements:
+
+    Create the Edits with formatted citations. USE THE CONTENT IN THE EDIT ONLY FOR THE EDIT AND THE REFERENCE FOR THE CITATION
+    Return the updated statement and reference list in the following format:
+    Sample output:
+    ['Edits (citations)', ['Reference 1', 'Reference 2']]
+
+    Even if there is only one reference, it must be enclosed in a list.
+    Ensure all citations and references strictly follow the format and style of the document   
+
+    Input:
+    {row}
 
     """
     system_prompt = """You are an advanced citation and reference generator. Your task is to generate structured citations and references based on the provided input. 
 
                     - Ensure all citations and references strictly align with the requested format and style.
-                    - Use only the information from the provided document and row data to create the output.
+                    - Use only the information from and row data to create the output and structure from the document to structure the output
                     - Respond with the output **only** in the specified structured format: [Statement(citation), [Reference]].
                     """
     data={
@@ -941,3 +953,33 @@ async def edit_citationer(row,text):
     }
     response = await async_client.chat.completions.create(**data)
     return response.choices[0].message.content
+
+
+async def add_edits(list,text):
+    add_prompt = f"""
+    You are a text editor. You edit the following text:
+    {text}
+    Your input: [[Statement to place edit behind (put behind it's citation as well),edit (with citation), reference],...]
+
+    Your task:
+    1. Locate the statement in the text
+    2. Insert the edit with it's citation behind the statement and the statement's citation
+    3. Output the text with the inserted edits
+
+    Input: {list}
+    Output:
+    """
+    system_prompt = "You are a text editor. You edit the text and output the edited text."
+    data={
+        "model":"gpt-4o",
+        "messages":[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": [{"type": "text","text": add_prompt}]}
+        ],
+        "temperature":0
+    }
+    response = await async_client.chat.completions.create(**data)
+    return response.choices[0].message.content
+
+
+    

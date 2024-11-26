@@ -80,6 +80,7 @@ def finalize(df_replacee, text):
 
 async def process_row_async_edit(row,text):
     r=[row['Edit'],row['ArticleName']]
+    print(r)
     statement=row['statement']
     ans=await call_edit_citationer(r,text)
     newrow=ast.literal_eval(ans)
@@ -558,6 +559,10 @@ async def edit_list_async(file_content):
 async def old_statement_citation_async(text,new_statements):
     return await call_extract_statement_citation(text,new_statements)
 
+#add edits
+async def add_edits_async(list,text):
+    return await call_add_edits(list,text)
+
 
 def old_state_cite(text,new_statements):
     """Synchronous wrapper function for calling async operations."""
@@ -571,6 +576,18 @@ def old_state_cite(text,new_statements):
         # No running event loop, use asyncio.run()
         return asyncio.run(old_statement_citation_async(text,new_statements))
 
+#add edits
+def add_edits_cite(list,text):
+    """Synchronous wrapper function for calling async operations."""
+    try:
+        # Try to get the running event loop
+        loop = asyncio.get_running_loop()
+        # Submit the coroutine to the existing loop
+        future = asyncio.run_coroutine_threadsafe(add_edits_async(list,text), loop)
+        return future.result()
+    except RuntimeError:
+        # No running event loop, use asyncio.run()
+        return asyncio.run(add_edits_async(list,text))
     
 #extract reference list and edit it
 async def find_reference_async(text):
@@ -723,7 +740,7 @@ def update_references(df_main, replace_df):
                 }
                 df_main = pd.concat([df_main, pd.DataFrame([edit_row])], ignore_index=True)
                 print(f"Added new row with edits '{edit}' for statement '{statement}'.")
-    
+
     return df_main
 
 
@@ -740,21 +757,20 @@ def preprocess_text(text):
     text = re.sub(r'\s+', ' ', text)
     return text.strip()
 
-#add edits behind statements as well as the references
 def merge_statements_and_references(df1, df2):
     """
     Matches statements between two DataFrames, appends content in the `Edits` row to the `Statement` row,
-    and concatenates the `Reference` lists.
+    concatenates the `Reference` lists, and removes rows with matching `statement` where no edits were applied.
 
     Parameters:
-    - df1 (pd.DataFrame): The main DataFrame with `Statement` and `Reference`.
-    - df2 (pd.DataFrame): The second DataFrame with `Statement`, `Edits`, and `Reference`.
+    - df1 (pd.DataFrame): The main DataFrame with `statement`, `Statement`, and `Reference`.
+    - df2 (pd.DataFrame): The second DataFrame with `statement`, `Edit`, and `Reference`.
 
     Returns:
     - pd.DataFrame: Updated DataFrame with merged `Statement` and concatenated `Reference`.
     """
     # Ensure both DataFrames have the necessary columns
-    required_columns_df1 = {'statement', 'Reference'}
+    required_columns_df1 = {'statement', 'Statement', 'Reference'}
     required_columns_df2 = {'statement', 'Edit', 'Reference'}
 
     if not required_columns_df1.issubset(df1.columns):
@@ -766,29 +782,41 @@ def merge_statements_and_references(df1, df2):
     df1['Reference'] = df1['Reference'].apply(lambda x: x if isinstance(x, list) else [])
     df2['Reference'] = df2['Reference'].apply(lambda x: x if isinstance(x, list) else [])
 
+    # Track rows to remove
+    rows_to_remove = []
+
     # Iterate through rows in df2
     for _, row in df2.iterrows():
-        matching_statements = df1[df1['statement'] == row['statement']]
-        
-        if not matching_statements.empty:
-            # Append the content of Edit to Statement
-            idx = matching_statements.index[0]  # Assuming one match per statement
-            df1.at[idx, 'Statement'] += f" {row['Edits']}"
+        matching_rows = df1[df1['statement'] == row['statement']]
 
-            # Concatenate Reference lists
-            df1.at[idx, 'Reference'] = list(set(df1.at[idx, 'Reference'] + row['Reference']))
-            print(f"After updating, df1.at[{idx}, 'Statement']: {df1.at[idx, 'Statement']}")
-            print(f"After updating, df1.at[{idx}, 'Reference']: {df1.at[idx, 'Reference']}")
+        if not matching_rows.empty:
+            # Get the index of the matching row
+            idx = matching_rows.index[0]
+
+            # Check if an Edit is applied to the Statement
+            if row['Edit'] not in df1.at[idx, 'Statement']:
+                # Apply the edit
+                df1.at[idx, 'Statement'] += f" {row['Edit']}"
+
+                # Concatenate Reference lists
+                df1.at[idx, 'Reference'] = list(set(df1.at[idx, 'Reference'] + row['Reference']))
+
+            # Mark the row for removal if no edits were applied
+            if not row['Edit']:
+                rows_to_remove.append(idx)
         else:
             # If no match, add the row from df2 to df1
             new_row = {
-                'statement': row['statement'] + f" {row['Edit']}",
+                'statement': row['statement'],
+                'Statement': row['statement'] + f" {row['Edit']}",
                 'Reference': row['Reference']
             }
             df1 = pd.concat([df1, pd.DataFrame([new_row])], ignore_index=True)
 
+    # Drop the rows marked for removal
+    df1 = df1.drop(rows_to_remove).reset_index(drop=True)
+    send_excel(df1,'RAG','df1.xlsx')
     return df1
-
 
 def edit_paper(df_main,text):
     #get got to :
@@ -799,6 +827,7 @@ def edit_paper(df_main,text):
     #Seperate out statements with edits. we will need to add the edits later
     # Separate rows with edits into a new DataFrame
     df_with_edits = df_main[df_main['edits'] != '']
+    
     grouped_df_edit = df_with_edits.groupby('statement').apply(
         lambda group: {
             'statement':f"{group['statement'].iloc[0]}",
@@ -811,6 +840,9 @@ def edit_paper(df_main,text):
         )
     print(edit_df)
     edit_df=edited(edit_df,text)
+    edit_list=edit_df.values.tolist()
+
+    
 
     df_without_edits = df_main[df_main['edits'] == '']
 
@@ -844,7 +876,9 @@ def edit_paper(df_main,text):
     new_text=find_edit_references(text,unique_references)
     print(new_text)
     new=old_state_cite(new_text,list_statements)
-    print(new)
+    n=add_edits_cite(edit_list,text)
+
+    print(n)
     # Full file path
     file_path = f"output_txt/output.txt"
     directory= os.path.dirname(file_path)
@@ -853,7 +887,7 @@ def edit_paper(df_main,text):
 
     # Write the text to the file
     with open(file_path, "w",encoding="utf-8") as file:
-        file.write(new)
+        file.write(n)
     print('Answer has been sent as output.txt to output_txt')
 
     return new
