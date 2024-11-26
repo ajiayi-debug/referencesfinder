@@ -51,3 +51,6 @@ def effectiveness_state(missing_ref_df_initial, missing_ref_df_new, prompt,colle
     else:
         # Prompt was not effective, mark it as not effective
         change_prompt_state_or_add(uri, db.name, collection, prompt, effective='N')
+
+
+
