@@ -859,7 +859,10 @@ def edit_paper(df_main,text):
         columns={'Statement': 'Statement', 'ArticleNames': 'ArticleName'}
     )
     final_df=finalize(final_df,text)
-    final=merge_statements_and_references(final_df,edit_df)
+    if edit_df.empty:
+        final=final_df
+    else:
+        final=merge_statements_and_references(final_df,edit_df)
 
     #edit reference list to update list, find statements and citations to update:
     list_of_list_reference=final['Reference'].tolist()
@@ -871,7 +874,10 @@ def edit_paper(df_main,text):
     list_statements=final['Statement'].tolist()
     new_text=find_edit_references(text,unique_references)
     new=old_state_cite(new_text,list_statements)
-    n=add_edits_cite(edit_list,text)
+    if edit_df.empty:
+        n=new
+    else:
+        n=add_edits_cite(edit_list,text)
 
 
     # Full file path

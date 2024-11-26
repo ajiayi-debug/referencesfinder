@@ -33,9 +33,10 @@ const CardComponent = ({
     }
   }, [isReset]);
 
-  const handleSelectChange = () => {
-    setIsSelected(!isSelected);
-    onSelectChange(id, !isSelected); // Pass the card id and new selection state to parent
+  const handleSelectChange = (e) => {
+    const checked = e.target.checked; // Or toggle isSelected
+    setIsSelected(checked);
+    onSelectChange(id, checked); // Notify parent with the ID and new state
   };
 
   const handleLocalViewChange = (mode) => {
