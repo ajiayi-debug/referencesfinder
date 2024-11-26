@@ -265,6 +265,108 @@ async def update_output_txt(subpath: str, update: UpdateContent):
             detail=str(e),
         )
 
+# Helper function to serialize MongoDB documents
+def serialize_replacement(document):
+    return {
+        "id": str(document["_id"]),
+        "statement": document.get("statement", ""),
+        "oldReferences": [
+            {
+                "id": str(ref.get("id", ObjectId())),
+                "articleName": ref.get("articleName", ""),
+                "authors": ref.get("authors", ""),
+                "date": ref.get("date", 0),
+            }
+            for ref in document.get("oldReferences", [])
+        ],
+        "newReferences": [
+            {
+                "id": str(ref.get("id", ObjectId())),
+                "articleName": ref.get("articleName", ""),
+                "authors": ref.get("authors", ""),
+                "date": ref.get("date", 0),
+            }
+            for ref in document.get("newReferences", [])
+        ],
+    }
+
+def serialize_addition(document):
+    return {
+        "id": str(document["_id"]),
+        "statement": document.get("statement", ""),
+        "newReferences": [
+            {
+                "id": str(ref.get("id", ObjectId())),
+                "articleName": ref.get("articleName", ""),
+                "authors": ref.get("authors", ""),
+                "date": ref.get("date", 0),
+            }
+            for ref in document.get("newReferences", [])
+        ],
+    }
+
+def serialize_edit(document):
+    return {
+        "id": str(document["_id"]),
+        "statement": document.get("statement", ""),
+        "edits": document.get("edits", ""),
+        "newReferences": [
+            {
+                "id": str(ref.get("id", ObjectId())),
+                "articleName": ref.get("articleName", ""),
+                "authors": ref.get("authors", ""),
+                "date": ref.get("date", 0),
+            }
+            for ref in document.get("newReferences", [])
+        ],
+    }
+
+
+
+# GET /api/replacements
+@app.get("/api/replacements", response_model=List[Replacement])
+async def get_replacements():
+    """
+    Retrieve all documents from the Replacements collection.
+    """
+    try:
+        replacements = []
+        async for replacement in collection_replace.find():
+            serialized = serialize_document(replacement)
+            replacements.append(serialized)
+        return replacements
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# GET /api/additions
+@app.get("/api/additions", response_model=List[Addition])
+async def get_additions():
+    """
+    Retrieve all documents from the Additions collection.
+    """
+    try:
+        additions = []
+        async for addition in collection_addition.find():
+            serialized = serialize_addition(addition)
+            additions.append(serialized)
+        return additions
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# GET /api/edits
+@app.get("/api/edits", response_model=List[Edit])
+async def get_edits():
+    """
+    Retrieve all documents from the Edits collection.
+    """
+    try:
+        edits = []
+        async for edit in collection_edit.find():
+            serialized = serialize_edit(edit)
+            edits.append(serialized)
+        return edits
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Disconnect from MongoDB when the application stops
 @app.on_event("shutdown")

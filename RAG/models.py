@@ -35,3 +35,20 @@ class EditTask(BaseModel):
 
 class UpdateContent(BaseModel):
     content: str
+
+class Replacement(BaseModel):
+    id: str
+    statement: str
+    oldReferences: List[Reference]
+    newReferences: List[Reference]
+
+class Addition(BaseModel):
+    id: str
+    statement: str
+    newReferences: List[Reference]
+
+class Edit(BaseModel):
+    id: str
+    statement: str
+    edits: str
+    newReferences: List[Reference]
