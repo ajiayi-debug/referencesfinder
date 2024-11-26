@@ -43,6 +43,10 @@ function Select() {
   };
 
   const handleSendToBackend = () => {
+    if (selectedCards.length === 0) {
+      alert("Please select at least one paper before proceeding.");
+      return; // Prevent further execution if no papers are selected
+    }
     setLoading(true);
     const selectedArticles = cardDataList
       .filter(card => selectedCards.includes(card.id))
@@ -69,7 +73,6 @@ function Select() {
     .then(response => {
       setLoading(false);
       if (response.ok) {
-        alert("Selected articles successfully sent!");
         navigate("/udecide");
       } else {
         alert("Failed to send selected articles.");

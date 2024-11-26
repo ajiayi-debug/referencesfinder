@@ -241,7 +241,6 @@ function Udecide() {
         // Include a body if necessary
       });
       if (response.ok) {
-        alert("Finalize successful! Redirecting..."); // Success message
         navigate("/fileviewer"); // Redirect to FileViewer
       } else {
         alert("Finalize failed. Please try again.");
