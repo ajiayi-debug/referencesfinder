@@ -235,20 +235,47 @@ function Udecide() {
   const handleFinalizeClick = async () => {
     setFinalizeLoading(true);
     try {
+      // Call the first API
       const response = await fetch("http://127.0.0.1:8000/finalize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // Include a body if necessary
       });
-      if (response.ok) {
-        navigate("/fileviewer"); // Redirect to FileViewer
-      } else {
+  
+      if (!response.ok) {
         alert("Finalize failed. Please try again.");
         console.error("Failed to finalize");
+        return; // Exit early if the first API fails
       }
+  
+      console.log("First API call succeeded.");
+  
+      // Optionally, process the response from the first API
+      const finalizeResult = await response.json();
+      console.log("Finalize response:", finalizeResult);
+  
+      // Call the second API
+      const secondApiResponse = await fetch("http://127.0.0.1:8000/send_finalize_data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // Optionally send data in the body of the second API
+        body: JSON.stringify({ finalizeResult }), // Replace with actual data if needed
+      });
+  
+      if (!secondApiResponse.ok) {
+        alert("Second API call failed. Please try again.");
+        console.error("Failed to call the second API");
+        return; // Exit early if the second API fails
+      }
+  
+      console.log("Second API call succeeded.");
+      const secondApiResult = await secondApiResponse.json();
+      console.log("Second API response:", secondApiResult);
+  
+      // Navigate after successful completion of both API calls
+      navigate("/fileviewer");
     } catch (error) {
-      console.error("Error during finalize:", error);
-      alert("An error occurred during finalization.");
+      console.error("Error during API calls:", error);
+      alert("An error occurred during the process.");
     } finally {
       setFinalizeLoading(false); // Stop loading spinner/message
     }

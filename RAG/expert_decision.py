@@ -661,6 +661,7 @@ def clean_references(ref_list):
 
 
 def update_references(df_main, replace_df):
+    print(replace_df)
     """
     Updates the main DataFrame by replacing old references, adding new references, and handling edits.
 
@@ -676,55 +677,57 @@ def update_references(df_main, replace_df):
         if not text:
             return ''
         return ''.join(e for e in text.lower() if e not in string.punctuation).replace(" ", "")
-
-    # Iterate through each unique `_id` in replace_df
-    for _id in replace_df['_id'].unique():
-        # Filter replace_df for the current `_id`
-        ref_data = replace_df[replace_df['_id'] == _id]
-        if ref_data.empty:
-            print(f"No data found for _id {_id}, skipping.")
-            continue
-        
-        # Extract the statement
-        try:
-            statement = ref_data['statement'].iloc[0]
-        except IndexError:
-            print(f"Statement not found for _id {_id}, skipping.")
-            continue
-        
-        # Find the corresponding row in df_main by matching the statement
-        main_row = df_main[df_main['statement'] == statement]
-        if main_row.empty:
-            print(f"Statement '{statement}' not found in df_main for _id {_id}.")
-            continue
-        
-        # Handle old references
-        old_ref_series = ref_data[ref_data['referenceType'] == 'Old Reference']['articleName']
-        if not old_ref_series.empty:
-            old_ref_name = normalize(old_ref_series.iloc[0])
-            condition = (df_main['statement'] == statement) & \
-                        (df_main['articleName'].apply(normalize) == old_ref_name)
-            if not df_main[condition].empty:
-                df_main = df_main[~condition]
-                print(f"Old reference '{old_ref_name}' removed from statement '{statement}'.")
-            else:
-                print(f"Old reference '{old_ref_name}' not found for statement '{statement}'.")
-        
-        # Prepare rows to add
-        new_rows = []
-        
-        # Handle new references
-        new_refs = ref_data[ref_data['referenceType'] == 'New Reference']
-        for _, new_ref in new_refs.iterrows():
-            new_row = {
-                'statement': statement,
-                'authors': new_ref.get('authors', ''),  # Default to '' if no authors
-                'date': new_ref.get('date', ''),        # Default to '' if no date
-                'articleName': new_ref.get('articleName', ''),  # Default to '' if no articleName
-                'edits': new_ref.get('edits', '')       # Default to '' if no edits
-            }
-            new_rows.append(new_row)
-            print(f"Prepared new reference '{new_ref['articleName']}' for statement '{statement}'.")
+    if replace_df.empty:
+        return df_main
+    else:
+        # Iterate through each unique `_id` in replace_df
+        for _id in replace_df['_id'].unique():
+            # Filter replace_df for the current `_id`
+            ref_data = replace_df[replace_df['_id'] == _id]
+            if ref_data.empty:
+                print(f"No data found for _id {_id}, skipping.")
+                continue
+            
+            # Extract the statement
+            try:
+                statement = ref_data['statement'].iloc[0]
+            except IndexError:
+                print(f"Statement not found for _id {_id}, skipping.")
+                continue
+            
+            # Find the corresponding row in df_main by matching the statement
+            main_row = df_main[df_main['statement'] == statement]
+            if main_row.empty:
+                print(f"Statement '{statement}' not found in df_main for _id {_id}.")
+                continue
+            
+            # Handle old references
+            old_ref_series = ref_data[ref_data['referenceType'] == 'Old Reference']['articleName']
+            if not old_ref_series.empty:
+                old_ref_name = normalize(old_ref_series.iloc[0])
+                condition = (df_main['statement'] == statement) & \
+                            (df_main['articleName'].apply(normalize) == old_ref_name)
+                if not df_main[condition].empty:
+                    df_main = df_main[~condition]
+                    print(f"Old reference '{old_ref_name}' removed from statement '{statement}'.")
+                else:
+                    print(f"Old reference '{old_ref_name}' not found for statement '{statement}'.")
+            
+            # Prepare rows to add
+            new_rows = []
+            
+            # Handle new references
+            new_refs = ref_data[ref_data['referenceType'] == 'New Reference']
+            for _, new_ref in new_refs.iterrows():
+                new_row = {
+                    'statement': statement,
+                    'authors': new_ref.get('authors', ''),  # Default to '' if no authors
+                    'date': new_ref.get('date', ''),        # Default to '' if no date
+                    'articleName': new_ref.get('articleName', ''),  # Default to '' if no articleName
+                    'edits': new_ref.get('edits', '')       # Default to '' if no edits
+                }
+                new_rows.append(new_row)
+                print(f"Prepared new reference '{new_ref['articleName']}' for statement '{statement}'.")
 
         # Add edits
         edit_series = ref_data['edits'].dropna()
@@ -902,7 +905,7 @@ def formatting():
     text = read_text_file('extracted.txt')
     result = edit_list(text)
     data=ast.literal_eval(result)
-
+    print('Processing main df')
     # Convert the nested structure to a DataFrame
     df_main = (
         pd.DataFrame(data, columns=["statement", "References"])  # Create DataFrame
@@ -924,13 +927,14 @@ def formatting():
     df_main['articleName']=df_main['Full_Reference'].str.extract(pattern_title)
     df_main=df_main.drop(columns=['Citation','Full_Reference'])
     df_main['edits']=''
-
-    """FOr edits"""
+    print('Processing updates')
+    """For edits"""
     edit=db['edit']
     documents_edit=list(list(
         edit.find(
             {},
             {
+                '_id':1,
                'statement': 1,
                'edits':1,
                'newReferences': 1,  
@@ -960,7 +964,7 @@ def formatting():
             'newReferences': 'New Reference'
         })
         df_edition = df_final_edit[['_id', 'statement','edits', 'referenceType', 'articleName', 'authors', 'date']]
-
+        print(df_edition)
     
     
 
@@ -980,7 +984,7 @@ def formatting():
     )
     df_add = pd.DataFrame(documents_add)
     if df_add.empty:
-        df_addition=df_main
+        df_addition=df_addition
     else:
         df_add['newReferences'] = df_add['newReferences'].apply(clean_references)
         df_melted_add = df_add.melt(
@@ -1003,6 +1007,7 @@ def formatting():
         })
         df_addition = df_final_add[['_id', 'statement', 'referenceType', 'articleName', 'authors', 'date']]
         df_addition['edits']=''
+        print(df_addition)
 
     """
     For replacement
@@ -1052,6 +1057,7 @@ def formatting():
         # Rearrange the columns
         df_replace = df_final[['_id', 'statement', 'referenceType', 'articleName', 'authors', 'date']]
         df_replace['edits']=''
+        print(df_replace)
         #change the old ref w new ref 
         # Perform the replacement and track changes
     if df_replace.empty and df_addition.empty and df_edition.empty:
@@ -1078,6 +1084,7 @@ def formatting():
     else:
         df_changes = pd.concat([df_replace, df_addition, df_edition], ignore_index=True)
         print('all dfs have data')
+    send_excel(df_changes,'RAG','changes.xlsx')
 
     updated_df_main = update_references(df_main, df_changes)
 
