@@ -80,7 +80,6 @@ def finalize(df_replacee, text):
 
 async def process_row_async_edit(row,text):
     r=[row['Edit'],row['ArticleName']]
-    print(r)
     statement=row['statement']
     ans=await call_edit_citationer(r,text)
     newrow=ast.literal_eval(ans)
@@ -302,9 +301,6 @@ def make_pretty_for_expert(top_5,new_ref_collection,expert):
         'Sieving by gpt 4o': list
     }).reset_index()
 
-    # No need to apply ast.literal_eval on 'Chunk' or 'Sieving by gpt 4o' since they are already text
-    print(grouped_chunks.columns)
-
     test=summarize_score(grouped_chunks)
     test['score'] = test['Summary'].str.extract(r'[\(\[]([^()\[\]]+)[\)\]]$')[0]
 
@@ -315,7 +311,6 @@ def make_pretty_for_expert(top_5,new_ref_collection,expert):
     #switch sentiment for wrongly classified chunks (rarely occurs)
     test=switch_sentiment(test)
     name=expert+'.xlsx'
-    send_excel(test,'RAG',name)
     records = test.to_dict(orient='records')
     replace_database_collection(uri, db.name, expert, records)
     
@@ -368,7 +363,6 @@ def make_summary_for_comparison(top_5,expert):
         'Sieving by gpt 4o': lambda x: sum(x, []),  # Combine lists of 'Sieving by gpt 4o'
         'Date': 'first',  # Take the first date
     }).reset_index()
-    print(grouped)
     #Redo summary 
     new=summarize_score(grouped,got_authors=False)
     new['score'] = new['Summary'].str.extract(r'[\(\[]([^()\[\]]+)[\)\]]$')[0]
@@ -381,8 +375,6 @@ def make_summary_for_comparison(top_5,expert):
     new=switch_sentiment(new)
     #append old unaffected with new affected 
     final=pd.concat([unique_df, new], ignore_index=True)
-    name=expert+'.xlsx'
-    send_excel(final,'RAG',name)
     records = final.to_dict(orient='records')
     replace_database_collection(uri, db.name, expert, records)
     
@@ -824,7 +816,6 @@ def merge_statements_and_references(df1, df2):
 
     # Drop the rows marked for removal
     df1 = df1.drop(rows_to_remove).reset_index(drop=True)
-    send_excel(df1,'RAG','df1.xlsx')
     return df1
 
 def edit_paper(df_main,text):
@@ -847,7 +838,6 @@ def edit_paper(df_main,text):
     edit_df = grouped_df_edit.rename(
             columns={'statement': 'statement','Edit':'Edit', 'ArticleName': 'ArticleName'}
         )
-    print(edit_df)
     edit_df=edited(edit_df,text)
     edit_list=edit_df.values.tolist()
 
@@ -878,16 +868,12 @@ def edit_paper(df_main,text):
     # Remove duplicates by converting to a set and back to a list
     unique_references = list(set(flattened_references))
     unique_references.sort()
-    print(unique_references)
     list_statements=final['Statement'].tolist()
-    print(list_statements)
-
     new_text=find_edit_references(text,unique_references)
-    print(new_text)
     new=old_state_cite(new_text,list_statements)
     n=add_edits_cite(edit_list,text)
 
-    print(n)
+
     # Full file path
     file_path = f"output_txt/output.txt"
     directory= os.path.dirname(file_path)
@@ -910,7 +896,6 @@ def formatting():
     text = read_text_file('extracted.txt')
     result = edit_list(text)
     data=ast.literal_eval(result)
-    print(data)
 
     # Convert the nested structure to a DataFrame
     df_main = (
@@ -970,7 +955,7 @@ def formatting():
         })
         df_edition = df_final_edit[['_id', 'statement','edits', 'referenceType', 'articleName', 'authors', 'date']]
 
-    send_excel(df_edition,'RAG','edit.xlsx')
+    
     
 
 
@@ -1061,8 +1046,6 @@ def formatting():
         # Rearrange the columns
         df_replace = df_final[['_id', 'statement', 'referenceType', 'articleName', 'authors', 'date']]
         df_replace['edits']=''
-        send_excel(df_main,'RAG','main.xlsx')
-        send_excel(df_replace,'RAG','replace.xlsx')
         #change the old ref w new ref 
         # Perform the replacement and track changes
     if df_replace.empty and df_addition.empty and df_edition.empty:
@@ -1091,7 +1074,6 @@ def formatting():
         print('all dfs have data')
 
     updated_df_main = update_references(df_main, df_changes)
-    send_excel(updated_df_main,'RAG','updated.xlsx')
 
     #Perform final edited table to insert for regex matching
     edit_paper(updated_df_main,text)
