@@ -33,4 +33,5 @@ class EditTask(BaseModel):
     edits:str
     newReferences: List[Reference]
 
-
+class UpdateContent(BaseModel):
+    content: str

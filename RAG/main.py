@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, status
 from fastapi.responses import FileResponse
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
@@ -231,6 +231,40 @@ async def get_file(subpath: str):
     if not file_path.exists() or not file_path.is_file():
         raise HTTPException(status_code=404, detail="File not found")
     return FileResponse(file_path)
+
+
+#edit the output.txt file
+@app.put("/api/updateFile", response_model=Dict[str, str])
+async def update_output_txt(subpath: str, update: UpdateContent):
+    """
+    Update the contents of a file in the project directory (e.g., output.txt in output_txt directory).
+    """
+    try:
+        # Construct the file path dynamically
+        file_path = PROJECT_ROOT / subpath
+
+        # Ensure the file exists; raise an error if it does not
+        if not file_path.exists():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"File {subpath} not found."
+            )
+
+        # Ensure the parent directory exists (optional, since we're editing an existing file)
+        os.makedirs(file_path.parent, exist_ok=True)
+
+        # Write the new content to the file
+        with open(file_path, "w", encoding="utf-8") as file:
+            file.write(update.content)
+
+        return {"message": f"File {subpath} updated successfully."}
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )
+
 
 # Disconnect from MongoDB when the application stops
 @app.on_event("shutdown")
