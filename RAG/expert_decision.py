@@ -984,7 +984,7 @@ def formatting():
     )
     df_add = pd.DataFrame(documents_add)
     if df_add.empty:
-        df_addition=df_addition
+        df_addition=df_add
     else:
         df_add['newReferences'] = df_add['newReferences'].apply(clean_references)
         df_melted_add = df_add.melt(
@@ -1063,6 +1063,10 @@ def formatting():
     if df_replace.empty and df_addition.empty and df_edition.empty:
         updated_df_main = df_main
         print('replace, addition, and edition dfs are empty')
+        edit_paper(updated_df_main,text)
+        records = updated_df_main.to_dict(orient='records')
+        replace_database_collection(uri, db.name, 'to_update', records)
+        return
     elif df_replace.empty and df_addition.empty:
         df_changes = df_edition
         print('replace and addition dfs are empty')

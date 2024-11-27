@@ -15,6 +15,7 @@ const FileViewer = () => {
   const [replacements, setReplacements] = useState([]);
   const [additions, setAdditions] = useState([]);
   const [edits, setEdits] = useState([]);
+  const [clearStatus, setClearStatus] = useState(null); // null, 'success', 'error'
 
   // Function to normalize text
   const normalizeText = (text) =>
@@ -136,7 +137,48 @@ const FileViewer = () => {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
+  // Clear Edits Function
+  const handleClearEdits = async () => {
+    try {
+      console.log('Clearing edits...');
+      const response = await fetch('http://127.0.0.1:8000/delete_changes', {
+        method: 'POST', // Use DELETE or POST as per your API design
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
+      if (!response.ok) {
+        throw new Error('Failed to clear edits.');
+      }
+
+      console.log('Edits cleared successfully');
+      setClearStatus('success');
+    } catch (error) {
+      console.error('Error clearing edits:', error);
+      setClearStatus('error');
+    }
+  };
+
+  // Clear Status Messages
+  const renderClearStatusMessage = () => {
+    if (clearStatus === 'success') {
+      return (
+        <div style={{ color: 'green', textAlign: 'center', marginBottom: '10px' }}>
+          Edits cleared successfully!
+        </div>
+      );
+    }
+    if (clearStatus === 'error') {
+      return (
+        <div style={{ color: 'red', textAlign: 'center', marginBottom: '10px' }}>
+          Failed to clear edits.
+        </div>
+      );
+    }
+    return null;
+  };
+  
   if (loading) {
     return (
       <div style={{ textAlign: 'center', fontSize: '18px' }}>Loading files...</div>
@@ -200,6 +242,25 @@ const FileViewer = () => {
           </button>
         </div>
       )}
+      <div style={{ textAlign: 'center', marginBottom: '10px' }}>
+    <button
+      onClick={handleClearEdits}
+      style={{
+        padding: '10px 20px',
+        fontSize: '16px',
+        cursor: 'pointer',
+        backgroundColor: '#f44336',
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+      }}
+    >
+      Clear Edits
+    </button>
+  </div>
+
+  {/* Show status message */}
+  {renderClearStatusMessage()}
 
       {/* Edit Mode */}
       {isEditing && (

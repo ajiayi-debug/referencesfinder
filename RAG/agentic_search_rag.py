@@ -31,7 +31,7 @@ from .expert_decision import *
 # cleaning_initial(valid_collection_name='Agentic_sieved_RAG_original', not_match='No_match_agentic_original', top_5='top_5_original')
 
 # """Make pretty for comparison for replacement/addition to citation"""
-# make_summary_for_comparison(top_5='top_5_original',expert='Original_reference_expert_data')
+# make_summary_for_comparison(top_5='top_5_original',expert='Original_reference_expert_data_test')
 
 # """Finding new references and checking them"""
 # """make keywords from statements then do keyword search and download"""
@@ -64,7 +64,7 @@ from .expert_decision import *
 # send_excel_all(collection_processed_name='new_chunked_noembed',new_ref_collection='new_ref_found_Agentic',valid_collection_name='Agentic_sieved_RAG_new_support_nosupport_confidence',invalid_collection_name='No_match_agentic_new_confidence',not_match='no_match_confidence',top_5='top_5')
 
 # """Make a table for data representation"""
-# make_pretty_for_expert('top_5','new_ref_found_Agentic','expert_data')
+# make_pretty_for_expert('top_5','new_ref_found_Agentic','expert_data_test')
+
 
 formatting()
-

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, BackgroundTasks
 from fastapi.responses import FileResponse
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
@@ -12,6 +12,7 @@ from RAG.expert_decision import *
 import certifi
 import datetime as datetime
 from .models import *
+
 
 load_dotenv()  # Load environment variables
 
@@ -224,52 +225,18 @@ def finalize_data():
         print(f"Error occurred: {str(e)}")
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
-@app.post('/send_finalize_data')
+@app.post('/delete_changes')
 async def send():
     try:
-        print("Step 1: Fetching data from the 'collection_replace' collection...")
-        # Fetch all documents from 'collection_replace'
-        documents_replace = await collection_replace.find().to_list(length=1000)
-        documents_addition = await collection_addition.find().to_list(length=1000)
-        documents_edit = await collection_edit.find().to_list(length=1000)
-
-        print(f"Fetched {len(documents_replace)} documents from 'collection_replace'.")
-        print(f"Fetched {len(documents_addition)} documents from 'collection_addition'.")
-        print(f"Fetched {len(documents_edit)} documents from 'collection_edit'.")
-
-        serialized_replace = [serialize_document(doc) for doc in documents_replace]
-        serialized_addition = [serialize_document(doc) for doc in documents_addition]
-        serialized_edit = [serialize_document(doc) for doc in documents_edit]
-
-        print("Step 2: Serializing documents completed.")
-
-        # Optionally, log the serialized data for debugging
-        print(f"Serialized replace: {len(serialized_replace)} documents.")
-        print(f"Serialized addition: {len(serialized_addition)} documents.")
-        print(f"Serialized edit: {len(serialized_edit)} documents.")
-
-        print('step 3')
-        if serialized_replace:
-            await collection_replace_display.insert_many(serialized_replace)
-            print(f"Inserted {len(serialized_replace)} documents into 'replace_dp'.")
-
-        if serialized_addition:
-            await collection_addition_display.insert_many(serialized_addition)
-            print(f"Inserted {len(serialized_addition)} documents into 'addition_dp'.")
-
-        if serialized_edit:
-            await collection_edit_display.insert_many(serialized_edit)
-            print(f"Inserted {len(serialized_edit)} documents into 'edit_dp'.")
-
         # Drop old collections
-        print("Step 4: Dropping old collections...")
+        print("Dropping old collections...")
         await collection_replace.drop()
         await collection_addition.drop()
         await collection_edit.drop()
         print("Old collections dropped successfully.")
 
         # Return success response
-        return {"message": "Formatting and reference update completed successfully."}
+        return {"message": "All tasks completed successfully."}
 
     except Exception as e:
         # Log the error and raise an HTTPException
@@ -390,12 +357,13 @@ async def get_replacements():
     """
     try:
         replacements = []
-        async for replacement in collection_replace_display.find():
+        async for replacement in collection_replace.find():
             serialized = serialize_replacement(replacement)
             replacements.append(serialized)
         return replacements
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 # GET /api/additions
 @app.get("/api/additions", response_model=List[Addition])
@@ -405,9 +373,10 @@ async def get_additions():
     """
     try:
         additions = []
-        async for addition in collection_addition_display.find():
+        async for addition in collection_addition.find():
             serialized = serialize_addition(addition)
             additions.append(serialized)
+        
         return additions
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -420,9 +389,10 @@ async def get_edits():
     """
     try:
         edits = []
-        async for edit in collection_edit_display.find():
+        async for edit in collection_edit.find():
             serialized = serialize_edit(edit)
             edits.append(serialized)
+        
         return edits
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
