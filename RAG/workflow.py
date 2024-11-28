@@ -10,11 +10,11 @@ from .expert_decision import *
 
 
 
-# """Sanity checking"""
-# """Get the statements and their respective reference articles and send to mongodb"""
-# logging.info('Finding initial references')
-# get_statements()
-# time.sleep(60)
+"""Sanity checking"""
+"""Get the statements and their respective reference articles and send to mongodb"""
+logging.info('Finding initial references')
+get_statements()
+time.sleep(60)
 # """Allow user to add to mongodb for missing statements and their respective references"""
 # #function to add missing statements if necessary
 # """process documents, noembed means we are not using embedding in retrieval and generate process but just to semantically chunk"""
@@ -67,4 +67,3 @@ from .expert_decision import *
 # make_pretty_for_expert('top_5','new_ref_found_Agentic','expert_data_test')
 
 
-formatting()

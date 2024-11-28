@@ -180,7 +180,6 @@ async def call_keyword_search_async(text, prompt=None):
     return result
 #Get the statements, reference article titles, authors of reference articles and year reference articles released
 async def call_get_ref_async(text):
-    await initialize_client()
     result = await async_retry_on_exception(get_references_async, text)
     return result
 
