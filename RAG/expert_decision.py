@@ -586,16 +586,16 @@ async def find_reference_async(text):
     """Find reference list"""
     return await call_find_reference_list(text)
 
-async def edit_reference_async(reference_list,list_of_list_references):
+async def edit_reference_async(reference_list,remove_list,add_list):
     """Edit the reference list"""
-    return await call_replace_reference_list(reference_list,list_of_list_references)
+    return await call_replace_reference_list(reference_list,remove_list,add_list)
 
 #edit citations of statement
 async def edit_citation(text,list_statement):
     """Edits citations"""
     return await call_find_to_edit_statement(text,list_statement)
 
-async def process_reference_list_async(text, list_of_list_references):
+async def process_reference_list_async(text, remove_list,add_list):
     """
     Find the reference list in the text and edit it using the provided references,
     edit the text without reference list, 
@@ -612,12 +612,13 @@ async def process_reference_list_async(text, list_of_list_references):
     reference_list = await find_reference_async(text)
     
     # Step 2: Edit the reference list using the provided references
-    edited_reference_list = await edit_reference_async(reference_list, list_of_list_references)
+    edited_reference_list = await edit_reference_async(reference_list, remove_list,add_list)
 
     
     # Step 3: Replace the reference list in the exact same spot
     if reference_list in text:
         updated_text = text.replace(reference_list, edited_reference_list)
+        print(updated_text)
         print('Reference list replaced')
     else:
         # If reference list is not found, append the new reference list at the end
@@ -630,17 +631,17 @@ async def process_reference_list_async(text, list_of_list_references):
     return updated_text
 
     
-def find_edit_references(text,list_of_list_references):
+def find_edit_references(text,remove_list,add_list):
     """Synchronous wrapper function for calling async operations."""
     try:
         # Try to get the running event loop
         loop = asyncio.get_running_loop()
         # Submit the coroutine to the existing loop
-        future = asyncio.run_coroutine_threadsafe(process_reference_list_async(text,list_of_list_references), loop)
+        future = asyncio.run_coroutine_threadsafe(process_reference_list_async(text,remove_list,add_list), loop)
         return future.result()
     except RuntimeError:
         # No running event loop, use asyncio.run()
-        return asyncio.run(process_reference_list_async(text,list_of_list_references))
+        return asyncio.run(process_reference_list_async(text,remove_list,add_list))
 
 # Function to clean each reference list in replace db
 def clean_references(ref_list):
@@ -660,95 +661,117 @@ def clean_references(ref_list):
     return cleaned_refs
 
 
+
 def update_references(df_main, replace_df):
-    print(replace_df)
     """
-    Updates the main DataFrame by replacing old references, adding new references, and handling edits.
+    Update main dataframe with replacement tasks while tracking removed and added references.
 
     Parameters:
     - df_main (pd.DataFrame): The main DataFrame containing statements and references.
-    - replace_df (pd.DataFrame): The DataFrame containing replacement tasks and edits.
+    - replace_df (pd.DataFrame): The DataFrame containing replacement tasks, addition tasks, and edits.
 
     Returns:
-    - pd.DataFrame: The updated main DataFrame with references replaced, added, or updated with edits.
+    - pd.DataFrame: Updated main DataFrame including matching statements and removed references.
+    - list: Unique references removed from df_main (Old References).
+    - list: References added to df_main (New References).
     """
-    # Define the normalization function
+    import string
+
     def normalize(text):
+        """Normalize text by removing punctuation, converting to lowercase, and stripping spaces."""
         if not text:
             return ''
         return ''.join(e for e in text.lower() if e not in string.punctuation).replace(" ", "")
+
     if replace_df.empty:
-        return df_main
+        return df_main, [], []
     else:
+        removed_references = set()
+        added_references = set()
+        removed_rows = []  # Track rows for removed references
+
         # Iterate through each unique `_id` in replace_df
         for _id in replace_df['_id'].unique():
-            # Filter replace_df for the current `_id`
             ref_data = replace_df[replace_df['_id'] == _id]
             if ref_data.empty:
-                print(f"No data found for _id {_id}, skipping.")
                 continue
-            
+
             # Extract the statement
             try:
                 statement = ref_data['statement'].iloc[0]
             except IndexError:
-                print(f"Statement not found for _id {_id}, skipping.")
                 continue
-            
-            # Find the corresponding row in df_main by matching the statement
-            main_row = df_main[df_main['statement'] == statement]
-            if main_row.empty:
-                print(f"Statement '{statement}' not found in df_main for _id {_id}.")
-                continue
-            
-            # Handle old references
-            old_ref_series = ref_data[ref_data['referenceType'] == 'Old Reference']['articleName']
-            if not old_ref_series.empty:
-                old_ref_name = normalize(old_ref_series.iloc[0])
-                condition = (df_main['statement'] == statement) & \
-                            (df_main['articleName'].apply(normalize) == old_ref_name)
-                if not df_main[condition].empty:
-                    df_main = df_main[~condition]
-                    print(f"Old reference '{old_ref_name}' removed from statement '{statement}'.")
-                else:
-                    print(f"Old reference '{old_ref_name}' not found for statement '{statement}'.")
-            
-            # Prepare rows to add
-            new_rows = []
-            
-            # Handle new references
-            new_refs = ref_data[ref_data['referenceType'] == 'New Reference']
-            for _, new_ref in new_refs.iterrows():
-                new_row = {
-                    'statement': statement,
-                    'authors': new_ref.get('authors', ''),  # Default to '' if no authors
-                    'date': new_ref.get('date', ''),        # Default to '' if no date
-                    'articleName': new_ref.get('articleName', ''),  # Default to '' if no articleName
-                    'edits': new_ref.get('edits', '')       # Default to '' if no edits
-                }
-                new_rows.append(new_row)
-                print(f"Prepared new reference '{new_ref['articleName']}' for statement '{statement}'.")
 
-        # Add edits
-        edit_series = ref_data['edits'].dropna()
-        for edit in edit_series:
-            new_row = {
-                'statement': statement,
-                'authors': '',  # Default to '' if no authors
-                'date': '',     # Default to '' if no date
-                'articleName': '',  # Default to '' if no articleName
-                'edits': edit
-            }
-            new_rows.append(new_row)
-            print(f"Prepared edit '{edit}' for statement '{statement}'.")
+            only_new_ref = all(ref_data['referenceType'] == 'New Reference')
 
-        # Append all new rows at once to df_main
-        if new_rows:
-            df_main = pd.concat([df_main, pd.DataFrame(new_rows)], ignore_index=True)
-    
-    return df_main
+            if only_new_ref:
+                # Add new references
+                for _, new_ref in ref_data.iterrows():
+                    new_row = {
+                        'statement': new_ref['statement'],
+                        'authors': new_ref.get('authors', ''),
+                        'date': new_ref.get('date', ''),
+                        'articleName': new_ref.get('articleName', ''),
+                        'edits': new_ref.get('edits', ''),
+                        '_id': _id  # Keep the same _id
+                    }
+                    df_main = pd.concat([df_main, pd.DataFrame([new_row])], ignore_index=True)
+                    added_references.add(new_ref['articleName'])
+            else:
+                # Handle Old Reference
+                old_refs = ref_data[ref_data['referenceType'] == 'Old Reference']
+                for _, old_ref in old_refs.iterrows():
+                    old_ref_name = normalize(old_ref['articleName'])
+                    condition = (df_main['statement'] == statement) & \
+                                (df_main['articleName'].apply(normalize) == old_ref_name)
 
+                    if not df_main[condition].empty:
+                        # Save the removed row for tracking
+                        removed_row = df_main.loc[condition].iloc[0].to_dict()
+                        removed_row['removed'] = True
+                        removed_rows.append(removed_row)
 
+                        # Remove the old reference
+                        removed_references.add(df_main.loc[condition, 'articleName'].iloc[0])
+                        df_main = df_main[~condition]
+
+                # Handle New References
+                new_refs = ref_data[ref_data['referenceType'] == 'New Reference']
+                for _, new_ref in new_refs.iterrows():
+                    condition = (df_main['statement'] == statement) & \
+                                (df_main['articleName'] == new_ref['articleName'])
+
+                    if df_main[condition].empty:
+                        new_row = {
+                            'statement': statement,
+                            'authors': new_ref.get('authors', ''),
+                            'date': new_ref.get('date', ''),
+                            'articleName': new_ref.get('articleName', ''),
+                            'edits': new_ref.get('edits', ''),
+                            '_id': _id
+                        }
+                        df_main = pd.concat([df_main, pd.DataFrame([new_row])], ignore_index=True)
+                        added_references.add(new_ref['articleName'])
+                    else:
+                        df_main.loc[condition, ['authors', 'date', 'edits', '_id']] = [
+                            new_ref.get('authors', ''),
+                            new_ref.get('date', ''),
+                            new_ref.get('edits', ''),
+                            _id
+                        ]
+
+        # Convert removed rows to DataFrame
+        removed_rows_df = pd.DataFrame(removed_rows)
+
+        # Combine matching statements and removed references
+        matching_statements = df_main[df_main['statement'].isin(replace_df['statement'].unique())]
+        if not removed_rows_df.empty:
+            edited_statements = pd.concat([matching_statements, removed_rows_df], ignore_index=True)
+
+        # Drop `_id` for final output
+        edited_statements = edited_statements.drop(columns=['_id'], errors='ignore')
+
+        return edited_statements, list(removed_references), list(added_references)
 
 def preprocess_text(text):
     """
@@ -821,7 +844,7 @@ def merge_statements_and_references(df1, df2):
     df1 = df1.drop(rows_to_remove).reset_index(drop=True)
     return df1
 
-def edit_paper(df_main,text):
+def edit_paper(df_main,text,remove_ref,add_ref):
     #get got to :
     #edit reference list
     #edit statement's citations
@@ -829,6 +852,44 @@ def edit_paper(df_main,text):
 
     #Seperate out statements with edits. we will need to add the edits later
     # Separate rows with edits into a new DataFrame
+
+    #format add and remove list:
+    df_wrangle=df_main
+    # Normalize the strings in the dataframe and the reference lists
+    df_wrangle['articleName_normalized'] = df_wrangle['articleName'].str.lower().str.strip()
+
+    add_ref_normalized = [ref.lower().strip() for ref in add_ref]
+    remove_ref_normalized = [ref.lower().strip() for ref in remove_ref]
+
+    df_add = df_wrangle[df_wrangle['articleName_normalized'].apply(lambda x: any(add in x for add in add_ref_normalized))]
+    df_remove = df_wrangle[df_wrangle['articleName_normalized'].apply(lambda x: any(remove in x for remove in remove_ref_normalized))]
+
+    grouped_df_add = df_add.groupby('statement').apply(
+        lambda group: {
+            'Statement': f"{group['statement'].iloc[0]} ({'; '.join((group['authors'] + ' (' + group['date'].astype(str) + ')').tolist())})",
+            'ArticleNames': group['articleName'].tolist()
+        }
+    ).apply(pd.Series).reset_index(drop=True)
+
+    grouped_df_remove = df_remove.groupby('statement').apply(
+        lambda group: {
+            'Statement': f"{group['statement'].iloc[0]} ({'; '.join((group['authors'] + ' (' + group['date'].astype(str) + ')').tolist())})",
+            'ArticleNames': group['articleName'].tolist()
+        }
+    ).apply(pd.Series).reset_index(drop=True)
+
+    # Ensure the resulting dataframe has the correct columns
+    Add_df = grouped_df_add.rename(
+        columns={'Statement': 'Statement', 'ArticleNames': 'ArticleName'}
+    )
+
+    Remove_df = grouped_df_remove.rename(
+        columns={'Statement': 'Statement', 'ArticleNames': 'ArticleName'}
+    )
+
+    Df_add=finalize(Add_df,text)
+    Df_remove=finalize(Remove_df,text)
+
     df_with_edits = df_main[df_main['edits'] != '']
     
     grouped_df_edit = df_with_edits.groupby('statement').apply(
@@ -848,39 +909,43 @@ def edit_paper(df_main,text):
 
     df_without_edits = df_main[df_main['edits'] == '']
 
-    # Group the DataFrame without edits for processing
-    grouped_df_with_simple_references = df_without_edits.groupby('statement').apply(
-        lambda group: {
-            'Statement': f"{group['statement'].iloc[0]} ({'; '.join((group['authors'] + ' (' + group['date'].astype(str) + ')').tolist())})",
-            'ArticleNames': group['articleName'].tolist()
-        }
-    ).apply(pd.Series).reset_index(drop=True)
+    # # Group the DataFrame without edits for processing
+    # grouped_df_with_simple_references = df_without_edits.groupby('statement').apply(
+    #     lambda group: {
+    #         'Statement': f"{group['statement'].iloc[0]} ({'; '.join((group['authors'] + ' (' + group['date'].astype(str) + ')').tolist())})",
+    #         'ArticleNames': group['articleName'].tolist()
+    #     }
+    # ).apply(pd.Series).reset_index(drop=True)
 
 
-    # Ensure the resulting dataframe has the correct columns
-    final_df = grouped_df_with_simple_references.rename(
-        columns={'Statement': 'Statement', 'ArticleNames': 'ArticleName'}
-    )
-    final_df=finalize(final_df,text)
-    if edit_df.empty:
-        final=final_df
-    else:
-        final=merge_statements_and_references(final_df,edit_df)
+    # # Ensure the resulting dataframe has the correct columns
+    # final_df = grouped_df_with_simple_references.rename(
+    #     columns={'Statement': 'Statement', 'ArticleNames': 'ArticleName'}
+    # )
+    # final_df=finalize(final_df,text)
+    # if edit_df.empty:
+    #     final=final_df
+    # else:
+    #     final=merge_statements_and_references(final_df,edit_df)
+    
 
-    #edit reference list to update list, find statements and citations to update:
-    list_of_list_reference=final['Reference'].tolist()
-    flattened_references = [ref for sublist in list_of_list_reference for ref in sublist]
+    #remove references and add references, then edit statements that require edits in citations, append edits to back of statements
+    remove=Df_remove['Reference'].tolist()
+    flattened_remove=[ref for sublist in remove for ref in sublist]
+    remove=list(set(flattened_remove))
+    
 
-    # Remove duplicates by converting to a set and back to a list
-    unique_references = list(set(flattened_references))
-    unique_references.sort()
-    list_statements=final['Statement'].tolist()
-    new_text=find_edit_references(text,unique_references)
+    add=Df_add['Reference'].tolist()
+    flattened_add=[ref for sublist in add for ref in sublist]
+    add=list(set(flattened_add))
+
+    list_statements=Df_add['Statement'].tolist()
+    new_text=find_edit_references(text,remove,add)
     new=old_state_cite(new_text,list_statements)
     if edit_df.empty:
         n=new
     else:
-        n=add_edits_cite(edit_list,text)
+        n=add_edits_cite(edit_list,new)
 
 
     # Full file path
@@ -927,6 +992,7 @@ def formatting():
     df_main['articleName']=df_main['Full_Reference'].str.extract(pattern_title)
     df_main=df_main.drop(columns=['Citation','Full_Reference'])
     df_main['edits']=''
+    df_original=df_main
     print('Processing updates')
     """For edits"""
     edit=db['edit']
@@ -1090,10 +1156,10 @@ def formatting():
         print('all dfs have data')
     send_excel(df_changes,'RAG','changes.xlsx')
 
-    updated_df_main = update_references(df_main, df_changes)
+    updated_df_main,remove_ref,add_ref = update_references(df_main, df_changes)
 
     #Perform final edited table to insert for regex matching
-    edit_paper(updated_df_main,text)
+    edit_paper(updated_df_main,text,remove_ref,add_ref)
     records = updated_df_main.to_dict(orient='records')
     replace_database_collection(uri, db.name, 'to_update', records)
    
