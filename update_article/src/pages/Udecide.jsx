@@ -307,6 +307,18 @@ function Udecide() {
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">Statement Comparison</h1>
         <div className="flex gap-4">
+          {replaceMode ? (
+            <button 
+              onClick={() => {
+                setReplaceMode(false);
+              }}
+              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+            >
+              Cancel Replace
+            </button>
+          ) : (
+            null
+          )}
           <button
             onClick={() => {
               if (!replaceMode) {
@@ -317,7 +329,8 @@ function Udecide() {
             }}
             className={`px-4 py-2 text-white rounded ${
               replaceMode ? "bg-green-500 hover:bg-green-600" : "bg-green-500 hover:bg-green-600"
-            }`}
+            }
+            `}
             disabled={replaceMode && (!hasOldSelection || !hasNewSelection)}
           >
             {replaceMode ? "Submit Replacement" : "Replace"}
