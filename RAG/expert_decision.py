@@ -858,10 +858,14 @@ def edit_paper(df_main,text,remove_ref,add_ref):
     # Normalize the strings in the dataframe and the reference lists
     df_wrangle['articleName_normalized'] = df_wrangle['articleName'].str.lower().str.strip()
 
-    add_ref_normalized = [ref.lower().strip() for ref in add_ref]
+    add_ref_normalize= [ref.lower().strip() for ref in add_ref]
     remove_ref_normalized = [ref.lower().strip() for ref in remove_ref]
-
-    df_add = df_wrangle[df_wrangle['articleName_normalized'].apply(lambda x: any(add in x for add in add_ref_normalized))]
+    #includes all ref to be added PLUS existing ref (else the citation will miss out on previous citations)
+    df_add = df_wrangle[
+        df_wrangle['articleName_normalized'].apply(
+            lambda x: not any(remove in x for remove in remove_ref_normalized)
+        )
+    ]
     df_remove = df_wrangle[df_wrangle['articleName_normalized'].apply(lambda x: any(remove in x for remove in remove_ref_normalized))]
 
     grouped_df_add = df_add.groupby('statement').apply(
@@ -909,25 +913,6 @@ def edit_paper(df_main,text,remove_ref,add_ref):
 
     df_without_edits = df_main[df_main['edits'] == '']
 
-    # # Group the DataFrame without edits for processing
-    # grouped_df_with_simple_references = df_without_edits.groupby('statement').apply(
-    #     lambda group: {
-    #         'Statement': f"{group['statement'].iloc[0]} ({'; '.join((group['authors'] + ' (' + group['date'].astype(str) + ')').tolist())})",
-    #         'ArticleNames': group['articleName'].tolist()
-    #     }
-    # ).apply(pd.Series).reset_index(drop=True)
-
-
-    # # Ensure the resulting dataframe has the correct columns
-    # final_df = grouped_df_with_simple_references.rename(
-    #     columns={'Statement': 'Statement', 'ArticleNames': 'ArticleName'}
-    # )
-    # final_df=finalize(final_df,text)
-    # if edit_df.empty:
-    #     final=final_df
-    # else:
-    #     final=merge_statements_and_references(final_df,edit_df)
-    
 
     #remove references and add references, then edit statements that require edits in citations, append edits to back of statements
     remove=Df_remove['Reference'].tolist()
@@ -1156,10 +1141,10 @@ def formatting():
         print('all dfs have data')
     send_excel(df_changes,'RAG','changes.xlsx')
 
-    updated_df_main,remove_ref,add_ref = update_references(df_main, df_changes)
+    updated_df_change,remove_ref,add_ref = update_references(df_main, df_changes)
 
     #Perform final edited table to insert for regex matching
-    edit_paper(updated_df_main,text,remove_ref,add_ref)
-    records = updated_df_main.to_dict(orient='records')
+    edit_paper(updated_df_change,text,remove_ref,add_ref)
+    records = updated_df_change.to_dict(orient='records')
     replace_database_collection(uri, db.name, 'to_update', records)
    
