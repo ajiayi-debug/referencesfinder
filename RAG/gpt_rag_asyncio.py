@@ -815,6 +815,7 @@ async def replace_reference_list(reference_list,remove_list,add_list):
     - Make sure edits to the reference list follows the referencing style in the reference list
     - Remove duplicates in the final list
     - Ignore references in the removal list that do not exist in the Reference list.
+    - Ignore references in the addition list that already exists in the Reference list.
     - Add new references at the end of the Reference list if they are not already present.
 
     ### Example:
