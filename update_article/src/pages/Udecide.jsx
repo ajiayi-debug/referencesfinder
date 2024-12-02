@@ -1,291 +1,519 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from 'react-router-dom';
-import ClipLoader from 'react-spinners/ClipLoader';
+// src/FileViewer.js
 
-function Udecide() {
-  const [data, setData] = useState([]);
-  const [view, setView] = useState("sieved");
-  const [statementIndex, setStatementIndex] = useState(0);
-  const [replaceMode, setReplaceMode] = useState(false);
-  const [selectedReplacements, setSelectedReplacements] = useState({});
-  const [selectedReplacementNewRefs, setSelectedReplacementNewRefs] = useState({});
-  const [selectedAdditions, setSelectedAdditions] = useState({});
-  const [isLoading, setIsLoading] = useState(true);
-  const [editMode, setEditMode] = useState(null);
-  const [editText, setEditText] = useState({});
-  const [finalizeLoading, setFinalizeLoading] = useState(false);
-  const [addLoading, setAddLoading] = useState(false);
+import React, { useEffect, useState } from 'react';
+import DiffViewer from 'react-diff-viewer-continued';
 
-  const navigate = useNavigate();
+const FileViewer = () => {
+  const [content1, setContent1] = useState(''); // extracted.txt
+  const [content2, setContent2] = useState(''); // output.txt
+  const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedContent2, setEditedContent2] = useState('');
+  const [saveStatus, setSaveStatus] = useState(null); // null, 'success', 'error'
 
-  // Fetch data from backend
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch("http://127.0.0.1:8000/joindata");
-        const result = await response.json();
-        setData(result);
-        setIsLoading(false);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        setIsLoading(false);
+  // States for MongoDB data
+  const [replacements, setReplacements] = useState([]);
+  const [additions, setAdditions] = useState([]);
+  const [edits, setEdits] = useState([]);
+  const [clearStatus, setClearStatus] = useState(null); // null, 'success', 'error'
+
+  // State for Regenerate status
+  const [regenerateStatus, setRegenerateStatus] = useState(null); // null, 'success', 'error'
+
+  // Function to normalize text
+  const normalizeText = (text) =>
+    text.replace(/\r\n/g, '\n').replace(/\s+/g, ' ').trim();
+
+  // Fetch file contents and MongoDB data
+  const fetchData = async () => {
+    setLoading(true);
+    await Promise.all([
+      fetchFileContent('output_txt/output.txt', setContent2),
+      fetchFileContent('extracted.txt', setContent1),
+      fetchMongoData(),
+    ]);
+    setLoading(false);
+  };
+
+  // Fetch file content function
+  const fetchFileContent = async (subpath, setContent) => {
+    try {
+      const response = await fetch(`http://127.0.0.1:8000/file/${subpath}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch file: ${subpath} (Status: ${response.status})`);
       }
-    };
+      const text = await response.text();
+      setContent(text);
+    } catch (error) {
+      console.error(error);
+      setContent('Error loading file content.');
+    }
+  };
 
+  // Fetch MongoDB data function
+  const fetchMongoData = async () => {
+    try {
+      const [replacementsRes, additionsRes, editsRes] = await Promise.all([
+        fetch('http://127.0.0.1:8000/api/replacements'),
+        fetch('http://127.0.0.1:8000/api/additions'),
+        fetch('http://127.0.0.1:8000/api/edits'),
+      ]);
+
+      if (!replacementsRes.ok || !additionsRes.ok || !editsRes.ok) {
+        throw new Error('Failed to fetch MongoDB data.');
+      }
+
+      const [replacementsData, additionsData, editsData] = await Promise.all([
+        replacementsRes.json(),
+        additionsRes.json(),
+        editsRes.json(),
+      ]);
+
+      setReplacements(replacementsData);
+      setAdditions(additionsData);
+      setEdits(editsData);
+    } catch (error) {
+      console.error(error);
+      // Optionally set error states here
+    }
+  };
+
+  // Fetch data on component mount
+  useEffect(() => {
     fetchData();
   }, []);
 
-  const currentData = data[statementIndex] || {};
-
-  // Handle statement navigation
-  const handleNextStatement = () => {
-    setStatementIndex((prevIndex) => (prevIndex + 1) % data.length);
+  // Handle Edit Button Click
+  const handleEditClick = () => {
+    setIsEditing(true);
+    setEditedContent2(content2);
   };
 
-  const handlePreviousStatement = () => {
-    setStatementIndex((prevIndex) => (prevIndex - 1 + data.length) % data.length);
+  // Handle Cancel Edit
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditedContent2('');
+    setSaveStatus(null);
   };
 
-  // Replace functionality
-  const handleReplaceClick = (refId) => {
-    setSelectedReplacements((prev) => ({
-      ...prev,
-      [refId]: !prev[refId],
-    }));
-  };
-
-  const handleReplaceNewClick = (refId) => {
-    setSelectedReplacementNewRefs((prev) => ({
-      ...prev,
-      [refId]: !prev[refId],
-    }));
-  };
-
-  const handleAddReplacementTask = async () => {
-    // Gather all selected old references
-    const selectedOldRefs = Object.entries(selectedReplacements)
-      .filter(([_, isChecked]) => isChecked)
-      .map(([oldRefId]) => {
-        const oldRefData = currentData.oldReferences.find((ref) => ref.id === oldRefId);
-        return {
-          id: oldRefId,
-          articleName: oldRefData?.articleName || "",
-          authors: oldRefData?.authors || [],
-          date: oldRefData?.date || "",
-        };
-      });
-
-    // Gather all selected new references
-    const selectedNewRefs = Object.entries(selectedReplacementNewRefs)
-      .filter(([_, isChecked]) => isChecked)
-      .map(([newRefId]) => {
-        const newRefData = currentData.newReferences.find(
-          (ref) => ref.id === newRefId || ref.id?.$oid === newRefId // Handle MongoDB `$oid`
-        );
-        return {
-          id: newRefId,
-          articleName: newRefData?.articleName || "",
-          authors: newRefData?.authors || [],
-          date: newRefData?.date || "",
-        };
-      });
-
-    if (selectedOldRefs.length === 0 || selectedNewRefs.length === 0) {
-      alert("Please select at least one old reference and one new reference for replacement.");
-      return;
-    }
-
+  // Handle Save Edit
+  const handleSaveEdit = async () => {
     try {
-      // Send the mapping of many-to-many replacements
-      const response = await fetch("http://127.0.0.1:8000/addReplacementTask", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          statement: currentData.statement,
-          oldReferences: selectedOldRefs, // List of old references
-          newReferences: selectedNewRefs, // List of new references
-        }),
-      });
+      const response = await fetch(
+        'http://127.0.0.1:8000/api/updateFile?subpath=output_txt/output.txt',
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ content: editedContent2 }),
+        }
+      );
 
-      if (response.ok) {
-        alert("Replacement task successfully added!");
-        setReplaceMode(false);
-        setSelectedReplacements({});
-        setSelectedReplacementNewRefs({});
-      } else {
-        console.error("Failed to add replacement task");
-      }
-    } catch (error) {
-      console.error("Error sending replacement task:", error);
-    }
-  };
-
-  // Addition functionality
-  const handleAddClick = (refId) => {
-    setSelectedAdditions((prev) => ({
-      ...prev,
-      [refId]: !prev[refId],
-    }));
-  };
-
-  const handleAddAdditionTask = async () => {
-    setAddLoading(true); // Start loading
-  
-    const selectedRefs = Object.entries(selectedAdditions)
-      .filter(([_, isChecked]) => isChecked)
-      .map(([refId]) => {
-        const refData = currentData.newReferences.find(
-          (ref) => ref.id === refId || ref.id?.$oid === refId
-        );
-        return {
-          id: refId,
-          articleName: refData?.articleName || "",
-          authors: refData?.authors || [],
-          date: refData?.date || "",
-        };
-      });
-  
-    if (selectedRefs.length === 0) {
-      alert("No references selected for addition!");
-      setAddLoading(false); // Stop loading
-      return;
-    }
-  
-    try {
-      const response = await fetch("http://127.0.0.1:8000/addAdditionTask", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          statement: currentData.statement,
-          newReferences: selectedRefs,
-        }),
-      });
-  
-      if (response.ok) {
-        alert("Addition task successfully added!");
-        setSelectedAdditions({}); // Reset selections
-      } else {
-        console.error("Failed to add addition task");
-        alert("Failed to add addition task");
-      }
-    } catch (error) {
-      console.error("Error sending addition task:", error);
-      alert("Error sending addition task");
-    } finally {
-      setAddLoading(false); // Stop loading
-    }
-  };
-  
-
-  // Edit functionality
-  const handleEditClick = (statement, newRefId) => {
-    setEditMode(editMode === `${statement}-${newRefId}` ? null : `${statement}-${newRefId}`); // Combine statement and newRefId
-  };
-
-  const handleEditTextChange = (statement, newRefId, text) => {
-    setEditText((prev) => ({ ...prev, [`${statement}-${newRefId}`]: text })); // Key by statement-newRefId
-  };
-
-  const handleAddEditTask = async (statement, newRefId) => {
-    const editKey = `${statement}-${newRefId}`;
-    if (!editText[editKey] || editText[editKey].trim() === "") {
-      alert("Please type some text before adding an edit task.");
-      return;
-    }
-  
-    const newReference = currentData.newReferences.find((ref) => ref.id === newRefId);
-  
-    if (!newReference) {
-      alert("New reference not found!");
-      return;
-    }
-  
-    const payload = {
-      statement: statement,
-      edits: editText[editKey],
-      newReferences: [newReference], // Send as a list
-    };
-  
-    // Log the payload to verify its structure
-    console.log("Payload being sent to backend:", payload);
-  
-    try {
-      const response = await fetch("http://127.0.0.1:8000/addEditTask", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-  
-      if (response.ok) {
-        alert("Edit task successfully added!");
-        setEditMode(null);
-        setEditText((prev) => ({ ...prev, [editKey]: "" }));
-      } else {
-        const errorData = await response.json();
-        console.error("Failed to add edit task:", errorData);
-        alert(`Failed to add edit task: ${errorData.detail || "Unknown error."}`);
-      }
-    } catch (error) {
-      console.error("Error sending edit task:", error);
-      alert("Error sending edit task.");
-    }
-  };
-  
-
-  const handleFinalizeClick = async () => {
-    setFinalizeLoading(true);
-    try {
-      // Call the first API
-      const response = await fetch("http://127.0.0.1:8000/finalize", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-  
       if (!response.ok) {
-        alert("Finalize failed. Please try again.");
-        console.error("Failed to finalize");
-        return; // Exit early if the first API fails
+        throw new Error('Failed to update the file.');
       }
-      console.log('Fanalize done')
-  
-      // Optionally, process the response from the first API
-      const finalizeResult = await response.json();
-      console.log("Finalize response:", finalizeResult);
 
-      // Navigate after successful completion of both API calls
-      navigate("/fileviewer");
+      const result = await response.json();
+      console.log('Update successful:', result);
+
+      setContent2(editedContent2);
+      setIsEditing(false);
+      setSaveStatus('success');
     } catch (error) {
-      console.error("Error during API calls:", error);
-      alert("An error occurred during the process.");
-    } finally {
-      setFinalizeLoading(false); // Stop loading spinner/message
+      console.error(error);
+      setSaveStatus('error');
     }
   };
-  
-  // Spinner for global loading or Finalize processing
-  if (isLoading || finalizeLoading) {
+
+  // Handle Download
+  const handleDownload = () => {
+    // Create a blob from the edited content
+    const fileContent = new Blob([content2], { type: 'text/plain' });
+    const url = URL.createObjectURL(fileContent);
+
+    // Create a temporary link to trigger the download
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'output.txt'; // Name of the file to be downloaded
+    document.body.appendChild(link);
+    link.click();
+
+    // Clean up the URL and link
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // Clear Edits Function
+  const handleClearEdits = async () => {
+    try {
+      console.log('Clearing edits...');
+      const response = await fetch('http://127.0.0.1:8000/delete_changes', {
+        method: 'POST', // Use DELETE or POST as per your API design
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to clear edits.');
+      }
+
+      console.log('Edits cleared successfully');
+      setClearStatus('success');
+    } catch (error) {
+      console.error('Error clearing edits:', error);
+      setClearStatus('error');
+    }
+  };
+
+  // Handle Regenerate Function
+  const handleRegenerateClick = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('http://127.0.0.1:8000/finalize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!response.ok) {
+        setRegenerateStatus('error');
+        alert('Regenerate failed. Please try again.');
+        console.error('Failed to regenerate');
+        setLoading(false);
+        return;
+      }
+      console.log('Regenerate done');
+
+      const regenerateResult = await response.json();
+      console.log('Regenerate response:', regenerateResult);
+
+      // Now re-fetch data
+      await fetchData();
+
+      setRegenerateStatus('success');
+      setLoading(false);
+    } catch (error) {
+      console.error('Error during regenerate:', error);
+      setRegenerateStatus('error');
+      setLoading(false);
+    }
+  };
+
+  // Clear Status Messages
+  const renderClearStatusMessage = () => {
+    if (clearStatus === 'success') {
+      return (
+        <div style={{ color: 'green', textAlign: 'center', marginBottom: '10px' }}>
+          Edits cleared successfully!
+        </div>
+      );
+    }
+    if (clearStatus === 'error') {
+      return (
+        <div style={{ color: 'red', textAlign: 'center', marginBottom: '10px' }}>
+          Failed to clear edits.
+        </div>
+      );
+    }
+    return null;
+  };
+
+  // Regenerate Status Messages
+  const renderRegenerateStatusMessage = () => {
+    if (regenerateStatus === 'success') {
+      return (
+        <div style={{ color: 'green', textAlign: 'center', marginBottom: '10px' }}>
+          Regeneration completed successfully!
+        </div>
+      );
+    }
+    if (regenerateStatus === 'error') {
+      return (
+        <div style={{ color: 'red', textAlign: 'center', marginBottom: '10px' }}>
+          Failed to regenerate. Please try again.
+        </div>
+      );
+    }
+    return null;
+  };
+
+  if (loading) {
     return (
-      <div className="fixed inset-0 bg-white bg-opacity-80 flex items-center justify-center z-50">
-        <ClipLoader color="#123abc" loading={true} size={50} />
-      </div>
+      <div style={{ textAlign: 'center', fontSize: '18px' }}>Loading files...</div>
     );
   }
 
-  // Render tables
-  const renderTable = (title, dataRows) => (
-    <div>
-      <h3 className="text-lg font-semibold mb-2">{title}</h3>
-      <div className="overflow-x-auto">
-        <table className="min-w-full border border-gray-300">
+  return (
+    <div style={{ fontFamily: 'Arial, sans-serif', margin: '20px' }}>
+      <h1 style={{ textAlign: 'center', fontSize: '24px' }}>
+        Text File Viewer with Differences
+      </h1>
+
+      {/* Save Status Messages */}
+      {saveStatus === 'success' && (
+        <div
+          style={{ color: 'green', textAlign: 'center', marginBottom: '10px' }}
+        >
+          File updated successfully!
+        </div>
+      )}
+      {saveStatus === 'error' && (
+        <div
+          style={{ color: 'red', textAlign: 'center', marginBottom: '10px' }}
+        >
+          Failed to update the file.
+        </div>
+      )}
+
+      {/* Regenerate Status Messages */}
+      {renderRegenerateStatusMessage()}
+
+      {/* Edit and Download Buttons */}
+      {!isEditing && (
+        <div style={{ textAlign: 'center', marginBottom: '10px' }}>
+          <button
+            onClick={handleEditClick}
+            style={{
+              padding: '10px 20px',
+              fontSize: '16px',
+              cursor: 'pointer',
+              backgroundColor: '#4CAF50',
+              color: 'white',
+              border: 'none',
+              borderRadius: '5px',
+              marginRight: '10px',
+            }}
+          >
+            Edit
+          </button>
+
+          <button
+            onClick={handleDownload}
+            style={{
+              padding: '10px 20px',
+              fontSize: '16px',
+              cursor: 'pointer',
+              backgroundColor: '#008CBA',
+              color: 'white',
+              border: 'none',
+              borderRadius: '5px',
+              marginRight: '10px',
+            }}
+          >
+            Download
+          </button>
+
+          <button
+            onClick={handleRegenerateClick}
+            style={{
+              padding: '10px 20px',
+              fontSize: '16px',
+              cursor: 'pointer',
+              backgroundColor: '#FFA500',
+              color: 'white',
+              border: 'none',
+              borderRadius: '5px',
+            }}
+          >
+            Regenerate
+          </button>
+        </div>
+      )}
+
+      <div style={{ textAlign: 'center', marginBottom: '10px' }}>
+        <button
+          onClick={handleClearEdits}
+          style={{
+            padding: '10px 20px',
+            fontSize: '16px',
+            cursor: 'pointer',
+            backgroundColor: '#f44336',
+            color: 'white',
+            border: 'none',
+            borderRadius: '5px',
+          }}
+        >
+          Clear Edits
+        </button>
+      </div>
+
+      {/* Show status message */}
+      {renderClearStatusMessage()}
+
+      {/* Edit Mode */}
+      {isEditing && (
+        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+          <textarea
+            value={editedContent2}
+            onChange={(e) => setEditedContent2(e.target.value)}
+            style={{
+              width: '80%',
+              height: '200px',
+              padding: '10px',
+              fontSize: '14px',
+              fontFamily: 'monospace',
+              border: '1px solid #ccc',
+              borderRadius: '5px',
+              resize: 'vertical',
+            }}
+          />
+          <div style={{ marginTop: '10px' }}>
+            <button
+              onClick={handleSaveEdit}
+              style={{
+                padding: '8px 16px',
+                fontSize: '14px',
+                cursor: 'pointer',
+                backgroundColor: '#008CBA',
+                color: 'white',
+                border: 'none',
+                borderRadius: '5px',
+                marginRight: '10px',
+              }}
+            >
+              Save
+            </button>
+            <button
+              onClick={handleCancelEdit}
+              style={{
+                padding: '8px 16px',
+                fontSize: '14px',
+                cursor: 'pointer',
+                backgroundColor: '#f44336',
+                color: 'white',
+                border: 'none',
+                borderRadius: '5px',
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Diff Viewer */}
+      <div style={{ marginTop: '20px', overflowX: 'auto' }}>
+        <DiffViewer
+          oldValue={normalizeText(content1)}
+          newValue={isEditing ? normalizeText(editedContent2) : normalizeText(content2)}
+          splitView={true}
+          showDiffOnly={false}
+          styles={{
+            variables: {
+              light: {
+                diffViewerBackground: '#f5f5f5',
+                addedBackground: '#e6ffed',
+                removedBackground: '#ffeef0',
+                wordAddedBackground: '#acf2bd',
+                wordRemovedBackground: '#fdb8c0',
+              },
+            },
+            diffContainer: {
+              overflow: 'auto',
+              fontSize: '12px', // Smaller font size
+            },
+          }}
+          enableSyntaxHighlight={false} // Disable syntax highlighting for plain text
+        />
+      </div>
+
+      {/* MongoDB Data Tables */}
+      <div style={{ marginTop: '40px' }}>
+        {/* Replacements Table */}
+        <h2>Replacements</h2>
+        <table style={styles.table}>
           <thead>
             <tr>
-              <th className="px-4 py-2 border-b border-gray-300 bg-gray-100 text-left">Data</th>
+              <th style={styles.th}>ID</th>
+              <th style={styles.th}>Statement</th>
+              <th style={styles.th}>Old References</th>
+              <th style={styles.th}>New References</th>
             </tr>
           </thead>
           <tbody>
-            {dataRows.map((row, index) => (
-              <tr key={index}>
-                <td className="px-4 py-2 border-b border-gray-200">{row}</td>
+            {replacements.map((replacement) => (
+              <tr key={replacement.id}>
+                <td style={styles.td}>{replacement.id}</td>
+                <td style={styles.td}>{replacement.statement}</td>
+                <td style={styles.td}>
+                  <ul>
+                    {replacement.oldReferences.map((ref) => (
+                      <li key={ref.id}>
+                        {ref.articleName} by {ref.authors} ({ref.date})
+                      </li>
+                    ))}
+                  </ul>
+                </td>
+                <td style={styles.td}>
+                  <ul>
+                    {replacement.newReferences.map((ref) => (
+                      <li key={ref.id}>
+                        {ref.articleName} by {ref.authors} ({ref.date})
+                      </li>
+                    ))}
+                  </ul>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        {/* Additions Table */}
+        <h2>Additions</h2>
+        <table style={styles.table}>
+          <thead>
+            <tr>
+              <th style={styles.th}>ID</th>
+              <th style={styles.th}>Statement</th>
+              <th style={styles.th}>New References</th>
+            </tr>
+          </thead>
+          <tbody>
+            {additions.map((addition) => (
+              <tr key={addition.id}>
+                <td style={styles.td}>{addition.id}</td>
+                <td style={styles.td}>{addition.statement}</td>
+                <td style={styles.td}>
+                  <ul>
+                    {addition.newReferences.map((ref) => (
+                      <li key={ref.id}>
+                        {ref.articleName} by {ref.authors} ({ref.date})
+                      </li>
+                    ))}
+                  </ul>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        {/* Edits Table */}
+        <h2>Edits</h2>
+        <table style={styles.table}>
+          <thead>
+            <tr>
+              <th style={styles.th}>ID</th>
+              <th style={styles.th}>Statement</th>
+              <th style={styles.th}>Edits</th>
+              <th style={styles.th}>New References</th>
+            </tr>
+          </thead>
+          <tbody>
+            {edits.map((edit) => (
+              <tr key={edit.id}>
+                <td style={styles.td}>{edit.id}</td>
+                <td style={styles.td}>{edit.statement}</td>
+                <td style={styles.td}>{edit.edits}</td>
+                <td style={styles.td}>
+                  <ul>
+                    {edit.newReferences.map((ref) => (
+                      <li key={ref.id}>
+                        {ref.articleName} by {ref.authors} ({ref.date})
+                      </li>
+                    ))}
+                  </ul>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -293,231 +521,25 @@ function Udecide() {
       </div>
     </div>
   );
+};
 
-  if (isLoading) {
-    return <div className="text-center p-8">Loading...</div>;
-  }
+// Styling for tables
+const styles = {
+  table: {
+    width: '100%',
+    borderCollapse: 'collapse',
+    marginBottom: '20px',
+  },
+  th: {
+    border: '1px solid #ddd',
+    padding: '8px',
+    backgroundColor: '#f2f2f2',
+    textAlign: 'left',
+  },
+  td: {
+    border: '1px solid #ddd',
+    padding: '8px',
+  },
+};
 
-  // Determine if at least one old and one new reference are selected
-  const hasOldSelection = Object.values(selectedReplacements).some((val) => val);
-  const hasNewSelection = Object.values(selectedReplacementNewRefs).some((val) => val);
-
-  return (
-    <div className="p-8 text-center">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">Statement Comparison</h1>
-        <div className="flex gap-4">
-          {replaceMode ? (
-            <button 
-              onClick={() => {
-                setReplaceMode(false);
-              }}
-              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-            >
-              Cancel Replace
-            </button>
-          ) : (
-            null
-          )}
-          <button
-            onClick={() => {
-              if (!replaceMode) {
-                setReplaceMode(true);
-              } else {
-                handleAddReplacementTask();
-              }
-            }}
-            className={`px-4 py-2 text-white rounded ${
-              replaceMode ? "bg-green-500 hover:bg-green-600" : "bg-green-500 hover:bg-green-600"
-            }
-            `}
-            disabled={replaceMode && (!hasOldSelection || !hasNewSelection)}
-          >
-            {replaceMode ? "Submit Replacement" : "Replace"}
-          </button>
-          <button
-            onClick={handleAddAdditionTask}
-            className={`px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center justify-center ${
-              addLoading ? "opacity-50 cursor-not-allowed" : ""
-            }`}
-            disabled={addLoading || Object.values(selectedAdditions).every((val) => !val)}
-          >
-            {addLoading ? (
-              <ClipLoader color="#fff" loading={true} size={20} />
-            ) : (
-              "Add Addition Task"
-            )}
-          </button>
-          <button
-            onClick={handleFinalizeClick}
-            className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-            disabled={finalizeLoading} // Disable Finalize button while loading
-          >
-            {finalizeLoading ? "Finalizing..." : "Finalize"} {/* Dynamic button text */}
-          </button>
-        </div>
-      </div>
-      {/* Add Toggle Buttons */}
-      <div className="flex justify-center mb-6">
-        <button
-          onClick={() => setView("summary")}
-          className={`px-4 py-2 mx-2 rounded ${
-            view === "summary" ? "bg-blue-500 text-white" : "bg-gray-200 hover:bg-gray-300"
-          }`}
-        >
-          Summary
-        </button>
-        <button
-          onClick={() => setView("sieved")}
-          className={`px-4 py-2 mx-2 rounded ${
-            view === "sieved" ? "bg-blue-500 text-white" : "bg-gray-200 hover:bg-gray-300"
-          }`}
-        >
-          Sieved
-        </button>
-        <button
-          onClick={() => setView("chunk")}
-          className={`px-4 py-2 mx-2 rounded ${
-            view === "chunk" ? "bg-blue-500 text-white" : "bg-gray-200 hover:bg-gray-300"
-          }`}
-        >
-          Chunk
-        </button>
-      </div>
-
-      <div className="flex justify-center items-center mb-6 gap-4">
-        <button
-          onClick={handlePreviousStatement}
-          className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
-        >
-          Previous
-        </button>
-        <span className="text-lg font-medium">
-          {currentData.statement || "No statement available"}
-        </span>
-        <button
-          onClick={handleNextStatement}
-          className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
-        >
-          Next
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Old References */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold mb-4">Old Reference(s)</h2>
-          {(currentData.oldReferences || []).map((ref) => (
-            <div key={ref.id} className="mb-6 border border-black p-4 rounded-md">
-              {replaceMode && (
-                <div className="flex items-center mb-2">
-                  <input
-                    type="checkbox"
-                    id={`replace-${ref.id}`}
-                    className="mr-2"
-                    onChange={() => handleReplaceClick(ref.id)}
-                  />
-                  <label htmlFor={`replace-${ref.id}`} className="text-left">
-                    Select for Replacement
-                  </label>
-                </div>
-              )}
-              <p>
-                <strong>Article:</strong> {ref.articleName}
-              </p>
-              <p>
-                <strong>Date:</strong> {ref.date}
-              </p>
-              <p>
-                <strong>Authors:</strong> {ref.authors}
-              </p>
-              {view === "summary" && (
-                <p>
-                  <strong>Summary:</strong> {ref.summary}
-                </p>
-              )}
-              {view === "sieved" && renderTable("Sieved Data", ref.sieved)}
-              {view === "chunk" && renderTable("Chunk Data", ref.chunk)}
-            </div>
-          ))}
-        </div>
-
-        {/* New References */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold mb-4">New Reference(s)</h2>
-          {(currentData.newReferences || []).map((ref) => (
-            <div key={ref.id} className="mb-6 border border-black p-4 rounded-md">
-              {replaceMode && (
-                <div className="flex items-center mb-2">
-                  <input
-                    type="checkbox"
-                    id={`replace-new-${ref.id}`}
-                    className="mr-2"
-                    onChange={() => handleReplaceNewClick(ref.id)}
-                  />
-                  <label htmlFor={`replace-new-${ref.id}`} className="text-left">
-                    Select for Replacement
-                  </label>
-                </div>
-              )}
-              <p>
-                <strong>Article:</strong> {ref.articleName}
-              </p>
-              <p>
-                <strong>Date:</strong> {ref.date}
-              </p>
-              <p>
-                <strong>Authors:</strong> {ref.authors}
-              </p>
-              <p>
-                <strong>Sentiment:</strong> {ref.sentiment}
-              </p>
-              {view === "summary" && (
-                <p>
-                  <strong>Summary:</strong> {ref.summary}
-                </p>
-              )}
-              {view === "sieved" && renderTable("Sieved Data", ref.sieved)}
-              {view === "chunk" && renderTable("Chunk Data", ref.chunk)}
-              <div className="mt-4 flex gap-4 justify-center">
-                <button
-                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                  onClick={() => handleAddClick(ref.id)}
-                >
-                  Add
-                </button>
-                <button
-                  className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
-                  onClick={() => handleEditClick(currentData.statement, ref.id)} // Pass both parameters
-                >
-                  Edit
-                </button>
-                {editMode === `${currentData.statement}-${ref.id}` && ( // Use ref.id
-                  <div className="mt-4 flex gap-4 items-center">
-                    <input
-                      type="text"
-                      className="border border-gray-300 p-2 rounded w-full"
-                      placeholder="Type your edit here..."
-                      value={editText[`${currentData.statement}-${ref.id}`] || ""}
-                      onChange={(e) =>
-                        handleEditTextChange(currentData.statement, ref.id, e.target.value) // Use ref.id
-                      }
-                    />
-                    <button
-                      className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                      onClick={() => handleAddEditTask(currentData.statement, ref.id)} // Use ref.id
-                    >
-                      Add Edit Task
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export default Udecide;
+export default FileViewer;
