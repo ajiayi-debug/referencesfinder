@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, status, BackgroundTasks
+from fastapi import FastAPI, HTTPException, status, UploadFile, File
 from fastapi.responses import FileResponse
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
@@ -12,6 +12,8 @@ from RAG.expert_decision import *
 import certifi
 import datetime as datetime
 from .models import *
+import shutil
+import uuid
 
 
 load_dotenv()  # Load environment variables
@@ -60,6 +62,102 @@ def serialize_ids(document):
         return [serialize_ids(item) for item in document]
     else:
         return document
+    
+# Directory to save uploaded PDFs
+UPLOAD_DIRECTORY = "main"
+
+
+def save_uploaded_pdf(file: UploadFile):
+    """
+    Saves the uploaded PDF file. Replaces any existing PDF in the uploads directory.
+    """
+    try:
+        # Ensure the upload directory exists
+        if not os.path.exists(UPLOAD_DIRECTORY):
+            os.makedirs(UPLOAD_DIRECTORY)
+
+        # Remove any existing PDFs in the directory
+        for existing_file in os.listdir(UPLOAD_DIRECTORY):
+            if existing_file.endswith(".pdf"):
+                os.remove(os.path.join(UPLOAD_DIRECTORY, existing_file))
+
+        # Use the original file name but sanitize it
+        sanitized_filename = f"{uuid.uuid4()}-{file.filename.replace(' ', '_')}"
+        file_path = os.path.join(UPLOAD_DIRECTORY, sanitized_filename)
+
+        # Save the uploaded file
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        return sanitized_filename, file_path
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error saving file: {str(e)}")
+
+
+@app.post("/upload/")
+async def upload_pdf(file: UploadFile = File(...)):
+    """
+    Uploads a PDF file, processes it, and extracts text and data.
+    """
+    try:
+        # Save the uploaded file
+        filename, file_path = save_uploaded_pdf(file)
+
+        # Simulate text and data extraction
+        extracted_text = f"Extracted text content from {file.filename}"
+        extracted_data = [
+            {"_id": 1, "statement": "Sample Statement 1", "citation": "Citation 1"},
+            {"_id": 2, "statement": "Sample Statement 2", "citation": "Citation 2"},
+        ]
+
+        # Store in mock database
+        global DATABASE
+        DATABASE = extracted_data
+
+        return {
+            "filename": filename,
+            "text_content": extracted_text,
+            "extracted_data": extracted_data,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/pdf/{filename}")
+def get_pdf(filename: str):
+    """
+    Serves the uploaded PDF for viewing.
+    """
+    file_path = os.path.join(UPLOAD_DIRECTORY, filename)
+    if os.path.exists(file_path):
+        return FileResponse(file_path, media_type="application/pdf")
+    else:
+        raise HTTPException(status_code=404, detail="PDF not found")
+
+
+@app.put("/extraction/")
+def save_data(updated_data: List[dict]):
+    """
+    Updates the extracted data in the mock database.
+    """
+    try:
+        global DATABASE
+        DATABASE = updated_data
+        return {"message": "Data saved successfully!", "updated_data": DATABASE}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/extraction/")
+def fetch_data():
+    """
+    Fetches the current extracted data from the mock database.
+    """
+    return DATABASE
+
+
+
+
 
 # Fetch data for expert decision from MongoDB
 @app.get("/data")

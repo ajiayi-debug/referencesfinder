@@ -17,63 +17,69 @@ const FileViewer = () => {
   const [edits, setEdits] = useState([]);
   const [clearStatus, setClearStatus] = useState(null); // null, 'success', 'error'
 
+  // State for Regenerate status
+  const [regenerateStatus, setRegenerateStatus] = useState(null); // null, 'success', 'error'
+
   // Function to normalize text
   const normalizeText = (text) =>
     text.replace(/\r\n/g, '\n').replace(/\s+/g, ' ').trim();
 
-  // Fetch file contents and MongoDB data on component mount
-  useEffect(() => {
-    const fetchFileContent = async (subpath, setContent) => {
-      try {
-        const response = await fetch(`http://127.0.0.1:8000/file/${subpath}`);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch file: ${subpath} (Status: ${response.status})`);
-        }
-        const text = await response.text();
-        setContent(text);
-      } catch (error) {
-        console.error(error);
-        setContent('Error loading file content.');
+  // Fetch file contents and MongoDB data
+  const fetchData = async () => {
+    setLoading(true);
+    await Promise.all([
+      fetchFileContent('output_txt/output.txt', setContent2),
+      fetchFileContent('extracted.txt', setContent1),
+      fetchMongoData(),
+    ]);
+    setLoading(false);
+  };
+
+  // Fetch file content function
+  const fetchFileContent = async (subpath, setContent) => {
+    try {
+      const response = await fetch(`http://127.0.0.1:8000/file/${subpath}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch file: ${subpath} (Status: ${response.status})`);
       }
-    };
+      const text = await response.text();
+      setContent(text);
+    } catch (error) {
+      console.error(error);
+      setContent('Error loading file content.');
+    }
+  };
 
-    const fetchMongoData = async () => {
-      try {
-        const [replacementsRes, additionsRes, editsRes] = await Promise.all([
-          fetch('http://127.0.0.1:8000/api/replacements'),
-          fetch('http://127.0.0.1:8000/api/additions'),
-          fetch('http://127.0.0.1:8000/api/edits'),
-        ]);
-
-        if (!replacementsRes.ok || !additionsRes.ok || !editsRes.ok) {
-          throw new Error('Failed to fetch MongoDB data.');
-        }
-
-        const [replacementsData, additionsData, editsData] = await Promise.all([
-          replacementsRes.json(),
-          additionsRes.json(),
-          editsRes.json(),
-        ]);
-
-        setReplacements(replacementsData);
-        setAdditions(additionsData);
-        setEdits(editsData);
-      } catch (error) {
-        console.error(error);
-        // Optionally set error states here
-      }
-    };
-
-    const fetchData = async () => {
-      setLoading(true);
-      await Promise.all([
-        fetchFileContent('output_txt/output.txt', setContent2),
-        fetchFileContent('extracted.txt', setContent1),
-        fetchMongoData(),
+  // Fetch MongoDB data function
+  const fetchMongoData = async () => {
+    try {
+      const [replacementsRes, additionsRes, editsRes] = await Promise.all([
+        fetch('http://127.0.0.1:8000/api/replacements'),
+        fetch('http://127.0.0.1:8000/api/additions'),
+        fetch('http://127.0.0.1:8000/api/edits'),
       ]);
-      setLoading(false);
-    };
 
+      if (!replacementsRes.ok || !additionsRes.ok || !editsRes.ok) {
+        throw new Error('Failed to fetch MongoDB data.');
+      }
+
+      const [replacementsData, additionsData, editsData] = await Promise.all([
+        replacementsRes.json(),
+        additionsRes.json(),
+        editsRes.json(),
+      ]);
+
+      setReplacements(replacementsData);
+      setAdditions(additionsData);
+      setEdits(editsData);
+    } catch (error) {
+      console.error(error);
+      // Optionally set error states here
+    }
+  };
+
+  // Fetch data on component mount
+  useEffect(() => {
     fetchData();
   }, []);
 
@@ -137,10 +143,11 @@ const FileViewer = () => {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
-  // Clear Edits Function
-  const handleClearEdits = async () => {
+
+  // Clear Changes Function (renamed from handleClearEdits)
+  const handleClearChanges = async () => {
     try {
-      console.log('Clearing edits...');
+      console.log('Clearing changes...');
       const response = await fetch('http://127.0.0.1:8000/delete_changes', {
         method: 'POST', // Use DELETE or POST as per your API design
         headers: {
@@ -149,14 +156,47 @@ const FileViewer = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to clear edits.');
+        throw new Error('Failed to clear changes.');
       }
 
-      console.log('Edits cleared successfully');
+      console.log('Changes cleared successfully');
       setClearStatus('success');
     } catch (error) {
-      console.error('Error clearing edits:', error);
+      console.error('Error clearing changes:', error);
       setClearStatus('error');
+    }
+  };
+
+  // Handle Regenerate Function
+  const handleRegenerateClick = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('http://127.0.0.1:8000/finalize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!response.ok) {
+        setRegenerateStatus('error');
+        alert('Regenerate failed. Please try again.');
+        console.error('Failed to regenerate');
+        setLoading(false);
+        return;
+      }
+      console.log('Regenerate done');
+
+      const regenerateResult = await response.json();
+      console.log('Regenerate response:', regenerateResult);
+
+      // Now re-fetch data
+      await fetchData();
+
+      setRegenerateStatus('success');
+      setLoading(false);
+    } catch (error) {
+      console.error('Error during regenerate:', error);
+      setRegenerateStatus('error');
+      setLoading(false);
     }
   };
 
@@ -165,20 +205,39 @@ const FileViewer = () => {
     if (clearStatus === 'success') {
       return (
         <div style={{ color: 'green', textAlign: 'center', marginBottom: '10px' }}>
-          Edits cleared successfully!
+          Changes cleared successfully!
         </div>
       );
     }
     if (clearStatus === 'error') {
       return (
         <div style={{ color: 'red', textAlign: 'center', marginBottom: '10px' }}>
-          Failed to clear edits.
+          Failed to clear changes.
         </div>
       );
     }
     return null;
   };
-  
+
+  // Regenerate Status Messages
+  const renderRegenerateStatusMessage = () => {
+    if (regenerateStatus === 'success') {
+      return (
+        <div style={{ color: 'green', textAlign: 'center', marginBottom: '10px' }}>
+          Regeneration completed successfully!
+        </div>
+      );
+    }
+    if (regenerateStatus === 'error') {
+      return (
+        <div style={{ color: 'red', textAlign: 'center', marginBottom: '10px' }}>
+          Failed to regenerate. Please try again.
+        </div>
+      );
+    }
+    return null;
+  };
+
   if (loading) {
     return (
       <div style={{ textAlign: 'center', fontSize: '18px' }}>Loading files...</div>
@@ -206,6 +265,9 @@ const FileViewer = () => {
           Failed to update the file.
         </div>
       )}
+
+      {/* Regenerate Status Messages */}
+      {renderRegenerateStatusMessage()}
 
       {/* Edit and Download Buttons */}
       {!isEditing && (
@@ -236,31 +298,49 @@ const FileViewer = () => {
               color: 'white',
               border: 'none',
               borderRadius: '5px',
+              marginRight: '10px',
             }}
           >
             Download
           </button>
+
+          <button
+            onClick={handleRegenerateClick}
+            style={{
+              padding: '10px 20px',
+              fontSize: '16px',
+              cursor: 'pointer',
+              backgroundColor: '#FFA500',
+              color: 'white',
+              border: 'none',
+              borderRadius: '5px',
+            }}
+          >
+            Regenerate
+          </button>
         </div>
       )}
-      <div style={{ textAlign: 'center', marginBottom: '10px' }}>
-    <button
-      onClick={handleClearEdits}
-      style={{
-        padding: '10px 20px',
-        fontSize: '16px',
-        cursor: 'pointer',
-        backgroundColor: '#f44336',
-        color: 'white',
-        border: 'none',
-        borderRadius: '5px',
-      }}
-    >
-      Clear Edits
-    </button>
-  </div>
 
-  {/* Show status message */}
-  {renderClearStatusMessage()}
+      {/* Clear Changes Button */}
+      <div style={{ textAlign: 'center', marginBottom: '10px' }}>
+        <button
+          onClick={handleClearChanges}
+          style={{
+            padding: '10px 20px',
+            fontSize: '16px',
+            cursor: 'pointer',
+            backgroundColor: '#f44336',
+            color: 'white',
+            border: 'none',
+            borderRadius: '5px',
+          }}
+        >
+          Clear Changes
+        </button>
+      </div>
+
+      {/* Show status message */}
+      {renderClearStatusMessage()}
 
       {/* Edit Mode */}
       {isEditing && (
@@ -464,7 +544,4 @@ const styles = {
 };
 
 export default FileViewer;
-
-
-
 
