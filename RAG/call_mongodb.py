@@ -136,7 +136,7 @@ def change_prompt_state_or_add(uri, db_name, collection_name, prompt, effective)
 
 def get_effective_prompts(uri, db_name, collection_name):
     """
-    Retrieves a list of prompts where the effectiveness is 'Y' from a MongoDB collection.
+    Retrieves a list of prompts where the effective is 'Y' from a MongoDB collection.
 
     Args:
         uri (str): MongoDB connection URI.
@@ -144,14 +144,14 @@ def get_effective_prompts(uri, db_name, collection_name):
         collection_name (str): Name of the collection.
 
     Returns:
-        list: A list of prompts where effectiveness is 'Y'.
+        list: A list of prompts where effective is 'Y'.
     """
     client = MongoClient(uri)
     db = client[db_name]
     collection = db[collection_name]
     
-    # Query the collection for documents where effectiveness is 'Y'
-    results = collection.find({"effectiveness": "Y"}, {"prompt": 1, "_id": 0})
+    # Query the collection for documents where effective is 'Y'
+    results = collection.find({"effective": "Y"}, {"prompt": 1, "_id": 0})
     
     # Extract and return the list of prompts
     prompts = [doc['prompt'] for doc in results]

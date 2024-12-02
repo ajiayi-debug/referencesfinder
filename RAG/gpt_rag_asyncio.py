@@ -179,8 +179,8 @@ async def call_keyword_search_async(text, prompt=None):
     result = await async_retry_on_exception(keyword_search_async, text, prompt)
     return result
 #Get the statements, reference article titles, authors of reference articles and year reference articles released
-async def call_get_ref_async(text):
-    result = await async_retry_on_exception(get_references_async, text)
+async def call_get_ref_async(text,prompt=None):
+    result = await async_retry_on_exception(get_references_async, text,prompt)
     return result
 
 #agent to regenerate prompt for better keyword generation
@@ -189,7 +189,7 @@ async def call_rewritter_async(prompt):
     result = await async_retry_on_exception(rewritter, prompt)
     return result
 
-# agent to select best prompt from db
+# agent to select best prompt from db for agentic search
 async def call_selector_async(list_of_prompts):
     await initialize_client()
     result = await async_retry_on_exception(selector, list_of_prompts)
@@ -243,6 +243,47 @@ async def call_edit_citationer(row,text):
 #append edits with citations behind statements
 async def call_add_edits(list,text):
     result=await async_retry_on_exception(add_edits,list,text)
+    return result
+
+"""Agentic initial check"""
+#check if output is correct
+async def call_check_statement_extraction(output,text):
+    result= await async_retry_on_exception(check_statement_extraction,output,text)
+    return result
+
+#correct mistakes identified
+async def call_edit_mistakes_async(mistakes):
+    result = await async_retry_on_exception(edit_mistakes,mistakes)
+    return result
+
+#check if output is correct
+async def call_check_only_statement_extraction(output,text):
+    result= await async_retry_on_exception(check_only_statement_extraction,output,text)
+    return result
+
+#regenerate prompt if output is wrong, using existing prompt and text. outputs a new prompt
+async def call_improve_initial_extraction_prompt(prompt,output,text,failure_reason):
+    result = await async_retry_on_exception(improve_initial_extraction_prompt,prompt,output,text,failure_reason)
+    return result
+
+#agent to select best prompt from db for agentic extraction
+async def call_selector_initial_extraction_async(list_of_prompts):
+    result=await async_retry_on_exception(selector_initial_extraction, list_of_prompts)
+    return result
+
+"""Extracting statements """
+#extract normally w no format
+async def call_pre_check_async(text):
+    result=await async_retry_on_exception(pre_check,text)
+    return result
+#check the extraction
+async def call_check_pre_check_async(output,text):
+    result=await async_retry_on_exception(check_pre_check,output,text)
+    return result
+
+#format to format
+async def call_format_async(output):
+    result=await async_retry_on_exception(format,output)
     return result
 
 # support or oppose included, used to classify the new ref
@@ -422,7 +463,7 @@ async def keyword_search_async(text, prompt=None):
 
 
 # Get the references and the cited articles' names in the main article
-async def get_references_async(text):
+async def get_references_async(text,prompt=None):
     ref_prompt="In the following text, what are the full texts of each reference (can be multiple sentences), the name of the reference articles, the year the articles were published and the author(s) of the articles? Format your response in this manner:[['The lactase activity is usually fully or partially restored during recovery of the intestinal mucosa.','Lactose intolerance in infants, children, and adolescents','2006','Heyman M.B' ],...]"
     data={
         "model":"gpt-4o",
@@ -971,5 +1012,273 @@ async def add_edits(list,text):
     response = await async_client.chat.completions.create(**data)
     return response.choices[0].message.content
 
+async def check_statement_extraction(output,text):
+    check_and_change_prompt = f"""
+    Your task is to validate whether the provided output meets the requirements for extracting references from the given text. The goal is to ensure that all full texts of each reference (can be multiple sentences), the name of the referenced article, the year of publication, and the author(s) of the articles are accurately included in the output based on the requirements:
+    1.Completeness:
+
+        A reference must be included in the output only if all four components are present:
+            - The full text referencing the citation in the text with NO CITATION. e.g The lactase activity is usually fully or partially restored during recovery of the intestinal mucosa.
+            - The title of the referenced article. e.g Lactose intolerance in infants, children, and adolescents
+            - The year of publication. e.g 2006
+            - The author(s) of the article in the same citation style as in the text. e.g Heyman M.B
+        
+        If any of these components is missing, exclude the reference from the output.
+        Specific Scenarios:
+            - If a reference is mentioned in the reference list but no full text is found to cite it, it is okay to exclude it from the output.
+            - If a full text cites a reference but the reference is not included in the reference list, it is acceptable to exclude it from the output.
+    2. Handling Multiple Citations:
+
+        If a full text cites multiple references, it must be repeated in the output for each citation.
+        If the same reference is cited in multiple places in the text, it must appear in the output once per occurrence.
+    3. Format:
+
+        The output must strictly follow this format:
+        [['Full text referencing the citation WITH NO CITATION JUST THE TEXT.', 'Title of the cited work', 'Publication year', 'Author(s)'], ...]
+        e.g [['The lactase activity is usually fully or partially restored during recovery of the intestinal mucosa.','Lactose intolerance in infants, children, and adolescents','2006','Heyman M.B' ],...]
+    4. Exclusions:
+
+        Exclude references missing any of the required components.
+        Exclude unused references (i.e., those not explicitly cited in the text).
+        Exclude references that are incomplete in the reference list.
+    
+    Expected Validation Output:
+        Y: If both completeness and format requirements are met.
+        Reason for failure: If either completeness or format requirements are not met, provide a concise explanation detailing:
+        1. Missing references or citations. (NOTE if the reference has no full text that cites it or a full text cited reference does not exist in the reference list, it is CORRECT to leave it out of the output)
+        2. Any other format or content issues.
+        3. Output the corrected output accounting for mistakes in [['Full text referencing the citation WITH NO CITATION INCLUDED JUST THE TEXT.', 'Title of the cited work', 'Publication year', 'Author(s)'], ...] format after explanation.
+   
+
+    ONLY OUTPUT 'Y' (With NO explanation on why its valid) when valid OR REASON FOR FAILURE when invalid
+
+    **Output:**  
+    {output}  
+
+    **Text:**  
+    {text}  
+
+    """
 
     
+    data={
+        "model":"gpt-4o",
+        "messages":[
+            {"role": "user", "content": [{"type": "text","text": check_and_change_prompt}]}
+        ],
+        "temperature":0
+    }
+    response = await async_client.chat.completions.create(**data)
+    return response.choices[0].message.content
+
+async def edit_mistakes(mistakes):
+    check_and_change_prompt = f"""
+    Your task is to extract the corrected output from the following text in the form of [['Full text referencing the citation.', 'Title of the cited work', 'Publication year', 'Author(s)'], ...] only with NONE of the explanation. 
+    ONLY OUTPUT THE LIST OF LIST and NOTHING ELSE
+    **Errors:**
+    {mistakes}  
+
+    """
+
+    
+    data={
+        "model":"gpt-4o",
+        "messages":[
+            {"role": "user", "content": [{"type": "text","text": check_and_change_prompt}]}
+        ],
+        "temperature":0
+    }
+    response = await async_client.chat.completions.create(**data)
+    return response.choices[0].message.content
+
+
+
+async def check_only_statement_extraction(output,text):
+    check_prompt = f"""
+    Your task is to validate whether the provided output meets the requirements for extracting references from the given text. The goal is to ensure that all full texts of each reference (can be multiple sentences), the name of the referenced article, the year of publication, and the author(s) of the articles are accurately included in the output.
+    1.Completeness:
+
+        A reference must be included in the output only if all four components are present:
+            - The full text referencing the citation in the text.
+            - The title of the referenced article.
+            - The year of publication.
+            - The author(s) of the article.
+        If any of these components is missing, exclude the reference from the output.
+        Specific Scenarios:
+            - If a reference is mentioned in the text but no associated full text is found, it is acceptable to exclude it from the output.
+            - If a full text cites a reference but the reference is not included in the reference list, it is acceptable to exclude it from the output.
+    2. Handling Multiple Citations:
+
+        If a full text cites multiple references, it must be repeated in the output for each citation.
+        If the same reference is cited in multiple places in the text, it must appear in the output once per occurrence.
+    3. Format:
+
+        The output must strictly follow this format:
+        [['Full text referencing the citation.', 'Title of the cited work', 'Publication year', 'Author(s)'], ...]
+    4. Exclusions:
+
+        Exclude references missing any of the required components.
+        Exclude unused references (i.e., those not explicitly cited in the text).
+        Exclude references that are incomplete in the reference list.
+    
+    Expected Validation Output:
+        Y: If both completeness and format requirements are met.
+        Reason for failure: If either completeness or format requirements are not met, provide a concise explanation detailing:
+            1. Missing references or citations.
+            2. Excessive duplication of identical entries.
+            3. Any other format or content issues.
+
+    ONLY OUTPUT 'Y' (With NO explanation on why its valid) when valid OR REASON FOR FAILURE when invalid
+
+    **Output:**  
+    {output}  
+
+    **Text:**  
+    {text}  
+
+    """
+    data={
+        "model":"gpt-4o",
+        "messages":[
+            {"role": "user", "content": [{"type": "text","text": check_prompt}]}
+        ],
+        "temperature":0
+    }
+    response = await async_client.chat.completions.create(**data)
+    return response.choices[0].message.content
+
+async def improve_initial_extraction_prompt(prompt,output,text,failure_reason):
+    improve_prompt = f"""
+    You are an advanced prompt-tuning agent tasked with improving a prompt for extracting all full texts of each reference (can be multiple sentences), the name of the reference articles, the year the articles were published and the author(s) of the articles from the provided text. Your goal is to refine the existing prompt so it delivers precise, comprehensive, and accurate instructions for performing the extraction. The improvements must focus on enhancing clarity, specificity, and alignment with the desired output format.
+    The following text shows a case of one of the full texts of each reference (can be multiple sentences), the name of the reference articles, the year the articles were published and the author(s) of the articles that the OLD PROMPT missed out on, with your goal to improve on the OLD PROMPT such that this case does not happen: {failure_reason}
+
+**Guidelines for Improving the Prompt:**
+1. Ensure the improved prompt clearly defines the task and its components:
+    Full Text: The complete set of sentences or paragraphs in the text associated with a specific reference.
+    Title: The name of the referenced article.
+    Year: The year the article was published.
+    Author(s): The name(s) of the authors associated with the referenced article.
+
+2. Specify the expected **Output Format**:
+   - Results must be a list of lists in the format:
+     `[['Full Text referencing the citation.','Title of the cited work','Publication year','Author(s)'], ...]`
+
+3. Address potential **Edge Cases**:
+   - Incomplete Citations: Exclude references where any of the four components (full text, title, year, or author(s)) are missing.
+   - Multiple Statements for a Single Citation: Include all statements associated with the citation as separate entries with identical citation details.
+   - Multiple Citations in a Single Full Text: Duplicate the full text for each citation.
+
+4. **Instructions** in the prompt should:
+   - Be structured in a step-by-step manner to minimize ambiguity.
+   - Emphasize extracting all relevant information without omissions.
+   - Include examples to demonstrate the task clearly.
+
+5. Avoid overly general instructions. Instead, make the prompt precise and task-oriented, ensuring no room for misinterpretation.
+
+6. Highlight constraints:
+   - No paraphrasing or alteration of the statement text.
+   - Missing citation details should be excluded from the output
+   - Irrelevant or unsupported text should not be included in the extraction.
+   - Unused references should be excluded from the output
+
+7. Include a sample input-output pair in the improved prompt to clarify expectations.
+
+**Objective:**  
+Refine the old prompt based on the above guidelines to ensure it delivers superior performance in extracting all statements, citations, and references. The revised prompt should address any shortcomings in the old one, aligning it with the task’s goals and the desired output format. Below are the details for your reference:
+
+**OLD_PROMPT:**  
+{prompt}  
+
+**TEXT:**  
+{text}  
+
+**EXTRACTION:**  
+{output}
+
+OUTPUT THE IMPROVED PROMPT ONLY
+
+    """
+    data={
+        "model":"gpt-4o",
+        "messages":[
+            {"role": "user", "content": [{"type": "text","text": improve_prompt}]}
+        ],
+        "temperature":0
+    }
+    response = await async_client.chat.completions.create(**data)
+    return response.choices[0].message.content
+
+#make sure list of prompt is a string first
+async def selector_initial_extraction(list_of_prompts):
+    selector_prompt=f"""
+    You are a specialized evaluator agent tasked with selecting the best prompt for extracting Fall full texts of each reference (can be multiple sentences), the name of the reference articles, the year the articles were published and the author(s) of the articles from a text. Your job is to review a list of prompts and choose the one most aligned with the following criteria:
+
+    Here are guidelines for the selecting the best prompt:
+
+        1. **Clarity and Specificity:** The prompt should clearly instruct the model to extract relevant statements, citations and references. Look for any elements that remove ambiguity and make the instructions straightforward.
+        
+        2. **Accurate statement, citation and reference Focus:** Ensure the prompt guides the model to accurately extract all statements, citations and references accurately.
+
+        3. **Constraints and Instructions:** The prompt should, where useful, include constraints on extraction accuracy and depth, discourage excessive extraction.
+
+        4. **Format Requirements:** The selected prompt should direct the output to be structured in a clear, readable format.
+
+    Only output the best prompt from the list that excels in these criteria, ensuring it achieves the stated objective effectively.
+    List of prompts: {list_of_prompts}
+    """
+
+    data={
+        "model":"gpt-4o",
+        "messages":[
+            {"role": "system", "content": 'You are an advanced evaluation agent specialized in prompt selection. Your role is to evaluate a list of provided prompts and select only the best one based on clarity, focus on essential keywords, appropriate constraints, and structured format requirements. Output only the selected best prompt and nothing else.'},
+            {"role": "user", "content": [{"type": "text","text": selector_prompt}]}
+        ],
+        "temperature":0
+    }
+    response = await async_client.chat.completions.create(**data)
+    return response.choices[0].message.content
+#extract all satement citation and reference first in any format
+async def pre_check(text):
+    ref_prompt=f"""In the following text, what are the full texts of each reference (can be multiple sentences), the name of the reference articles, the year the articles were published and the author(s) of the articles?
+    text: {text}"""    
+    data={
+        "model":"gpt-4o",
+        "messages":[
+            {"role": "user", "content": [{"type": "text","text": ref_prompt}]}
+        ],
+        "temperature":0
+    }
+    response = await async_client.chat.completions.create(**data)
+    return response.choices[0].message.content
+#check if extraction successful
+async def check_pre_check(output,text):
+    ref_prompt=f"""
+    In the following output, are all the statement, citation, authors, date and references extracted from the following text? 
+    If Yes, output Y. Else, append the missing data to the output and output the output. 
+    output:{output}
+    text: {text}
+    """   
+    data={
+        "model":"gpt-4o",
+        "messages":[
+            {"role": "user", "content": [{"type": "text","text": ref_prompt}]}
+        ],
+        "temperature":0
+    }
+    response = await async_client.chat.completions.create(**data)
+    return response.choices[0].message.content
+#format the successful extraction
+async def format(output):
+    ref_prompt=f"""Reformat the output into the following list of list format:
+    [['Statement text referencing the citation.','Title of the cited work','Publication year','Author(s)'], ...]
+    Make sure to only output the LIST OF LIST and NO COMMENTARY
+    output: {output}"""    
+    data={
+        "model":"gpt-4o",
+        "messages":[
+            {"role": "user", "content": [{"type": "text","text": ref_prompt}]}
+        ],
+        "temperature":0
+    }
+    response = await async_client.chat.completions.create(**data)
+    return response.choices[0].message.content
