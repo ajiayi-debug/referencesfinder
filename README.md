@@ -148,13 +148,14 @@ x-api-key=[semantic_scholar_api]
    Add any additional references you believe can update the main article in this folder. Ensure it exists in the main directory before starting the process.
 
 ---
-
+### **update_references (Frontend)**
+to be updated
 ### **RAG (Backend)**
 
 #### **Current Capabilities**  
 The backend checks the main article’s integrity, discovers new references, evaluates how these references support or contradict the article’s cited statements and searches for new reference papers as well as check their integrity, how they support or contradict the main articles'cited statements if the currentpapers are not sufficient (for more details, refer to the [wiki](https://github.com/ajiayi-debug/referencesfinder/wiki/5-Workflow-%E2%80%90-Agentic-search-using-Agentic-AI)).
 
-Run [agentic_search_rag.py](RAG/agentic_search_rag.py) to execute the process: 
+Run [workflow.py](RAG/workflow.py) to execute the process: 
 
 1. **Extract Statements and References:**  
 
@@ -189,13 +190,4 @@ Run [agentic_search_rag.py](RAG/agentic_search_rag.py) to execute the process:
    (Refer to the [wiki](https://github.com/ajiayi-debug/referencesfinder/wiki/5-Workflow-%E2%80%90-Agentic-search-using-Agentic-AI) for more information)
 
 
-#### **Near Future Plans**
-1. **Develop a Frontend Interface:**
 
-   Allow us to create table for next step as well as easy user interface
-2. **Expert Selection of References:**  
-
-   Allow experts to choose which references to use for updating the main article based on top 5 outputs. 
-3. **Export Final Output:**  
-
-   Generate a `.txt` or `.pdf` file with the updated article content.
