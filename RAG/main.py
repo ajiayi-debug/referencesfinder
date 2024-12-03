@@ -12,8 +12,10 @@ from RAG.expert_decision import *
 import certifi
 import datetime as datetime
 from .models import *
+from .process_ref import get_statements
 import shutil
 import uuid
+from .match import match_texts
 
 
 load_dotenv()  # Load environment variables
@@ -39,7 +41,10 @@ collection_edit=db['edit']
 collection_replace_display=db['replace_dp']
 collection_addition_display=db['addition_dp']
 collection_edit_display=db['edit_dp']
+collection_extract=db['collated_statements_and_citations']
 
+#arranging directories
+PROJECT_ROOT = Path(__file__).resolve().parent.parent  # Project root directory
 
 # Helper function to convert MongoDB documents to JSON-serializable format
 def serialize_document(document):
@@ -94,6 +99,15 @@ def save_uploaded_pdf(file: UploadFile):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error saving file: {str(e)}")
 
+def serialize_extraction(document):
+    return {
+        "id": str(document["_id"]),
+        "referenceArticleName": document.get("Reference article name", ""),
+        "referenceTextInMainArticle": document.get("Reference text in main article", ""),
+        "date": document.get("Date", ""),
+        "nameOfAuthors": document.get("Name of authors", ""),
+    }
+
 
 @app.post("/upload/")
 async def upload_pdf(file: UploadFile = File(...)):
@@ -103,25 +117,38 @@ async def upload_pdf(file: UploadFile = File(...)):
     try:
         # Save the uploaded file
         filename, file_path = save_uploaded_pdf(file)
+        # Return the filename to the frontend
+        return {"filename": filename}
 
-        # Simulate text and data extraction
-        extracted_text = f"Extracted text content from {file.filename}"
-        extracted_data = [
-            {"_id": 1, "statement": "Sample Statement 1", "citation": "Citation 1"},
-            {"_id": 2, "statement": "Sample Statement 2", "citation": "Citation 2"},
-        ]
-
-        # Store in mock database
-        global DATABASE
-        DATABASE = extracted_data
-
-        return {
-            "filename": filename,
-            "text_content": extracted_text,
-            "extracted_data": extracted_data,
-        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/extractdata/")
+def extract_data():
+    get_statements()
+
+@app.post("/match/")
+async def match_file_with_db(request: MatchRequest):
+    """
+    Matches text from a .txt file retrieved using the existing get_file function
+    with MongoDB documents.
+    """
+    subpath = request.subpath
+    file_path = PROJECT_ROOT / subpath
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    # Load the text from the .txt file
+    with open(file_path, "r", encoding="utf-8") as f:
+        file_text = f.read()
+
+    # Fetch documents from MongoDB
+    db_documents = await collection_extract.find({}).to_list(None) 
+
+    # Perform the matching
+    matches = match_texts(file_text, db_documents)
+
+    return {"matches": matches}
 
 @app.get("/pdf/{filename}")
 def get_pdf(filename: str):
@@ -136,24 +163,32 @@ def get_pdf(filename: str):
 
 
 @app.put("/extraction/")
-def save_data(updated_data: List[dict]):
+def save__extraction_data(updated_data: List[dict]):
     """
-    Updates the extracted data in the mock database.
+    Replaces the extracted data in the MongoDB collection with the updated data.
+    """
+    data_insert = [data.dict() for data in updated_data]
+    try:
+        replace_database_collection(uri,db.name,'collated_statements_and_citations',data_insert)
+
+        return {"message": "Data saved successfully!", "updated_data": updated_data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error saving data: {str(e)}")
+
+
+@app.get("/extraction/",response_model=List[dict])
+async def fetch_extraction_data():
+    """
+    Retrieve all documents from the references collection.
     """
     try:
-        global DATABASE
-        DATABASE = updated_data
-        return {"message": "Data saved successfully!", "updated_data": DATABASE}
+        references = []
+        async for reference in collection_extract.find():
+            serialized = serialize_extraction(reference)
+            references.append(serialized)
+        return references
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get("/extraction/")
-def fetch_data():
-    """
-    Fetches the current extracted data from the mock database.
-    """
-    return DATABASE
+        raise HTTPException(status_code=500, detail=f"Error retrieving references: {str(e)}")
 
 
 
@@ -341,10 +376,7 @@ async def send():
         print(f"Error occurred: {str(e)}")
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
-    
 
-#arranging directories
-PROJECT_ROOT = Path(__file__).resolve().parent.parent  # Project root directory
 
 @app.get("/file/{subpath:path}")
 async def get_file(subpath: str):

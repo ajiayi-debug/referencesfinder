@@ -52,3 +52,6 @@ class Edit(BaseModel):
     statement: str
     edits: str
     newReferences: List[Reference]
+
+class MatchRequest(BaseModel):
+    subpath: str
