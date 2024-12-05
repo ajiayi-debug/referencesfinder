@@ -5,8 +5,8 @@ import os
 from dotenv import load_dotenv
 from bson import ObjectId
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import List
+from pydantic import BaseModel, EmailStr
+from typing import List, Optional
 from .call_mongodb import *
 from .expert_decision import *
 import certifi
@@ -23,6 +23,9 @@ from .semantic_scholar_keyword_search import search_and_retrieve_keyword
 from .agentic_search_system import agentic_search
 from .gpt_rag_asyncio import *
 from .semantic_chunking import *
+import asyncio
+import aiosmtplib
+from email.message import EmailMessage
 
 load_dotenv()  # Load environment variables
 
@@ -49,10 +52,41 @@ collection_addition_display=db['addition_dp']
 collection_edit_display=db['edit_dp']
 collection_extract=db['collated_statements_and_citations']
 
+# SMTP Configuration
+SMTP_HOST = os.getenv("SMTP_HOST")
+SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
+SMTP_USER = os.getenv("SMTP_USER")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
+EMAIL_FROM = os.getenv("EMAIL_FROM")
+
+# Utility function to send emails
+async def send_email(to_email: str, subject: str, body: str):
+    message = EmailMessage()
+    message["From"] = EMAIL_FROM
+    message["To"] = to_email
+    message["Subject"] = subject
+    message.set_content(body)
+
+    try:
+        await aiosmtplib.send(
+            message,
+            hostname=SMTP_HOST,
+            port=SMTP_PORT,
+            username=SMTP_USER,
+            password=SMTP_PASSWORD,
+            start_tls=True,
+        )
+        print(f"Email sent to {to_email}")
+    except Exception as e:
+        print(f"Failed to send email to {to_email}: {e}")
+
 @app.on_event("startup")
 async def startup_event():
     logging.info("Starting centralized initialization...")
     try:
+        #refresh token
+        await get_or_refresh_token()
+
         # Initialize GPT
         await initialize_client()
 
@@ -63,6 +97,8 @@ async def startup_event():
     except Exception as e:
         logging.error(f"Initialization failed: {e}")
         raise RuntimeError("Application initialization failed.")
+    
+
 
 #arranging directories
 PROJECT_ROOT = Path(__file__).resolve().parent.parent  # Project root directory
@@ -281,23 +317,25 @@ async def fetch_extraction_data():
 
 #exisiting references
 @app.post('/embedandchunkexisting')
-def chunk_existing_references():
+def chunk_existing_references(request: EmailRequest):
     try:
         """process documents, noembed means we are not using embedding in retrieval and generate process but just to semantically chunk"""
         process_pdfs_to_mongodb_noembed(files_directory='text', collection1='chunked_noembed')
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error embedding and chunking existing references: {str(e)}")
-    
+    return {"status": "Embed & Chunk Existing Referencescompleted successfully."}
+
 @app.post('/evaluateexisting')
-def evaluate_exisiting_references():
+def evaluate_exisiting_references(request: EmailRequest):
     try:
         """retrieve and sieve using gpt 4o"""
         retrieve_sieve_references(collection_processed_name='chunked_noembed',valid_collection_name='Agentic_sieved_RAG_original', invalid_collection_name='No_match_agentic_original')
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving and evaluating existing references: {str(e)}")
-    
+    return {"status": "Evaluate Existing References completed successfully."}
+
 @app.post('/cleanexisting')
-def clean_exisitng():
+def clean_exisitng(request: EmailRequest):
     try:
         """Clean the old references for a summary for comparison when updating articles"""
         cleaning_initial(valid_collection_name='Agentic_sieved_RAG_original', not_match='No_match_agentic_original', top_5='top_5_original')
@@ -305,58 +343,87 @@ def clean_exisitng():
         make_summary_for_comparison(top_5='top_5_original',expert='Original_reference_expert_data')
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error cleaning existing references: {str(e)}")
+    return {"status": "Cleaning Existing References completed successfully."}
     
 #New References
 @app.post('/search')
-def find_new():
+def find_new(request: EmailRequest):
     try:
         """Finding new references and checking them"""
         """make keywords from statements then do keyword search and download"""
         search_and_retrieve_keyword('Agentic_sieved_RAG_original', 'new_ref_found_Agentic')
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error finding new references: {str(e)}")
+    return {"status":"Search For New References completed successfully."}
     
 @app.post('/embedandchunknew')
-def chunk_new_references():
+def chunk_new_references(request: EmailRequest):
     try:
         """Process new documents, noembed means we are not using embedding in retrieval and generate process but just to semantically chunk"""
         process_pdfs_to_mongodb_noembed_new(files_directory='papers', collection1='new_chunked_noembed')
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error embedding and chunking new references: {str(e)}")
+    return {"status":"Embed & Chunk New References completed successfully."}
     
 @app.post('/evaluatenew')
-def evaluate_new_references():
+def evaluate_new_references(request: EmailRequest):
     try:
         """retrieve and sieve using gpt 4o"""
         retrieve_sieve_references_new(collection_processed_name='new_chunked_noembed',new_ref_collection='new_ref_found_Agentic',valid_collection_name='Agentic_sieved_RAG_new_support_nosupport_confidence', invalid_collection_name='No_match_agentic_new_confidence',not_match='no_match_confidence')
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving and evaluating new references: {str(e)}")
-    
+    return {"status":"Evaluate New References completed successfully."}
+
 @app.post('/cleannew')
-def clean_exisitng():
+def clean_exisitng(request: EmailRequest):
     try:
         """Clean the new references for a summary for comparison when updating articles"""
         cleaning('Agentic_sieved_RAG_new_support_nosupport_confidence','no_match_confidence','top_5',threshold=80)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error cleaning new references: {str(e)}")
-    
+    return {"status":"Cleaning New References completed successfully."}
 
 @app.post('/agenticsearch')
-def retry_poor_search():
+def retry_poor_search(request: EmailRequest):
     try:
         """Perform agentic search for poor performance papers or statements that has no papers returned"""
         agentic_search(collection_processed_name='new_chunked_noembed',new_ref_collection='new_ref_found_Agentic',valid_collection_name='Agentic_sieved_RAG_new_support_nosupport_confidence',invalid_collection_name='No_match_agentic_new_confidence',not_match='no_match_confidence',top_5='top_5')
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error in agentic search for new references: {str(e)}")
-
+    return {"status":"Agentic Search completed successfully."}
 
 @app.post('/expertpresentation')
-def expert_presentation():
+def expert_presentation(request: EmailRequest):
     try:
         """Make a table for data representation"""
         make_pretty_for_expert('top_5','new_ref_found_Agentic','expert_data')
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error in presentation for new references: {str(e)}")
+    return {"status":"Presentation of New References completed successfully."}
+
+# Notification Endpoint
+@app.post("/notify")
+async def notify_user(request: NotifyRequest):
+    if request.success:
+        subject = "Workflow Processing Completed Successfully"
+        body = (
+            "Dear User,\n\n"
+            "Your workflow processing has been completed successfully.\n\n"
+            "Best regards,\n"
+            "Your Team"
+        )
+    else:
+        subject = "Workflow Processing Encountered an Error"
+        body = (
+            "Dear User,\n\n"
+            f"An error occurred during your workflow processing: {request.error}\n\n"
+            "Please try again or contact support.\n\n"
+            "Best regards,\n"
+            "Your Team"
+        )
+
+    await send_email(request.email, subject, body)
+    return {"status": "email_sent"}
 
 
 # Fetch data for expert decision from MongoDB

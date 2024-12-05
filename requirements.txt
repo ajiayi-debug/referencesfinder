@@ -24,4 +24,6 @@ fastapi
 motor
 uvicorn
 nltk
-sentence_transformers
+aiosmtplib 
+email-validator
+pydantic

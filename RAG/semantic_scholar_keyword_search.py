@@ -56,6 +56,7 @@ async def async_process_dataframe(df_latest, p=None, max_concurrent_tasks=10):
 
 
 def search_and_retrieve_keyword(collection_name, collection1_name,p=None):
+    delete_folder('papers')
     collection=db[collection_name]
     collection1=collection1_name
     documents = list(collection.find({}, {'_id': 1, 'Reference article name': 1, 'Reference text in main article': 1, 'Date': 1 }))
