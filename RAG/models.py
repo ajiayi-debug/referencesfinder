@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
 from typing import List, Optional
 
 class Article(BaseModel):
@@ -56,6 +56,9 @@ class Edit(BaseModel):
 class MatchRequest(BaseModel):
     subpath: str
 
+class EmailRequest(BaseModel):
+    email: EmailStr
+
 class ExtractionData(BaseModel):
     referenceArticleName: str = Field(..., alias="Reference article name")
     referenceTextInMainArticle: str = Field(..., alias="Reference text in main article")
@@ -66,4 +69,7 @@ class ExtractionData(BaseModel):
         populate_by_name = True
 
 
-
+class NotifyRequest(BaseModel):
+    email: EmailStr
+    success: bool
+    error: Optional[str] = None
