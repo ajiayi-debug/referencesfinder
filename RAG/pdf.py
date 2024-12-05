@@ -21,6 +21,7 @@ def read_pdf_file_list(directory):
         raise FileNotFoundError(f"The directory {abs_directory} does not exist.")
     
     pdf_files = glob.glob(os.path.join(abs_directory, "*.pdf"))
+    print(pdf_files)
     return pdf_files
 
 #rename the files according to numbers for further processing

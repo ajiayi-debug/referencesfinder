@@ -10,8 +10,10 @@ from .call_mongodb import *
 logging.info("call_mongodb imported successfully.")
 from .expert_decision import formatting,merge_old_new,make_pretty_for_expert,make_summary_for_comparison
 logging.info("expert_decision imported successfully.")
-from .gpt_rag_asyncio import call_convert_to_replace,call_extract_to_edit_async,call_find_reference_list,call_find_to_edit_statement,call_get_ref_async,call_keyword_search_async,call_replace_reference_list,call_retrieve_sieve_with_async,call_retrieve_sieve_with_async_check,call_rewritter_async,call_selector_async,call_summarizer_scorer_async,call_citation_extractor,call_extract_statement_citation,call_add_edits,call_edit_citationer
+from .gpt_rag_asyncio import *
 logging.info("gpt_rag_asyncio imported successfully.")
+from .semantic_chunking import *
+logging.info("semantic chunking imported successfully.")
 from .process_and_embed import *
 logging.info("process_and_embed imported successfully.")
 from .gpt_retrievesieve import retrieve_sieve_references,retrieve_sieve_references_new,cleaning,add_to_existing,cleaning_initial
