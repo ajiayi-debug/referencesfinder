@@ -7,7 +7,8 @@ from dotenv import load_dotenv
 from openai import AsyncAzureOpenAI
 from openai import AuthenticationError
 import httpx
-from .token_manager import get_or_refresh_token  # Import from token_manager.py
+from .token_manager import get_or_refresh_token  
+
 
 # Load environment variables
 load_dotenv()
@@ -22,6 +23,7 @@ async_client = None
 iteration_count = 0
 max_iterations_before_reset = 50
 retry_queue = []  # Store failed tasks for retry
+
 
 # Ensure token is valid
 async def ensure_valid_token():
@@ -112,6 +114,8 @@ async def process_retry_queue():
     for func, args, kwargs in retry_queue:
         logging.info(f"Retrying stored task: {func.__name__}")
         await async_retry_on_exception(func, *args, **kwargs)
+        
+    
     retry_queue = []
 
 #retriever and siever for new reference (with classification)
