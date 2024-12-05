@@ -767,7 +767,8 @@ def update_references(df_main, replace_df):
         matching_statements = df_main[df_main['statement'].isin(replace_df['statement'].unique())]
         if not removed_rows_df.empty:
             edited_statements = pd.concat([matching_statements, removed_rows_df], ignore_index=True)
-
+        else:
+            edited_statements=matching_statements
         # Drop `_id` for final output
         edited_statements = edited_statements.drop(columns=['_id'], errors='ignore')
 
@@ -845,7 +846,6 @@ def merge_statements_and_references(df1, df2):
     return df1
 
 def edit_paper(df_main,text,remove_ref,add_ref):
-    #get got to :
     #edit reference list
     #edit statement's citations
     #add new statements behind existing statements with their citations
@@ -915,16 +915,24 @@ def edit_paper(df_main,text,remove_ref,add_ref):
 
 
     #remove references and add references, then edit statements that require edits in citations, append edits to back of statements
-    remove=Df_remove['Reference'].tolist()
-    flattened_remove=[ref for sublist in remove for ref in sublist]
-    remove=list(set(flattened_remove))
+    if not Df_remove.empty:    
+        remove=Df_remove['Reference'].tolist()
+        flattened_remove=[ref for sublist in remove for ref in sublist]
+        remove=list(set(flattened_remove))
+    else:
+        remove=[]
     
+    if not Df_add.empty:
+        add=Df_add['Reference'].tolist()
+        flattened_add=[ref for sublist in add for ref in sublist]
+        add=list(set(flattened_add))
+    else:
+        add=[]
 
-    add=Df_add['Reference'].tolist()
-    flattened_add=[ref for sublist in add for ref in sublist]
-    add=list(set(flattened_add))
-
-    list_statements=Df_add['Statement'].tolist()
+    if not Df_add.empty:
+        list_statements=Df_add['Statement'].tolist()
+    else:
+        list_statements=[]
     new_text=find_edit_references(text,remove,add)
     new=old_state_cite(new_text,list_statements)
     if edit_df.empty:
@@ -1114,7 +1122,9 @@ def formatting():
     if df_replace.empty and df_addition.empty and df_edition.empty:
         updated_df_main = df_main
         print('replace, addition, and edition dfs are empty')
-        edit_paper(updated_df_main,text)
+        remove=[]
+        add=[]
+        edit_paper(updated_df_main,text,remove,add)
         records = updated_df_main.to_dict(orient='records')
         replace_database_collection(uri, db.name, 'to_update', records)
         return

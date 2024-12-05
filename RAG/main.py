@@ -7,8 +7,8 @@ from bson import ObjectId
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List
-from RAG.call_mongodb import *
-from RAG.expert_decision import *
+from .call_mongodb import *
+from .expert_decision import *
 import certifi
 import datetime as datetime
 from .models import *
@@ -16,7 +16,13 @@ from .process_ref import get_statements
 import shutil
 import uuid
 from .match import match_texts
-
+from .agentic_initial_check import get_statements_agentic
+from .process_and_embed import process_pdfs_to_mongodb_noembed,process_pdfs_to_mongodb_noembed_new
+from .gpt_retrievesieve import retrieve_sieve_references, cleaning_initial, retrieve_sieve_references_new, cleaning
+from .semantic_scholar_keyword_search import search_and_retrieve_keyword
+from .agentic_search_system import agentic_search
+from .gpt_rag_asyncio import *
+from .semantic_chunking import *
 
 load_dotenv()  # Load environment variables
 
@@ -24,14 +30,14 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Or specify frontend origin, e.g., ["http://localhost:3000"]
+    allow_origins=["*"],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 uri = os.getenv("uri_mongo")
-client = AsyncIOMotorClient(uri, tls=True, tlsCAFile=certifi.where())  # Use AsyncIOMotorClient
+client = AsyncIOMotorClient(uri, tls=True, tlsCAFile=certifi.where())  
 db = client['data']
 collection_take = db["expert_data"] 
 collection_compare = db['merged']
@@ -42,6 +48,21 @@ collection_replace_display=db['replace_dp']
 collection_addition_display=db['addition_dp']
 collection_edit_display=db['edit_dp']
 collection_extract=db['collated_statements_and_citations']
+
+@app.on_event("startup")
+async def startup_event():
+    logging.info("Starting centralized initialization...")
+    try:
+        # Initialize GPT
+        await initialize_client()
+
+        # Initialize Chunker
+        await initialize_encoder()
+
+        logging.info("Initialization complete. All systems ready.")
+    except Exception as e:
+        logging.error(f"Initialization failed: {e}")
+        raise RuntimeError("Application initialization failed.")
 
 #arranging directories
 PROJECT_ROOT = Path(__file__).resolve().parent.parent  # Project root directory
@@ -71,7 +92,6 @@ def serialize_ids(document):
 # Directory to save uploaded PDFs
 UPLOAD_DIRECTORY = "main"
 
-
 def save_uploaded_pdf(file: UploadFile):
     """
     Saves the uploaded PDF file. Replaces any existing PDF in the uploads directory.
@@ -99,14 +119,15 @@ def save_uploaded_pdf(file: UploadFile):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error saving file: {str(e)}")
 
-def serialize_extraction(document):
+def serialize_extraction(data):
     return {
-        "id": str(document["_id"]),
-        "referenceArticleName": document.get("Reference article name", ""),
-        "referenceTextInMainArticle": document.get("Reference text in main article", ""),
-        "date": document.get("Date", ""),
-        "nameOfAuthors": document.get("Name of authors", ""),
+        "id": str(data.get("_id")),
+        "referenceArticleName": data.get("Reference article name"),
+        "referenceTextInMainArticle": data.get("Reference text in main article"),
+        "date": data.get("Date"),
+        "nameOfAuthors": data.get("Name of authors"),
     }
+
 
 
 @app.post("/upload/")
@@ -123,9 +144,69 @@ async def upload_pdf(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@app.post("/upload-references/")
+async def upload_references(files: List[UploadFile] = File(...)):
+    """
+    Uploads multiple PDF reference files.
+    Allows selection of individual files or files within a folder.
+    Saves all PDFs directly into the 'text/' directory without creating subdirectories.
+    """
+    if not files:
+        raise HTTPException(status_code=400, detail="No files uploaded.")
+
+    # Define the references directory
+    references_dir = Path("text")
+    saved_filenames = []
+
+    try:
+        # Ensure the references directory exists and clear it
+        if references_dir.exists():
+            for existing_file in references_dir.iterdir():
+                if existing_file.is_file():
+                    existing_file.unlink()  # Delete all existing files
+                elif existing_file.is_dir():
+                    shutil.rmtree(existing_file)  # Delete subdirectories if any
+
+        # Ensure the references directory exists
+        references_dir.mkdir(parents=True, exist_ok=True)
+
+        for file in files:
+            # Validate file type
+            if not file.filename.lower().endswith(".pdf"):
+                raise HTTPException(
+                    status_code=400, detail=f"Invalid file type: {file.filename}. Only PDF files are allowed."
+                )
+
+            # Extract base filename and sanitize
+            base_filename = Path(file.filename).name
+            sanitized_filename = f"{uuid.uuid4()}-{base_filename.replace(' ', '_')}"
+
+            # Define the full file path
+            file_path = references_dir / sanitized_filename
+
+            # Save the file to the directory
+            with file_path.open("wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+
+            saved_filenames.append(sanitized_filename)
+
+        return {"filenames": saved_filenames}
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        # Clean up any partially uploaded files in case of an error
+        for filename in saved_filenames:
+            try:
+                (references_dir / filename).unlink()
+            except Exception:
+                pass  # If deletion fails, there's not much we can do
+        raise HTTPException(status_code=500, detail=f"Error saving files: {str(e)}")
+
 @app.post("/extractdata/")
 def extract_data():
-    get_statements()
+    get_statements_agentic()
 
 @app.post("/match/")
 async def match_file_with_db(request: MatchRequest):
@@ -163,13 +244,18 @@ def get_pdf(filename: str):
 
 
 @app.put("/extraction/")
-def save__extraction_data(updated_data: List[dict]):
+def save__extraction_data(updated_data: List[ExtractionData]):
     """
     Replaces the extracted data in the MongoDB collection with the updated data.
     """
-    data_insert = [data.dict() for data in updated_data]
     try:
-        replace_database_collection(uri,db.name,'collated_statements_and_citations',data_insert)
+        print("Raw input:", updated_data)
+        # Convert data to dictionaries with normalized field names
+        data_insert = [item.dict(by_alias=True) for item in updated_data]
+        print(data_insert)
+
+        # Replace data in MongoDB
+        replace_database_collection(uri, db.name, 'collated_statements_and_citations', data_insert)
 
         return {"message": "Data saved successfully!", "updated_data": updated_data}
     except Exception as e:
@@ -191,7 +277,86 @@ async def fetch_extraction_data():
         raise HTTPException(status_code=500, detail=f"Error retrieving references: {str(e)}")
 
 
+"""Workflow (aka GitHub CI/CD DOOP)"""
 
+#exisiting references
+@app.post('/embedandchunkexisting')
+def chunk_existing_references():
+    try:
+        """process documents, noembed means we are not using embedding in retrieval and generate process but just to semantically chunk"""
+        process_pdfs_to_mongodb_noembed(files_directory='text', collection1='chunked_noembed')
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error embedding and chunking existing references: {str(e)}")
+    
+@app.post('/evaluateexisting')
+def evaluate_exisiting_references():
+    try:
+        """retrieve and sieve using gpt 4o"""
+        retrieve_sieve_references(collection_processed_name='chunked_noembed',valid_collection_name='Agentic_sieved_RAG_original', invalid_collection_name='No_match_agentic_original')
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error retrieving and evaluating existing references: {str(e)}")
+    
+@app.post('/cleanexisting')
+def clean_exisitng():
+    try:
+        """Clean the old references for a summary for comparison when updating articles"""
+        cleaning_initial(valid_collection_name='Agentic_sieved_RAG_original', not_match='No_match_agentic_original', top_5='top_5_original')
+        """Make pretty for comparison for replacement/addition to citation"""
+        make_summary_for_comparison(top_5='top_5_original',expert='Original_reference_expert_data')
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error cleaning existing references: {str(e)}")
+    
+#New References
+@app.post('/search')
+def find_new():
+    try:
+        """Finding new references and checking them"""
+        """make keywords from statements then do keyword search and download"""
+        search_and_retrieve_keyword('Agentic_sieved_RAG_original', 'new_ref_found_Agentic')
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error finding new references: {str(e)}")
+    
+@app.post('/embedandchunknew')
+def chunk_new_references():
+    try:
+        """Process new documents, noembed means we are not using embedding in retrieval and generate process but just to semantically chunk"""
+        process_pdfs_to_mongodb_noembed_new(files_directory='papers', collection1='new_chunked_noembed')
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error embedding and chunking new references: {str(e)}")
+    
+@app.post('/evaluatenew')
+def evaluate_new_references():
+    try:
+        """retrieve and sieve using gpt 4o"""
+        retrieve_sieve_references_new(collection_processed_name='new_chunked_noembed',new_ref_collection='new_ref_found_Agentic',valid_collection_name='Agentic_sieved_RAG_new_support_nosupport_confidence', invalid_collection_name='No_match_agentic_new_confidence',not_match='no_match_confidence')
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error retrieving and evaluating new references: {str(e)}")
+    
+@app.post('/cleannew')
+def clean_exisitng():
+    try:
+        """Clean the new references for a summary for comparison when updating articles"""
+        cleaning('Agentic_sieved_RAG_new_support_nosupport_confidence','no_match_confidence','top_5',threshold=80)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error cleaning new references: {str(e)}")
+    
+
+@app.post('/agenticsearch')
+def retry_poor_search():
+    try:
+        """Perform agentic search for poor performance papers or statements that has no papers returned"""
+        agentic_search(collection_processed_name='new_chunked_noembed',new_ref_collection='new_ref_found_Agentic',valid_collection_name='Agentic_sieved_RAG_new_support_nosupport_confidence',invalid_collection_name='No_match_agentic_new_confidence',not_match='no_match_confidence',top_5='top_5')
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error in agentic search for new references: {str(e)}")
+
+
+@app.post('/expertpresentation')
+def expert_presentation():
+    try:
+        """Make a table for data representation"""
+        make_pretty_for_expert('top_5','new_ref_found_Agentic','expert_data')
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error in presentation for new references: {str(e)}")
 
 
 # Fetch data for expert decision from MongoDB

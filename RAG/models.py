@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional
 
 class Article(BaseModel):
@@ -55,3 +55,15 @@ class Edit(BaseModel):
 
 class MatchRequest(BaseModel):
     subpath: str
+
+class ExtractionData(BaseModel):
+    referenceArticleName: str = Field(..., alias="Reference article name")
+    referenceTextInMainArticle: str = Field(..., alias="Reference text in main article")
+    date: str = Field(..., alias="Date")
+    nameOfAuthors: str = Field(..., alias="Name of authors")
+
+    class Config:
+        populate_by_name = True
+
+
+

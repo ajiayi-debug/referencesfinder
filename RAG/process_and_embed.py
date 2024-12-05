@@ -8,11 +8,15 @@ from .gpt_rag import *
 from .embedding import *
 from .call_mongodb import *
 from .semantic_chunking import *
+from .mongo_client import MongoDBClient
 load_dotenv()
+client = MongoDBClient.get_client()
+db = client['data']
+uri = os.getenv("uri_mongo")
+
+
 
 def process_pdfs_to_mongodb(files_directory, collection1, collection2):
-    uri = os.getenv("uri_mongo")
-    db = 'data'
     
     directory = 'doc'  # Fixed directory
 
@@ -53,18 +57,16 @@ def process_pdfs_to_mongodb(files_directory, collection1, collection2):
     print("Sending data to MongoDB Atlas...")
 
     # Send all records at once for collection1
-    replace_database_collection(uri, db, collection1, records1)
+    replace_database_collection(uri, db.name, collection1, records1)
     print(f"Data sent to MongoDB Atlas for collection: {collection1}")
 
     # Send all records at once for collection2
-    replace_database_collection(uri, db, collection2, records2)
+    replace_database_collection(uri, db.name, collection2, records2)
     print(f"Data sent to MongoDB Atlas for collection: {collection2}")
 
     delete_folder(directory)
 
 def process_new_pdfs_to_mongodb(files_directory, collection1, collection2):
-    uri = os.getenv("uri_mongo")
-    db = 'data'
     
     directory = 'doc'  # Fixed directory
 
@@ -112,21 +114,20 @@ def process_new_pdfs_to_mongodb(files_directory, collection1, collection2):
     print("Sending data to MongoDB Atlas...")
 
     # Send all records at once for collection1
-    replace_database_collection(uri, db, collection1, records1)
+    replace_database_collection(uri, db.name, collection1, records1)
     print(f"Data sent to MongoDB Atlas for collection: {collection1}")
 
     # Send all records at once for collection2
-    replace_database_collection(uri, db, collection2, records2)
+    replace_database_collection(uri, db.name, collection2, records2)
     print(f"Data sent to MongoDB Atlas for collection: {collection2}")
 
     delete_folder(directory)
 
 def process_pdfs_to_mongodb_noembed(files_directory, collection1):
-    uri = os.getenv("uri_mongo")
-    db = 'data'
+    #Note no embed means embedding not used for retrieval but embedding is used to calculate chunking boundary!!!
     
     directory = 'doc'  # Fixed directory
-
+    delete_folder(directory)
     pdf_list = read_pdf_file_list(files_directory)
     
     # Process and save PDFs
@@ -156,7 +157,7 @@ def process_pdfs_to_mongodb_noembed(files_directory, collection1):
     print("Sending data to MongoDB Atlas...")
 
     # Send all records at once for collection1
-    replace_database_collection(uri, db, collection1, records1)
+    replace_database_collection(uri, db.name, collection1, records1)
     print(f"Data sent to MongoDB Atlas for collection: {collection1}")
 
 
@@ -164,8 +165,6 @@ def process_pdfs_to_mongodb_noembed(files_directory, collection1):
 
 
 def process_pdfs_to_mongodb_noembed_new(files_directory, collection1, change_to_add=False):
-    uri = os.getenv("uri_mongo")
-    db = 'data'
     directory = 'doc'  # Fixed directory
     delete_folder(directory)
     pdf_list = read_pdf_file_list(files_directory)
@@ -205,9 +204,9 @@ def process_pdfs_to_mongodb_noembed_new(files_directory, collection1, change_to_
     send_excel(df_exploded,'RAG','test_async_chunk.xlsx')
     # Send all records at once for collection1
     if change_to_add:
-        insert_documents(uri,db,collection1,records1)
+        insert_documents(uri,db.name,collection1,records1)
     else:
-        replace_database_collection(uri, db, collection1, records1)
+        replace_database_collection(uri, db.name, collection1, records1)
 
     print(f"Data sent to MongoDB Atlas for collection: {collection1}")
 

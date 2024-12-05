@@ -47,12 +47,21 @@ def process(output,text,c=3):
         count-=1
     print(f'Retried a total of {c-count} times.')
     return output
+
+def add_mistakes(output,text):
+    evaluate=asyncio.run(check_statement_output(output,text))
+    output=asyncio.run(edit_mistakes_in_output(evaluate))
+    return output
+
+
+
 def get_statements_agentic():
     # Wrapper to call async function from sync function
     text = process_main_file('extracted')
     initial_output=asyncio.run(get_statements_async(text))
     #output=processor(initial_output,text)
-    output=process(initial_output,text)
+    # output=process(initial_output,text)
+    output=add_mistakes(initial_output,text)
     codable=ast.literal_eval(output)
     dfs=[]
     for code in codable:

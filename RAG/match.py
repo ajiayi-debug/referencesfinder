@@ -1,46 +1,50 @@
 from nltk.tokenize import sent_tokenize
+from rapidfuzz import fuzz
+import re
 
-def match_texts(file_text, db_documents):
+def preprocess_text(text):
     """
-    Matches text from the .txt file with MongoDB documents.
+    Normalize text for consistent matching.
     """
-    file_sentences = set(sent_tokenize(file_text))
-    print(file_sentences)
-    matched_documents = []
+    # Remove hyphens at line breaks and newline characters
+    text = re.sub(r'-\s+', '', text)  # Remove hyphens followed by whitespace
+    text = text.replace('\n', ' ')    # Replace newline characters with a space
+    # Normalize whitespace and lowercase
+    text = re.sub(r'\s+', ' ', text.strip().lower())
+    return text
+
+def match_texts(file_text, db_documents, threshold=70):
+    """
+    Matches text from a .txt file with MongoDB documents using NLTK and RapidFuzz.
+    Returns original sentences for accurate highlighting.
+    """
+    # Remove newline characters from the file text for consistent tokenization
+    file_text = file_text.replace('\n', '')
+
+    # Tokenize the original file text into sentences
+    file_sentences = sent_tokenize(file_text)
+
+    # Preprocess each sentence for matching
+    preprocessed_sentences = [preprocess_text(sentence) for sentence in file_sentences]
+
+    # Set to store highlightable substrings (original sentences)
+    highlight_words = set()
+
+    # Fields in the database documents to be matched
+    relevant_fields = ["Reference text in main article", "Date", "Name of authors", "Reference article name"]
 
     for doc in db_documents:
-        matched = {
-            "id": str(doc["_id"]),
-            "matched_sentences": [],
-            "matched_dates": [],
-            "matched_authors": [],
-            "matched_reference_names": []
-        }
+        for field in relevant_fields:
+            db_field_text = preprocess_text(doc.get(field, ""))
+            if not db_field_text:
+                continue  # Skip empty fields
 
-        # Match sentences
-        if "referenceTextInMainArticle" in doc:
-            sentence = doc["referenceTextInMainArticle"]
-            if sentence in file_sentences:
-                matched["matched_sentences"].append(sentence)
+            # Fuzzy match preprocessed sentences
+            for preprocessed_sentence, original_sentence in zip(preprocessed_sentences, file_sentences):
+                if fuzz.partial_ratio(db_field_text, preprocessed_sentence) >= threshold:
+                    # Remove newline characters from the original sentence
+                    clean_sentence = original_sentence.replace('\n', '').strip()
+                    highlight_words.add(clean_sentence)
 
-        # Match dates
-        if "date" in doc and doc["date"] in file_text:
-            matched["matched_dates"].append(doc["date"])
+    return highlight_words
 
-        # Match authors
-        if "nameOfAuthors" in doc and doc["nameOfAuthors"] in file_text:
-            matched["matched_authors"].append(doc["nameOfAuthors"])
-
-        # Match reference article names
-        if "referenceArticleName" in doc and doc["referenceArticleName"] in file_text:
-            matched["matched_reference_names"].append(doc["referenceArticleName"])
-
-        if (
-            matched["matched_sentences"]
-            or matched["matched_dates"]
-            or matched["matched_authors"]
-            or matched["matched_reference_names"]
-        ):
-            matched_documents.append(matched)
-    print(matched_documents)
-    return matched_documents
