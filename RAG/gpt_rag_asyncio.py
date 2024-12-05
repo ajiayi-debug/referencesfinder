@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from openai import AsyncAzureOpenAI
 from openai import AuthenticationError
 import httpx
+from .token_manager import get_or_refresh_token  # Import from token_manager.py
 
 # Load environment variables
 load_dotenv()
@@ -17,87 +18,39 @@ endpoint = os.getenv("endpoint")
 api_version = os.getenv("ver")
 
 # Global state and synchronization tools
-access_token = None
-token_expiry_time = None
 async_client = None
-token_lock = asyncio.Lock()
-refresh_in_progress = asyncio.Event()
-global_pause_event = asyncio.Event()
-global_pause_event.set()
-
 iteration_count = 0
 max_iterations_before_reset = 50
 retry_queue = []  # Store failed tasks for retry
 
-# Function to get Azure access token
-def get_azure_access_token():
-    try:
-        logging.info("Fetching Azure OpenAI access token...")
-        az_path = os.getenv("az_path", "az")
-        result = subprocess.run(
-            [az_path, 'account', 'get-access-token', '--resource', 
-             'https://cognitiveservices.azure.com', '--query', 'accessToken', '-o', 'tsv'],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
-        )
-        if result.returncode != 0:
-            logging.error(f"Failed to fetch access token: {result.stderr.decode('utf-8')}")
-            return None
-        return result.stdout.decode('utf-8').strip()
-    except Exception as e:
-        logging.error(f"Error fetching access token: {e}")
-        return None
-
-# Refresh token and client
-async def refresh_token_and_client():
-    global access_token, token_expiry_time, async_client
-
-    async with token_lock:
-        if refresh_in_progress.is_set():
-            logging.info("Refresh already in progress. Waiting...")
-            await refresh_in_progress.wait()
-            return
-
-        refresh_in_progress.set()
-        global_pause_event.clear()
-
-        try:
-            logging.info("Refreshing token and client...")
-            new_token = get_azure_access_token()
-            if new_token:
-                access_token = new_token
-                token_expiry_time = time.time() + 1500
-                os.environ['AZURE_OPENAI_API_KEY'] = access_token
-
-                async_client = AsyncAzureOpenAI(
-                    azure_endpoint=endpoint,
-                    api_key=access_token,
-                    api_version=api_version
-                )
-                logging.info("Token refreshed and client re-initialized.")
-            else:
-                logging.error("Failed to refresh access token.")
-        finally:
-            refresh_in_progress.clear()
-            global_pause_event.set()
-
 # Ensure token is valid
 async def ensure_valid_token():
-    if access_token is None or time.time() > token_expiry_time - 300:
-        logging.info("Token expired or near expiry. Triggering refresh...")
-        await refresh_token_and_client()
+    await get_or_refresh_token()
+    access_token = os.environ.get('AZURE_OPENAI_API_KEY')
+    if access_token:
+        return access_token
+    else:
+        logging.error("Failed to get access token.")
+        return None
 
 # Initialize the async client
 async def initialize_client():
-    await ensure_valid_token()
-    logging.info("Async Azure OpenAI client initialized.")
+    access_token = await ensure_valid_token()
+    if access_token:
+        global async_client
+        async_client = AsyncAzureOpenAI(
+            azure_endpoint=endpoint,
+            api_key=access_token,
+            api_version=api_version
+        )
+        logging.info("Async Azure OpenAI client initialized.")
 
 # Reset client after max iterations
 async def check_and_reset_client():
     global iteration_count
     if iteration_count >= max_iterations_before_reset:
         logging.info("Resetting client after max iterations.")
-        await refresh_token_and_client()
+        await initialize_client()
         iteration_count = 0
 
 # Extract Retry-After delay
@@ -117,11 +70,10 @@ async def async_retry_on_exception(func, *args, max_retries=3, retry_delay=10, *
     attempt = 0
 
     while attempt < max_retries:
-        await global_pause_event.wait()  # Ensure tasks are not paused
-
         try:
             logging.info(f"Attempt {attempt + 1}/{max_retries} for {func.__name__}...")
             await ensure_valid_token()  # Ensure token is valid
+            await check_and_reset_client()
 
             result = await func(*args, **kwargs)  # Execute the function
             iteration_count += 1
@@ -136,7 +88,7 @@ async def async_retry_on_exception(func, *args, max_retries=3, retry_delay=10, *
             if isinstance(e, AuthenticationError) or \
                (isinstance(e, httpx.HTTPStatusError) and e.response.status_code == 401):
                 logging.warning("401 Unauthorized error. Refreshing token...")
-                await refresh_token_and_client()
+                await initialize_client()
 
             elif isinstance(e, httpx.HTTPStatusError) and e.response.status_code == 429:
                 retry_after = extract_retry_after(e)
@@ -153,7 +105,6 @@ async def async_retry_on_exception(func, *args, max_retries=3, retry_delay=10, *
 
     logging.error(f"All {max_retries} attempts failed for {func.__name__}.")
     retry_queue.append((func, args, kwargs))  # Store failed task for later retry
-
 
 # Process the retry queue
 async def process_retry_queue():

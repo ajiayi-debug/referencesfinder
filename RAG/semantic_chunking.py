@@ -15,7 +15,7 @@ import httpx
 import random
 import openai
 from openai import AuthenticationError
-
+from .token_manager import get_or_refresh_token  # Import from token_manager.py
 
 # Load environment variables from .env file
 load_dotenv()
@@ -29,24 +29,12 @@ endpoint = os.getenv("endpoint")  # Azure OpenAI endpoint
 api_version = os.getenv("ver")  # Azure API version
 embed_model = os.getenv("embed_model")  # Model name for embeddings
 
-# Global variables to track token and its expiry
-access_token = None
-token_expiry_time = None
-token_lock = asyncio.Lock()
+# Global variables
 encoder = None
-
 iteration_count = 0  # Keeps track of the number of iterations
 max_iterations_before_reset = 50  # Adjust this number based on your observations and use case
 
-async def check_and_reset_encoder():
-    global iteration_count
-
-    if iteration_count >= max_iterations_before_reset:
-        logging.info("Resetting encoder due to high number of iterations to prevent resource leaks.")
-        await initialize_encoder()  # Re-initialize the client
-        iteration_count = 0 
-
-#Loading bar so you wont wait blindly
+# Loading bar so you won't wait blindly
 async def async_delay_with_loading_bar(delay_seconds):
     """
     Asynchronously delay for a given number of seconds while displaying a loading bar.
@@ -57,114 +45,24 @@ async def async_delay_with_loading_bar(delay_seconds):
     for _ in tqdm_asyncio(range(delay_seconds), desc=f"Waiting for {delay_seconds} seconds", unit="s"):
         await asyncio.sleep(1)
 
-# Function to get Azure access token using Azure CLI
-# Convert subprocess call to asynchronous version
-async def get_azure_access_token_async():
-    try:
-        logging.info("Fetching Azure OpenAI access token...")
-        # Use asyncio's subprocess for non-blocking execution
-        proc = await asyncio.create_subprocess_exec(
-            az_path, 'account', 'get-access-token', '--resource', 'https://cognitiveservices.azure.com', '--query', 'accessToken', '-o', 'tsv',
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-        stdout, stderr = await proc.communicate()
-
-        # Check if the command was successful
-        if proc.returncode != 0:
-            logging.error(f"Failed to fetch access token. Error: {stderr.decode('utf-8')}")
-            return None
-
-        # Retrieve the token
-        token = stdout.decode('utf-8').strip()
-        if not token:
-            logging.error("No access token received. Ensure your Azure CLI is configured correctly.")
-            return None
-
-        logging.info("Access token retrieved successfully.")
-        return token
-    except Exception as e:
-        logging.error(f"Exception occurred while fetching access token: {e}")
-        return None
-
-# Async function to refresh token if needed
-async def refresh_token_if_needed():
-    global access_token, token_expiry_time, encoder
-
-    async with token_lock:
-        # Check if the token has expired or is not set
-        if access_token is None or time.time() > token_expiry_time:
-            logging.info("Access token has expired or not set. Refreshing token...")
-
-            # Fetch a new access token using the async version of the function
-            new_token = await get_azure_access_token_async()
-            if new_token:
-                access_token = new_token
-                token_lifetime = 1500  # Token lifetime in seconds (e.g., 25 minutes)
-                token_expiry_time = time.time() + token_lifetime
-
-                # Update the environment variable with the new token
-                os.environ['AZURE_OPENAI_API_KEY'] = access_token
-                logging.info(f"Access token refreshed successfully. New token expires at {time.ctime(token_expiry_time)}.")
-
-                # Update the encoder's API key if already initialized
-                if encoder is not None:
-                    encoder.api_key = access_token
-                    logging.info("Azure OpenAI encoder updated with new access token.")
-                else:
-                    encoder = AzureOpenAIEncoder(
-                        deployment_name=embed_model,
-                        model='text-embedding-3-large',
-                        api_key=access_token,
-                        azure_endpoint=endpoint,
-                        api_version=api_version
-                    )
-                    logging.info("Azure OpenAI encoder initialized successfully.")
-            else:
-                logging.error("Failed to refresh access token.")
-                return False
-    return True
-
-
-def extract_retry_after(exception):
-    """
-    Extracts the Retry-After delay from an exception or response headers.
-    Args:
-        exception (Exception): The exception that contains the error details.
-    Returns:
-        int: The retry delay in seconds if found, otherwise None.
-    """
-    if hasattr(exception, 'response') and exception.response is not None:
-        retry_after = exception.response.headers.get('Retry-After')
-        if retry_after:
-            try:
-                return int(retry_after)  # Convert to integer seconds
-            except ValueError:
-                logging.warning(f"Retry-After header is not an integer: {retry_after}. Using default delay.")
-                return None
-    return None
-
-
-
 async def initialize_encoder():
     global encoder
     encoder = None
-    if encoder is None:
-        success = await refresh_token_if_needed()  # Ensure token is valid
-        if success:
-            encoder = AzureOpenAIEncoder(
-                deployment_name=embed_model,
-                model='text-embedding-3-large',
-                api_key=access_token,
-                azure_endpoint=endpoint,
-                api_version=api_version
-            )
-            logging.info("Azure OpenAI Encoder initialized successfully.")
-        else:
-            logging.error("Failed to initialize encoder due to token refresh issues.")
+    await get_or_refresh_token()  # Ensure token is valid
+    access_token = os.environ.get('AZURE_OPENAI_API_KEY')
+    if access_token:
+        encoder = AzureOpenAIEncoder(
+            deployment_name=embed_model,
+            model='text-embedding-3-large',
+            api_key=access_token,
+            azure_endpoint=endpoint,
+            api_version=api_version
+        )
+        logging.info("Azure OpenAI Encoder initialized successfully.")
+    else:
+        logging.error("Failed to initialize encoder due to token refresh issues.")
 
-
-#Function to retry operations with token refresh on Unauthorized error
+# Function to retry operations with token refresh on Unauthorized error
 async def retry_on_exception(func, *args, max_retries=3, retry_delay=10, **kwargs):
     global iteration_count
     attempt = 0
@@ -172,23 +70,23 @@ async def retry_on_exception(func, *args, max_retries=3, retry_delay=10, **kwarg
     while attempt < max_retries:
         try:
             logging.info(f"Attempting {func.__name__} (Attempt {attempt + 1}/{max_retries})...")
-            await refresh_token_if_needed()  # Ensure the access token is valid before each attempt
-            
+            await get_or_refresh_token()  # Ensure the access token is valid before each attempt
+
             # Reset client if too many iterations have been reached
             await check_and_reset_encoder()
-            
+
             # Try executing the async function
             result = await func(*args, **kwargs)
-            
+
             # Increment iteration count on successful execution
             iteration_count += 1
             return result
-        
+
         except AuthenticationError as auth_err:
             logging.error(f"Authentication error occurred: {auth_err}")
             if 'statusCode' in auth_err.error and auth_err.error['statusCode'] == 401:
                 logging.warning("Unauthorized error detected. Refreshing access token and retrying...")
-                await refresh_token_if_needed()
+                await get_or_refresh_token()
                 await initialize_encoder()
 
         except Exception as e:
@@ -197,17 +95,8 @@ async def retry_on_exception(func, *args, max_retries=3, retry_delay=10, **kwarg
 
             if "401" in error_message or "Unauthorized" in error_message:
                 logging.warning("Unauthorized error detected. Forcefully fetching a new access token and retrying...")
-
-                # Directly force-refresh the token after any Unauthorized error
-                new_token = await get_azure_access_token_async()
-                if new_token:
-                    global access_token
-                    access_token = new_token
-                    os.environ['AZURE_OPENAI_API_KEY'] = new_token
-                    logging.info(f"New access token retrieved successfully.")
-
-                    # Re-initialize the encoder with the new token
-                    await initialize_encoder()
+                await get_or_refresh_token()
+                await initialize_encoder()
             elif "429" in error_message or "Too Many Requests" in error_message:
                 logging.warning("Rate limit error detected. Checking for Retry-After header...")
                 retry_after = extract_retry_after(e)  # Extract the Retry-After delay if available
@@ -228,20 +117,42 @@ async def retry_on_exception(func, *args, max_retries=3, retry_delay=10, **kwarg
     logging.error(f"All {max_retries} attempts failed for {func.__name__}. Returning None.")
     return None
 
+async def check_and_reset_encoder():
+    global iteration_count
 
+    if iteration_count >= max_iterations_before_reset:
+        logging.info("Resetting encoder due to high number of iterations to prevent resource leaks.")
+        await initialize_encoder()  # Re-initialize the client
+        iteration_count = 0
 
-
+def extract_retry_after(exception):
+    """
+    Extracts the Retry-After delay from an exception or response headers.
+    Args:
+        exception (Exception): The exception that contains the error details.
+    Returns:
+        int: The retry delay in seconds if found, otherwise None.
+    """
+    if hasattr(exception, 'response') and exception.response is not None:
+        retry_after = exception.response.headers.get('Retry-After')
+        if retry_after:
+            try:
+                return int(retry_after)  # Convert to integer seconds
+            except ValueError:
+                logging.warning(f"Retry-After header is not an integer: {retry_after}. Using default delay.")
+                return None
+    return None
 
 # Function to perform semantic chunking using the initialized encoder
 async def semantic_chunk(content):
     global encoder
     if encoder is None:
         await initialize_encoder()
-    
+
     try:
         # Run the StatisticalChunker in a separate thread to avoid blocking the event loop
         chunker = await asyncio.to_thread(StatisticalChunker, encoder=encoder)
-        
+
         # Call the chunker and process the content
         chunks_async = await asyncio.to_thread(chunker, docs=[content])
 
@@ -260,19 +171,11 @@ async def semantic_chunk(content):
         if 'statusCode' in auth_err.error and auth_err.error['statusCode'] == 401:
             logging.warning("Unauthorized error detected. Forcefully fetching a new access token and retrying...")
 
-            # Force-refresh the token after a 401 Unauthorized error
-            new_token = await get_azure_access_token_async()
-            if new_token:
-                global access_token
-                access_token = new_token
-                os.environ['AZURE_OPENAI_API_KEY'] = new_token
-                logging.info(f"New access token retrieved successfully.")
+            await get_or_refresh_token()
+            await initialize_encoder()
 
-                # Re-initialize the encoder with the new token
-                await initialize_encoder()
-
-                # Retry the chunking operation after re-initialization
-                return await semantic_chunk(content)
+            # Retry the chunking operation after re-initialization
+            return await semantic_chunk(content)
 
     except Exception as e:
         # Catch any other errors, log them, and handle retry if needed
@@ -287,7 +190,7 @@ async def semanchunk(text, doc_index, failed_docs, retries=0):
         return await retry_on_exception(semantic_chunk, text)  # Call the async semantic_chunk function
     except Exception as e:
         logging.error(f"Error in semanchunk for document index {doc_index}: {e}")
-        
+
         # Add the failed document to the failed_docs list for retrying later
         if retries < MAX_RETRIES:
             failed_docs.append((doc_index, text, retries + 1))  # Increment retry count
@@ -302,7 +205,6 @@ async def process_batch(batch_df, semaphore, failed_docs):
         tasks = [semanchunk(row['Text Content'], idx, failed_docs) for idx, row in batch_df.iterrows()]
         results = await asyncio.gather(*tasks, return_exceptions=True)  # Run all tasks concurrently
         return results
-    
 
 # Async function to process the DataFrame in batches
 async def process_dataframe_in_batches_async(df, batch_size=5, batch_delay=5):
@@ -325,7 +227,7 @@ async def process_dataframe_in_batches_async(df, batch_size=5, batch_delay=5):
         await initialize_encoder()
         logging.info(f"Chunking completed for one batch. Added a {batch_delay}-second delay before next operation.")
         await async_delay_with_loading_bar(batch_delay)
-        
+
     # Retry failed documents after processing all batches
     await retry_failed_documents(failed_docs, all_results)
 
@@ -350,7 +252,7 @@ async def retry_failed_documents(failed_docs, all_results):
                     all_results[doc_index] = result  # Update result in the main results list
             except Exception as e:
                 logging.error(f"Failed to retry document index {doc_index} again: {e}")
-        
+
         retry_count += 1
 
 # Synchronous wrapper function to process the DataFrame
