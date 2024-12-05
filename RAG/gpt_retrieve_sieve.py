@@ -6,6 +6,7 @@ import time
 import logging
 import asyncio
 
+
 """Sanity checking"""
 """Get the statements and their respective reference articles and send to mongodb"""
 logging.info('Finding initial references')
