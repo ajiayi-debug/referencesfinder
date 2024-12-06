@@ -446,13 +446,24 @@ async def notify_user(request: NotifyRequest):
 @app.get("/data")
 async def get_data():
     try:
-        documents = await collection_take.find().to_list(200)
+        documents = await collection_take.find().to_list(500)
         data = [serialize_document(doc) for doc in documents]
         return data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# Define the path to the paper directory
+BASE_DIR = Path(__file__).resolve().parent  # `RAG` directory
+PAPER_DIR = BASE_DIR.parent / "papers"       # Sibling `paper` directory
 
+#download paper by paper id
+@app.get("/download_paper/{paper_id}")
+def download_paper(paper_id: str):
+    # Assuming papers are located in a directory one level above FastAPI code
+    file_path = PAPER_DIR / f"{paper_id}.pdf"
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Paper not found.")
+    return FileResponse(path=file_path, filename=f"{paper_id}.pdf", media_type='application/pdf')
 
 #send selected data to mongo db then merge w new data for comparison
 @app.post("/save_selected_articles")

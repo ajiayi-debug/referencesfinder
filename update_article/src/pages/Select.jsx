@@ -26,7 +26,8 @@ function Select() {
           rating: item['score'] || "N/A",
           summary: item['Summary'] || "No summary available",
           sievingByGPT4o: item["Sieving by gpt 4o"] || [],
-          chunk: item['Chunk'] || []
+          chunk: item['Chunk'] || [],
+          paperId: item['Paper Id'] || ""
         }));
         setCardDataList(transformedData);
       })
