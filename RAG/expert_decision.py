@@ -138,6 +138,7 @@ async def process_row_async_summary(row,got_authors):
         sentiment = str(row['Sentiment']).strip()
         name=row['Reference article name']
         authors=row['authors']
+        paper=row['Paper Id']
         chunk=row['Chunk']
         if isinstance(chunk, str):
             chunk = ast.literal_eval(chunk)
@@ -155,7 +156,8 @@ async def process_row_async_summary(row,got_authors):
             'Reference text in main article': [statement],
             'Summary':[ans],
             'authors':[authors],
-            'Date':[date]
+            'Date':[date],
+            'Paper Id':[paper]
         })
     #for old top 5 where no authors added
     else:
@@ -245,15 +247,15 @@ def switch_sentiment(df_replacee):
 #then, we take all sieving by gpt 4o to summarize according t how much support/oppose reference text in main article
 #We also need to score how much paper supports/oppose statement as an overall of all top sieved chunks. 
 #include authors for citation
-def make_pretty_for_expert(top_5,new_ref_collection,expert):
+def make_pretty_for_expert(top_5, new_ref_collection, expert):
     collection_top5 = db[top_5]
     documents = list(
         collection_top5.find(
             {}, 
             {
                 '_id': 1,
-                'Sentiment':1,
-                'Confidence Score':1,
+                'Sentiment': 1,
+                'Confidence Score': 1,
                 'Sieving by gpt 4o': 1,
                 'Reference article name': 1,
                 'Reference text in main article': 1,
@@ -262,58 +264,68 @@ def make_pretty_for_expert(top_5,new_ref_collection,expert):
             }
         )
     )
-    df_top5=pd.DataFrame(documents)
+    df_top5 = pd.DataFrame(documents)
 
-    collection_metadata=db[new_ref_collection]
-    documents1=list(
+    collection_metadata = db[new_ref_collection]
+    documents1 = list(
         collection_metadata.find(
             {},
             {
                 '_id': 1,
-                'Title of original reference article':1,
-                'Text in main article referencing reference article':1,
-                'Year reference article released':1,
-                'Keywords for graph paper search':1,
-                'Paper Id of new reference article found':1,
-                'Title of new reference article found':1,
-                'Year new reference article found published':1,
-                'authors':1
+                'Title of original reference article': 1,
+                'Text in main article referencing reference article': 1,
+                'Year reference article released': 1,
+                'Keywords for graph paper search': 1,
+                'Paper Id of new reference article found': 1,
+                'Title of new reference article found': 1,
+                'Year new reference article found published': 1,
+                'authors': 1
             }
         )
     )
 
-    df_metadata=pd.DataFrame(documents1)
-    
+    df_metadata = pd.DataFrame(documents1)
+
+    # Handle duplicates in 'Title of new reference article found'
     df_metadata['authors'] = df_metadata['authors'].apply(
         lambda authors_list: [author['name'] for author in authors_list] if isinstance(authors_list, list) else []
     )
-    # Extract author names for each row and replace the existing 'authors' column
-    title_to_authors = df_metadata.set_index('Title of new reference article found')['authors'].to_dict()
+    grouped_metadata = df_metadata.groupby('Title of new reference article found').agg({
+        'authors': lambda x: [author for sublist in x for author in sublist],
+        'Paper Id of new reference article found': 'first'  # Use the first occurrence of Paper Id
+    }).reset_index()
 
-    #Add authors to df_top5 based on matching titles
+    # Convert grouped metadata to a dictionary
+    title_to_metadata = grouped_metadata.set_index('Title of new reference article found').to_dict(orient='index')
+
+    # Add authors and Paper Ids to df_top5 based on matching titles
     df_top5['authors'] = df_top5['Reference article name'].apply(
-        lambda title: ', '.join(title_to_authors[title]) if title in title_to_authors else ''
+        lambda title: ', '.join(title_to_metadata[title]['authors']) if title in title_to_metadata else ''
     )
+    df_top5['Paper Id'] = df_top5['Reference article name'].apply(
+        lambda title: title_to_metadata[title]['Paper Id of new reference article found'] if title in title_to_metadata else ''
+    )
+
     grouped_chunks = df_top5.groupby(
-        ['Sentiment', 'Reference article name', 'Reference text in main article', 'authors','Date']
+        ['Sentiment', 'Reference article name', 'Reference text in main article', 'authors', 'Paper Id', 'Date']
     ).agg({
         'Chunk': list,
         'Sieving by gpt 4o': list
     }).reset_index()
 
-    test=summarize_score(grouped_chunks)
+    test = summarize_score(grouped_chunks)
     test['score'] = test['Summary'].str.extract(r'[\(\[]([^()\[\]]+)[\)\]]$')[0]
-
 
     # Remove the last occurrence of text in parentheses from the original 'Summary' column
     test['Summary'] = test['Summary'].str.replace(r'[\(\[]([^()\[\]]+)[\)\]]$', '', regex=True)
-    
-    #switch sentiment for wrongly classified chunks (rarely occurs)
-    test=switch_sentiment(test)
-    name=expert+'.xlsx'
+
+    # Switch sentiment for wrongly classified chunks (rarely occurs)
+    test = switch_sentiment(test)
+
+    name = expert + '.xlsx'
+    send_excel(test,'RAG',name)
     records = test.to_dict(orient='records')
     replace_database_collection(uri, db.name, expert, records)
-    
 
 
 

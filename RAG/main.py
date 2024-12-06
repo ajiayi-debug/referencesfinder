@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, status, UploadFile, File
+from fastapi import FastAPI, HTTPException, status, UploadFile, File, Depends
 from fastapi.responses import FileResponse
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
@@ -26,6 +26,7 @@ from .semantic_chunking import *
 import asyncio
 import aiosmtplib
 from email.message import EmailMessage
+from .internet import internet_event,monitor_internet_connection
 
 load_dotenv()  # Load environment variables
 
@@ -38,6 +39,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# Dependency to verify internet connection
+async def verify_internet_connection():
+    if not internet_event.is_set():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Internet connection lost. Please try again later."
+        )
 
 uri = os.getenv("uri_mongo")
 client = AsyncIOMotorClient(uri, tls=True, tlsCAFile=certifi.where())  
@@ -84,7 +94,11 @@ async def send_email(to_email: str, subject: str, body: str):
 async def startup_event():
     logging.info("Starting centralized initialization...")
     try:
-        #refresh token
+        # Start monitoring internet connection as a background task
+        asyncio.create_task(monitor_internet_connection())
+        logging.info("Internet monitoring started.")
+
+        # Refresh token
         await get_or_refresh_token()
 
         # Initialize GPT
@@ -97,7 +111,6 @@ async def startup_event():
     except Exception as e:
         logging.error(f"Initialization failed: {e}")
         raise RuntimeError("Application initialization failed.")
-    
 
 
 #arranging directories
@@ -240,9 +253,12 @@ async def upload_references(files: List[UploadFile] = File(...)):
                 pass  # If deletion fails, there's not much we can do
         raise HTTPException(status_code=500, detail=f"Error saving files: {str(e)}")
 
-@app.post("/extractdata/")
+@app.post("/extractdata/", dependencies=[Depends(verify_internet_connection)])
 def extract_data():
-    get_statements_agentic()
+    try:
+        get_statements_agentic()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error saving data: {str(e)}")
 
 @app.post("/match/")
 async def match_file_with_db(request: MatchRequest):
@@ -316,7 +332,7 @@ async def fetch_extraction_data():
 """Workflow (aka GitHub CI/CD DOOP)"""
 
 #exisiting references
-@app.post('/embedandchunkexisting')
+@app.post('/embedandchunkexisting', dependencies=[Depends(verify_internet_connection)])
 def chunk_existing_references(request: EmailRequest):
     try:
         """process documents, noembed means we are not using embedding in retrieval and generate process but just to semantically chunk"""
@@ -325,7 +341,7 @@ def chunk_existing_references(request: EmailRequest):
         raise HTTPException(status_code=500, detail=f"Error embedding and chunking existing references: {str(e)}")
     return {"status": "Embed & Chunk Existing Referencescompleted successfully."}
 
-@app.post('/evaluateexisting')
+@app.post('/evaluateexisting', dependencies=[Depends(verify_internet_connection)])
 def evaluate_exisiting_references(request: EmailRequest):
     try:
         """retrieve and sieve using gpt 4o"""
@@ -334,7 +350,7 @@ def evaluate_exisiting_references(request: EmailRequest):
         raise HTTPException(status_code=500, detail=f"Error retrieving and evaluating existing references: {str(e)}")
     return {"status": "Evaluate Existing References completed successfully."}
 
-@app.post('/cleanexisting')
+@app.post('/cleanexisting', dependencies=[Depends(verify_internet_connection)])
 def clean_exisitng(request: EmailRequest):
     try:
         """Clean the old references for a summary for comparison when updating articles"""
@@ -346,7 +362,7 @@ def clean_exisitng(request: EmailRequest):
     return {"status": "Cleaning Existing References completed successfully."}
     
 #New References
-@app.post('/search')
+@app.post('/search', dependencies=[Depends(verify_internet_connection)])
 def find_new(request: EmailRequest):
     try:
         """Finding new references and checking them"""
@@ -356,7 +372,7 @@ def find_new(request: EmailRequest):
         raise HTTPException(status_code=500, detail=f"Error finding new references: {str(e)}")
     return {"status":"Search For New References completed successfully."}
     
-@app.post('/embedandchunknew')
+@app.post('/embedandchunknew', dependencies=[Depends(verify_internet_connection)])
 def chunk_new_references(request: EmailRequest):
     try:
         """Process new documents, noembed means we are not using embedding in retrieval and generate process but just to semantically chunk"""
@@ -365,7 +381,7 @@ def chunk_new_references(request: EmailRequest):
         raise HTTPException(status_code=500, detail=f"Error embedding and chunking new references: {str(e)}")
     return {"status":"Embed & Chunk New References completed successfully."}
     
-@app.post('/evaluatenew')
+@app.post('/evaluatenew', dependencies=[Depends(verify_internet_connection)])
 def evaluate_new_references(request: EmailRequest):
     try:
         """retrieve and sieve using gpt 4o"""
@@ -374,7 +390,7 @@ def evaluate_new_references(request: EmailRequest):
         raise HTTPException(status_code=500, detail=f"Error retrieving and evaluating new references: {str(e)}")
     return {"status":"Evaluate New References completed successfully."}
 
-@app.post('/cleannew')
+@app.post('/cleannew', dependencies=[Depends(verify_internet_connection)])
 def clean_exisitng(request: EmailRequest):
     try:
         """Clean the new references for a summary for comparison when updating articles"""
@@ -383,7 +399,7 @@ def clean_exisitng(request: EmailRequest):
         raise HTTPException(status_code=500, detail=f"Error cleaning new references: {str(e)}")
     return {"status":"Cleaning New References completed successfully."}
 
-@app.post('/agenticsearch')
+@app.post('/agenticsearch', dependencies=[Depends(verify_internet_connection)])
 def retry_poor_search(request: EmailRequest):
     try:
         """Perform agentic search for poor performance papers or statements that has no papers returned"""
@@ -392,7 +408,7 @@ def retry_poor_search(request: EmailRequest):
         raise HTTPException(status_code=500, detail=f"Error in agentic search for new references: {str(e)}")
     return {"status":"Agentic Search completed successfully."}
 
-@app.post('/expertpresentation')
+@app.post('/expertpresentation', dependencies=[Depends(verify_internet_connection)])
 def expert_presentation(request: EmailRequest):
     try:
         """Make a table for data representation"""
@@ -430,13 +446,24 @@ async def notify_user(request: NotifyRequest):
 @app.get("/data")
 async def get_data():
     try:
-        documents = await collection_take.find().to_list(200)
+        documents = await collection_take.find().to_list(500)
         data = [serialize_document(doc) for doc in documents]
         return data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# Define the path to the paper directory
+BASE_DIR = Path(__file__).resolve().parent  # `RAG` directory
+PAPER_DIR = BASE_DIR.parent / "papers"       # Sibling `paper` directory
 
+#download paper by paper id
+@app.get("/download_paper/{paper_id}")
+def download_paper(paper_id: str):
+    # Assuming papers are located in a directory one level above FastAPI code
+    file_path = PAPER_DIR / f"{paper_id}.pdf"
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Paper not found.")
+    return FileResponse(path=file_path, filename=f"{paper_id}.pdf", media_type='application/pdf')
 
 #send selected data to mongo db then merge w new data for comparison
 @app.post("/save_selected_articles")
@@ -574,7 +601,7 @@ async def send_edit(task: EditTask):
         print(f"Error occurred: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/finalize")
+@app.post("/finalize", dependencies=[Depends(verify_internet_connection)])
 def finalize_data():
     try:
         # Call the synchronous formatting function

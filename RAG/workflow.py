@@ -19,9 +19,9 @@ from .agentic_initial_check import get_statements_agentic
 """Allow user to add to mongodb for missing statements and their respective references"""
 #function to add missing statements if necessary (done on frontend)
 """process documents, noembed means we are not using embedding in retrieval and generate process but just to semantically chunk"""
-logging.info('Chunking Initial reference articles')
-process_pdfs_to_mongodb_noembed(files_directory='text', collection1='chunked_noembed')
-time.sleep(60)
+# logging.info('Chunking Initial reference articles')
+# process_pdfs_to_mongodb_noembed(files_directory='text', collection1='chunked_noembed')
+# time.sleep(60)
 
 # """retrieve and sieve using gpt 4o"""
 # logging.info("Comparing chunks with statements referencing the chunks' reference article in the main article")
@@ -65,6 +65,6 @@ time.sleep(60)
 # # send_excel_all(collection_processed_name='new_chunked_noembed',new_ref_collection='new_ref_found_Agentic',valid_collection_name='Agentic_sieved_RAG_new_support_nosupport_confidence',invalid_collection_name='No_match_agentic_new_confidence',not_match='no_match_confidence',top_5='top_5')
 
 # """Make a table for data representation"""
-# make_pretty_for_expert('top_5','new_ref_found_Agentic','expert_data')
+make_pretty_for_expert('top_5','new_ref_found_Agentic','expert_data')
 
 
