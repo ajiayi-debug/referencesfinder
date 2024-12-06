@@ -1,3 +1,4 @@
+// src/components/CardComponent.jsx
 import React, { useState, useEffect } from 'react';
 
 const CardComponent = ({ 
@@ -14,7 +15,8 @@ const CardComponent = ({
   globalViewMode, 
   globalOverride, 
   onSelectChange,
-  isReset
+  isReset,
+  paperId // Ensure paperId is passed as a prop
 }) => {
   const [viewMode, setViewMode] = useState("summary");
   const [isSelected, setIsSelected] = useState(false);
@@ -34,14 +36,43 @@ const CardComponent = ({
   }, [isReset]);
 
   const handleSelectChange = (e) => {
-    const checked = e.target.checked; // Or toggle isSelected
+    const checked = e.target.checked;
     setIsSelected(checked);
-    onSelectChange(id, checked); // Notify parent with the ID and new state
+    onSelectChange(id, checked);
   };
 
   const handleLocalViewChange = (mode) => {
     if (!globalOverride) {
       setViewMode(mode);
+    }
+  };
+
+  const handleDownload = async () => {
+    if (!paperId) {
+      alert("No Paper ID available for download.");
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://127.0.0.1:8000/download_paper/${paperId}`);
+      
+      if (!response.ok) {
+        alert("Failed to download the paper. It may not exist.");
+        return;
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.setAttribute('download', `${paperId}.pdf`); // Set the desired file name
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error downloading the paper:", error);
+      alert("An error occurred while downloading the paper.");
     }
   };
 
@@ -60,31 +91,41 @@ const CardComponent = ({
         <button 
           onClick={() => handleLocalViewChange("summary")} 
           disabled={globalOverride} 
-          className={`px-4 py-2 rounded ${globalOverride ? 'bg-gray-300' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
+          className={`px-4 py-2 rounded ${globalOverride ? 'bg-gray-300 cursor-not-allowed' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
         >
           Summary
         </button>
         <button 
           onClick={() => handleLocalViewChange("sieving")} 
           disabled={globalOverride} 
-          className={`px-4 py-2 rounded ${globalOverride ? 'bg-gray-300' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
+          className={`px-4 py-2 rounded ${globalOverride ? 'bg-gray-300 cursor-not-allowed' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
         >
           Sieving by GPT-4o
         </button>
         <button 
           onClick={() => handleLocalViewChange("chunk")} 
           disabled={globalOverride} 
-          className={`px-4 py-2 rounded ${globalOverride ? 'bg-gray-300' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
+          className={`px-4 py-2 rounded ${globalOverride ? 'bg-gray-300 cursor-not-allowed' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
         >
           Chunk
         </button>
         <button 
           onClick={() => handleLocalViewChange("both")} 
           disabled={globalOverride} 
-          className={`px-4 py-2 rounded ${globalOverride ? 'bg-gray-300' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
+          className={`px-4 py-2 rounded ${globalOverride ? 'bg-gray-300 cursor-not-allowed' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
         >
           Both
         </button>
+
+        {/* Download Button */}
+        {paperId && (
+          <button 
+            onClick={handleDownload} 
+            className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-800"
+          >
+            Download
+          </button>
+        )}
 
         {/* Checkbox to select for updating */}
         <label className="flex items-center">
@@ -156,9 +197,11 @@ const CardComponent = ({
           </div>
         )}
       </div>
+
     </div>
   );
 };
 
 export default CardComponent;
+
 
