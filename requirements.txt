@@ -23,4 +23,4 @@ aiosmtplib
 email-validator
 pydantic
 pymongo
-
+python-multipart
