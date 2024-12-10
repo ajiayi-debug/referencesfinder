@@ -1,13 +1,9 @@
 import os
 import subprocess
-import requests
 from dotenv import load_dotenv
 from openai import AzureOpenAI
-from bs4 import BeautifulSoup
 import time
-import pandas as pd
 import unicodedata
-import json
 import logging
 
 
@@ -17,12 +13,10 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 
 # Load environment variables for Azure configuration
-az_path = os.getenv("az_path")  # Azure CLI path
 endpoint = os.getenv("endpoint")  # Azure endpoint
 api_version = os.getenv("ver")  # Azure API version
 
 # Log environment variables for debugging
-logging.info(f"az_path: {az_path}")
 logging.info(f"endpoint: {endpoint}")
 logging.info(f"api_version: {api_version}")
 
@@ -36,7 +30,7 @@ def get_azure_access_token():
         logging.info("Fetching Azure OpenAI access token...")
         # Run the Azure CLI command to get access token
         result = subprocess.run(
-            [az_path, 'account', 'get-access-token', '--resource', 'https://cognitiveservices.azure.com', '--query', 'accessToken', '-o', 'tsv'],
+            ['az', 'account', 'get-access-token', '--resource', 'https://cognitiveservices.azure.com', '--query', 'accessToken', '-o', 'tsv'],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
         )

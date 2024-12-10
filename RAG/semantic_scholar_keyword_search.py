@@ -4,20 +4,14 @@ import pandas as pd
 from .gpt_rag import *
 from .pdf import *
 from .gpt_rag import *
-from .embedding import *
 from .gpt_rag_asyncio import *
-import argparse
 import os
-from requests import Session
-from typing import Generator, Union
-from pymongo import MongoClient
 from .call_mongodb import *
 from tqdm import tqdm
 from .download_paper_ss import *
 import urllib3
 from .search_ss import *
 import asyncio
-import certifi
 from .mongo_client import MongoDBClient
 urllib3.disable_warnings()
 
