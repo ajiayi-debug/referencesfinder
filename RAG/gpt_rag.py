@@ -1,12 +1,10 @@
 import os
 import subprocess
 import requests
-from googleapiclient.discovery import build
 from dotenv import load_dotenv
 from openai import AzureOpenAI
 from bs4 import BeautifulSoup
 import time
-from googleapiclient.errors import HttpError
 import pandas as pd
 import unicodedata
 import json
