@@ -362,7 +362,7 @@ function Extraction() {
     <div className="bg-gray-100 min-h-screen flex justify-center items-center p-4">
       <div className="bg-white shadow-lg rounded-lg p-8 w-full max-w-6xl">
         <h1 className="text-3xl font-bold text-gray-700 text-center mb-4">
-          Welcome to UpdateArticle
+          Welcome to ReferenceFinder
         </h1>
         <p className="text-gray-500 text-center mb-8">
           Easily upload your articles for automated updates using Generative AI.

@@ -17,7 +17,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the backend files
 COPY .env /app/.env
-COPY RAG /app/RAG
+COPY backend /app/backend
 
 # Frontend Stage
 FROM node:18 AS frontend
@@ -25,11 +25,11 @@ FROM node:18 AS frontend
 WORKDIR /app
 
 # Copy only package.json for caching
-COPY update_article/package.json update_article/package-lock.json ./
+COPY frontend/package.json frontend/package-lock.json ./
 RUN npm install
 
 # Copy frontend source code
-COPY update_article /app
+COPY frontend /app
 
 # Build the frontend
 RUN npm run build
@@ -47,13 +47,13 @@ COPY --from=backend /usr/local/lib/python3.12/site-packages /usr/local/lib/pytho
 COPY --from=backend /usr/local/bin /usr/local/bin
 
 # Copy built frontend from the frontend stage
-COPY --from=frontend /app/dist /app/RAG/static
+COPY --from=frontend /app/dist /app/backend/static
 
 # Expose backend port
 EXPOSE 8000
 
-ENV FASTAPI_APP=/app/RAG/main.py
+ENV FASTAPI_APP=/app/backend/main.py
 ENV FASTAPI_ENV=production
 
 # Command to run the FastAPI app
-CMD ["uvicorn", "RAG.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
