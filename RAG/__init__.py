@@ -1,8 +1,10 @@
 import logging
+import sys
+from pathlib import Path
+
 logging.basicConfig(level=logging.INFO)
 
 logging.info("Starting initialization...")
-
 
 from .mongo_client import *
 logging.info("mongo_client imported successfully.")
@@ -26,8 +28,6 @@ from .pdf import *
 logging.info("pdf imported successfully.")
 from .gpt_rag import get_names,read_text_file,get_references,similiar_ref,clean_responses,rank_and_check,summarise_subdocument,locate_subdoc
 logging.info("gpt_rag imported successfully.")
-from .embedding import splitting,tokenize,chunking,embed,send_excel,retrieve_pdf,retrieve_similar_text_threshold,retrieve_similar_text_threshold_old,retrieve_similar_text_threshold_text_only
-logging.info("embedding imported successfully.")
 from .semantic_chunking import process_dataframe_sc1
 logging.info("semantic_chunking imported successfully.")
 from .download_paper_ss import process_and_download
