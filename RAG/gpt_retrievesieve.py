@@ -1,6 +1,5 @@
 from .gpt_rag import *
 from .pdf import *
-from .embedding import *
 import ast
 import pandas as pd
 from dotenv import load_dotenv

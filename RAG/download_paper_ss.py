@@ -1,6 +1,4 @@
 from dotenv import load_dotenv
-load_dotenv()
-
 from aiohttp import ClientSession, ClientResponseError
 import argparse
 import asyncio
@@ -10,6 +8,8 @@ from typing import AsyncGenerator, Generator, Iterable, TypeVar, Union, List, Di
 from tqdm.asyncio import tqdm as tqdm_asyncio
 from bs4 import BeautifulSoup
 import random
+
+load_dotenv()
 
 S2_API_KEY = os.environ['x-api-key']
 

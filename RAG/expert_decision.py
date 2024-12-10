@@ -3,7 +3,6 @@ from .call_mongodb import *
 import pandas as pd
 from dotenv import load_dotenv
 import ast
-from .embedding import *
 import asyncio
 from tqdm.asyncio import tqdm_asyncio
 from .pdf import *

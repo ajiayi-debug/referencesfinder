@@ -1,19 +1,14 @@
 from semantic_router.encoders import AzureOpenAIEncoder
 from dotenv import load_dotenv
 import os
-import subprocess
-import time
 import logging
 from semantic_chunkers import StatisticalChunker
 import asyncio
-import aiohttp
 from tqdm.asyncio import tqdm_asyncio
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-import httpx
 import random
-import openai
 from openai import AuthenticationError
 from .token_manager import get_or_refresh_token 
 

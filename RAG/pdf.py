@@ -712,3 +712,10 @@ def extract_images_from_pdf(folder_path="main", output_folder="images"):
 # Split the text into paragraphs or logical chunks
 def split_text_into_chunks(text, delimiter="\n\n"):
     return text.split(delimiter)
+
+""" Call this function to send embedded data to an excel file """
+def send_excel(df,directory, filename):
+    # os.makedirs(directory)
+    output_path=os.path.join(directory,filename)
+    df.to_excel(output_path, index=False)
+    print(f'Data has been written to {output_path}')
