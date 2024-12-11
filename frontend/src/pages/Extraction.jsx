@@ -377,7 +377,7 @@ function Extraction() {
                 className="cursor-pointer bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg shadow-lg text-lg"
                 htmlFor="references-upload"
               >
-                Select Reference PDFs or Folder
+                Select Folder of PDF of existing references
               </label>
               <input
                 id="references-upload"
@@ -419,7 +419,7 @@ function Extraction() {
               className="cursor-pointer bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-6 rounded-lg shadow-lg text-lg"
               htmlFor="file-upload"
             >
-              Upload PDF
+              Upload PDF of main article
             </label>
             <input
               id="file-upload"
