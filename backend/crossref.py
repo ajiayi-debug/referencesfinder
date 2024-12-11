@@ -102,7 +102,6 @@ def df_check(paper_metadata):
         if retraction_status != "No corrections or retractions found.":
             df.append(newrow)
     
-    # If df is empty, create an empty DataFrame with columns
     if df:
         df = pd.concat(df, ignore_index=True)
     else:
@@ -111,7 +110,7 @@ def df_check(paper_metadata):
     
     # Send the DataFrame to Excel, even if it's empty
     print("Sending DataFrame to Excel (even if empty)...")
-    send_excel(df, 'RAG', 'crossref.xlsx')
+    send_excel(df, '', 'crossref.xlsx')
 
     data_dict = df.to_dict("records")
     

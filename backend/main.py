@@ -138,7 +138,7 @@ def serialize_ids(document):
     else:
         return document
     
-# Directory to save uploaded PDFs
+# Directory to save uploaded main articless
 UPLOAD_DIRECTORY = "main"
 
 def save_uploaded_pdf(file: UploadFile):
@@ -331,6 +331,67 @@ async def fetch_extraction_data():
 
 """Workflow (aka GitHub CI/CD DOOP)"""
 
+#Upload personally found references
+@app.post("/upload-external-pdfs/")
+async def upload_external_pdfs(files: List[UploadFile] = File(...)):
+    """
+    Uploads multiple PDF reference files into 'external_pdfs' directory.
+    Allows selection of individual files or files within a folder.
+    Overwrites the directory by removing all existing content before saving the new files.
+    """
+    if not files:
+        raise HTTPException(status_code=400, detail="No files uploaded.")
+
+    # Define the references directory
+    references_dir = Path("external_pdfs")
+    saved_filenames = []
+
+    try:
+        # Ensure the references directory exists and clear it
+        if references_dir.exists():
+            for existing_file in references_dir.iterdir():
+                if existing_file.is_file():
+                    existing_file.unlink()  # Delete all existing files
+                elif existing_file.is_dir():
+                    shutil.rmtree(existing_file)  # Delete subdirectories if any
+
+        # Ensure the references directory exists
+        references_dir.mkdir(parents=True, exist_ok=True)
+
+        for file in files:
+            # Validate file type
+            if not file.filename.lower().endswith(".pdf"):
+                raise HTTPException(
+                    status_code=400, detail=f"Invalid file type: {file.filename}. Only PDF files are allowed."
+                )
+
+            # Extract base filename and sanitize
+            base_filename = Path(file.filename).name
+            sanitized_filename = f"{uuid.uuid4()}-{base_filename.replace(' ', '_')}"
+
+            # Define the full file path
+            file_path = references_dir / sanitized_filename
+
+            # Save the file to the directory
+            with file_path.open("wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+
+            saved_filenames.append(sanitized_filename)
+
+        return {"filenames": saved_filenames}
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        # Clean up any partially uploaded files in case of an error
+        for filename in saved_filenames:
+            try:
+                (references_dir / filename).unlink()
+            except Exception:
+                pass  # If deletion fails, there's not much we can do
+        raise HTTPException(status_code=500, detail=f"Error saving files: {str(e)}")
+
+
 #exisiting references
 @app.post('/embedandchunkexisting', dependencies=[Depends(verify_internet_connection)])
 def chunk_existing_references(request: EmailRequest):
@@ -342,14 +403,36 @@ def chunk_existing_references(request: EmailRequest):
     return {"status": "Embed & Chunk Existing Referencescompleted successfully."}
 
 @app.post('/evaluateexisting', dependencies=[Depends(verify_internet_connection)])
-def evaluate_exisiting_references(request: EmailRequest):
+def evaluate_existing_references(request: EmailRequest):
     try:
-        """retrieve and sieve using gpt 4o"""
-        retrieve_sieve_references(collection_processed_name='chunked_noembed',valid_collection_name='Agentic_sieved_RAG_original', invalid_collection_name='No_match_agentic_original')
+        """Retrieve and sieve using GPT-4"""
+        retrieve_sieve_references(
+            collection_processed_name='chunked_noembed',
+            valid_collection_name='Agentic_sieved_RAG_original',
+            invalid_collection_name='No_match_agentic_original'
+        )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error retrieving and evaluating existing references: {str(e)}")
-    return {"status": "Evaluate Existing References completed successfully."}
-
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error retrieving and evaluating existing references: {str(e)}"
+        )
+    
+    #Path to the crossref.xlsx file in the project root directory
+    file_path = PROJECT_ROOT / 'crossref.xlsx'
+    
+    if not file_path.is_file():
+        raise HTTPException(
+            status_code=404,
+            detail="crossref.xlsx not found in the project root directory."
+        )
+    
+    #Return the Excel file directly using FileResponse
+    return FileResponse(
+        path=str(file_path),
+        filename='crossref.xlsx',
+        media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        headers={"Content-Disposition": "attachment; filename=crossref.xlsx"}
+    )
 @app.post('/cleanexisting', dependencies=[Depends(verify_internet_connection)])
 def clean_exisitng(request: EmailRequest):
     try:
@@ -453,7 +536,7 @@ async def get_data():
         raise HTTPException(status_code=500, detail=str(e))
 
 # Define the path to the paper directory
-BASE_DIR = Path(__file__).resolve().parent  # `RAG` directory
+BASE_DIR = Path(__file__).resolve().parent  # `backend` directory
 PAPER_DIR = BASE_DIR.parent / "papers"       # Sibling `paper` directory
 
 #download paper by paper id
