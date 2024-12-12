@@ -31,13 +31,10 @@ chunki = chunking(token_df, 'Text Chunks', 8190)
 
 emb=embed(chunki)
 final_ans='subdocument_chunking.xlsx'
-send_excel(emb,'RAG', final_ans)
+send_excel(emb,'backend', final_ans)
 
 ref="A proportion of the world’s population is able to tolerate lactose as they have a genetic variation that ensures they continue to produce sufficient quantities of the enzyme lactase after childhood."
 
-#emb['gpt4o retrieval']=emb['Summary of Subdocument'].apply(lambda x: locate_subdoc(x, ref))
-
-#send_excel(emb, 'RAG', 'subdocument_chunking_locate.xlsx')
 
 test=emb['Summary of Subdocument'].unique().tolist()
 
@@ -61,8 +58,8 @@ similiar=retrieve_similar_text_threshold_text_only(focus_df, ref, 10, 0.5)
 print(similiar)
 print(similiar==True)
 
-send_excel(final_df, 'RAG', 'subdocument_yes_no.xlsx')
+send_excel(final_df, 'backend', 'subdocument_yes_no.xlsx')
 
-send_excel(focus_df, 'RAG', 'subdocument_yes.xlsx')
+send_excel(focus_df, 'backend', 'subdocument_yes.xlsx')
 
-send_excel(similiar, 'RAG', 'subdocument_output.xlsx')
+send_excel(similiar, 'backend', 'subdocument_output.xlsx')

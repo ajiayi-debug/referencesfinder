@@ -76,7 +76,7 @@ def main():
     output_df = pd.concat(dfs, ignore_index=True)
     
     # Send the DataFrame to Excel
-    send_excel(output_df, 'RAG', 'subdocument_cossim.xlsx')
+    send_excel(output_df, 'backend', 'subdocument_cossim.xlsx')
 
     records = output_df.to_dict(orient='records')
 

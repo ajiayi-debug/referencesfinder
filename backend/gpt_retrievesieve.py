@@ -180,7 +180,7 @@ def retrieve_sieve_check(df, code):
 
 #sanity checking existing references
 def retrieve_sieve_references(collection_processed_name, valid_collection_name, invalid_collection_name):
-    output_directory = 'RAG'  # Fixed output directory
+    output_directory = 'backend'  # Fixed output directory
     
     # Get collections from MongoDB
     collection_processed = db[collection_processed_name]
@@ -243,17 +243,14 @@ def retrieve_sieve_references(collection_processed_name, valid_collection_name, 
     if non_valid_dfs:
         non_valid_output_df = pd.concat(non_valid_dfs, ignore_index=True)
         non_valid=invalid_collection_name+'.xlsx'
-        send_excel(non_valid_output_df, 'RAG', non_valid)
         records = non_valid_output_df.to_dict(orient='records')
         replace_database_collection(uri, db.name, invalid_collection_name, records)
     if not_dfs:
         not_df=pd.concat(not_dfs, ignore_index=True)
-        send_excel(not_df, 'RAG', 'gpt_retrieve_sieve_rejected.xlsx')
     # Send valid results to MongoDB
     if valid_dfs:
         valid_output_df = pd.concat(valid_dfs, ignore_index=True)
         valid=valid_collection_name+'.xlsx'
-        send_excel(valid_output_df, 'RAG', valid)
 
         # Convert to records and send to MongoDB
         records = valid_output_df.to_dict(orient='records')
@@ -264,7 +261,6 @@ def retrieve_sieve_references(collection_processed_name, valid_collection_name, 
 
 #checking new references (need to classify)
 def retrieve_sieve_references_new(collection_processed_name, new_ref_collection, valid_collection_name, invalid_collection_name, not_match, change_to_add=False):
-    output_directory = 'RAG'  # Fixed output directory
     
     # Get collections from MongoDB
     collection_processed = db[collection_processed_name]
@@ -315,13 +311,11 @@ def retrieve_sieve_references_new(collection_processed_name, new_ref_collection,
         if non_valid_dfs:
             non_valid_output_df = pd.concat(non_valid_dfs, ignore_index=True)
             non_valid=invalid_collection_name+'.xlsx'
-            send_excel(non_valid_output_df, 'RAG', non_valid)
             records = non_valid_output_df.to_dict(orient='records')
             insert_documents(uri, db.name, invalid_collection_name, records)
         if not_dfs:
             not_df=pd.concat(not_dfs, ignore_index=True)
             reject=not_match+'.xlsx'
-            send_excel(not_df, 'RAG', reject)
             records = not_df.to_dict(orient='records')
             insert_documents(uri, db.name, not_match, records)
             
@@ -329,7 +323,6 @@ def retrieve_sieve_references_new(collection_processed_name, new_ref_collection,
         if valid_dfs:
             valid_output_df = pd.concat(valid_dfs, ignore_index=True)
             valid=valid_collection_name+'.xlsx'
-            send_excel(valid_output_df, 'RAG', valid)
 
             # Convert to records and send to MongoDB
             records = valid_output_df.to_dict(orient='records')
@@ -340,13 +333,11 @@ def retrieve_sieve_references_new(collection_processed_name, new_ref_collection,
         if non_valid_dfs:
             non_valid_output_df = pd.concat(non_valid_dfs, ignore_index=True)
             non_valid=invalid_collection_name+'.xlsx'
-            send_excel(non_valid_output_df, 'RAG', non_valid)
             records = non_valid_output_df.to_dict(orient='records')
             replace_database_collection(uri, db.name, invalid_collection_name, records)
         if not_dfs:
             not_df=pd.concat(not_dfs, ignore_index=True)
             reject=not_match+'.xlsx'
-            send_excel(not_df, 'RAG', reject)
             records = not_df.to_dict(orient='records')
             replace_database_collection(uri, db.name, not_match, records)
             
@@ -354,7 +345,6 @@ def retrieve_sieve_references_new(collection_processed_name, new_ref_collection,
         if valid_dfs:
             valid_output_df = pd.concat(valid_dfs, ignore_index=True)
             valid=valid_collection_name+'.xlsx'
-            send_excel(valid_output_df, 'RAG', valid)
 
             # Convert to records and send to MongoDB
             records = valid_output_df.to_dict(orient='records')
@@ -495,7 +485,6 @@ def cleaning(valid_collection_name, not_match, top_5, threshold=75, change_to_ad
         print("No valid rows found. Skipping filtering and retry logic.")
         # Export invalid data if required
         invalid_df = pd.concat([pd.DataFrame(invalid_rows)], ignore_index=True)
-        send_excel(invalid_df, 'RAG', 'test_invalid.xlsx')
         records3 = invalid_df.to_dict(orient='records')
         insert_documents(uri, db.name, not_match, records3)
         return  # Exit the function early as there's no valid data to process further
@@ -535,36 +524,28 @@ def cleaning(valid_collection_name, not_match, top_5, threshold=75, change_to_ad
     if change_to_add:
         # Send top-ranked output to an Excel file
         xlsx = top_5 + '.xlsx'
-        send_excel(top_ranked_with_ties_df, 'RAG', xlsx)
         records1 = top_ranked_with_ties_df.to_dict(orient='records')
         upsert_database_and_collection(uri, db.name, top_5, records1)
         valid_xlsx = valid_collection_name + '.xlsx'
-        # Send the cleaned valid rows to an Excel file
-        send_excel(valid_df, 'RAG', valid_xlsx)
         records2 = valid_df.to_dict(orient='records')
         upsert_database_and_collection(uri, db.name, valid_collection_name, records2)
     else:
         # Send top-ranked output to an Excel file
         xlsx = top_5 + '.xlsx'
-        send_excel(top_ranked_with_ties_df, 'RAG', xlsx)
         records1 = top_ranked_with_ties_df.to_dict(orient='records')
         replace_database_collection(uri, db.name, top_5, records1)
         valid_xlsx = valid_collection_name + '.xlsx'
-        # Send the cleaned valid rows to an Excel file
-        send_excel(valid_df, 'RAG', valid_xlsx)
         records2 = valid_df.to_dict(orient='records')
         replace_database_collection(uri, db.name, valid_collection_name, records2)
 
     # Combine invalid rows and matches into one DataFrame
     invalid_df = pd.concat([pd.DataFrame(invalid_rows), matches_df], ignore_index=True)
     invalid_xlsx = not_match + '.xlsx'
-    send_excel(invalid_df, 'RAG', invalid_xlsx)
     records3 = invalid_df.to_dict(orient='records')
     insert_documents(uri, db.name, not_match, records3)
 
     # If retry_df is not empty, save it
     if not retry_df.empty:
-        send_excel(retry_df, 'RAG', 'retry.xlsx')
         records4 = retry_df.to_dict(orient='records')
         replace_database_collection(uri, db.name, 'retry', records4)
 
@@ -669,7 +650,7 @@ def send_excel_all(collection_processed_name,new_ref_collection,valid_collection
         '_id': 1, 'PDF File': 1, 'Text Content': 1, 'n_tokens': 1, 'Text Chunks': 1
     })))
     name_processed=collection_processed_name+'.xlsx'
-    send_excel(df_processed,'RAG',name_processed)
+    send_excel(df_processed,'backend',name_processed)
 
     df_new_ref = pd.DataFrame(list(db[new_ref_collection].find({}, {
         '_id': 1,
@@ -687,7 +668,7 @@ def send_excel_all(collection_processed_name,new_ref_collection,valid_collection
         'pdf_url': 1
     })))
     name_new_ref=new_ref_collection + '.xlsx'
-    send_excel(df_new_ref,'RAG',name_new_ref)
+    send_excel(df_new_ref,'backend',name_new_ref)
     df_valid = pd.DataFrame(list(db[valid_collection_name].find({}, {
         '_id': 1,
         'Sentiment': 1,
@@ -699,7 +680,7 @@ def send_excel_all(collection_processed_name,new_ref_collection,valid_collection
         'Date': 1
     })))
     name_valid=valid_collection_name+'.xlsx'
-    send_excel(df_valid,'RAG',name_valid)
+    send_excel(df_valid,'backend',name_valid)
 
     df_invalid = pd.DataFrame(list(db[invalid_collection_name].find({}, {
         '_id': 1,
@@ -710,7 +691,7 @@ def send_excel_all(collection_processed_name,new_ref_collection,valid_collection
         'Date': 1
     })))
     name_invalid=invalid_collection_name+'.xlsx'
-    send_excel(df_invalid,'RAG',name_invalid)
+    send_excel(df_invalid,'backend',name_invalid)
 
     df_not_match = pd.DataFrame(list(db[not_match].find({}, {
         '_id': 1,
@@ -721,7 +702,7 @@ def send_excel_all(collection_processed_name,new_ref_collection,valid_collection
         'Date': 1
     })))
     name_not_match=not_match +'.xlsx'
-    send_excel(df_not_match,'RAG',name_not_match)
+    send_excel(df_not_match,'backend',name_not_match)
     df_top_5 = pd.DataFrame(list(db[top_5].find({}, {
         '_id': 1,
         'Sentiment': 1,
@@ -733,7 +714,7 @@ def send_excel_all(collection_processed_name,new_ref_collection,valid_collection
         'Date': 1
     })))
     name_top_5=top_5+'.xlsx'
-    send_excel(df_top_5,'RAG',name_top_5)
+    send_excel(df_top_5,'backend',name_top_5)
 
 
 #cleaning without retry logic since this is initial reference articles so we just     
@@ -785,7 +766,6 @@ def cleaning_initial(valid_collection_name, not_match, top_5, threshold=75, chan
         print("No valid rows found. Skipping filtering and retry logic.")
         # Export invalid data if required
         invalid_df = pd.concat([pd.DataFrame(invalid_rows)], ignore_index=True)
-        send_excel(invalid_df, 'RAG', 'test_invalid.xlsx')
         records3 = invalid_df.to_dict(orient='records')
         insert_documents(uri, db.name, not_match, records3)
         return  # Exit the function early as there's no valid data to process further
@@ -806,30 +786,23 @@ def cleaning_initial(valid_collection_name, not_match, top_5, threshold=75, chan
     if change_to_add:
         # Send top-ranked output to an Excel file
         xlsx = top_5 + '.xlsx'
-        send_excel(top_ranked_with_ties_df, 'RAG', xlsx)
         records1 = top_ranked_with_ties_df.to_dict(orient='records')
         upsert_database_and_collection(uri, db.name, top_5, records1)
         valid_xlsx = valid_collection_name + '.xlsx'
-        # Send the cleaned valid rows to an Excel file
-        send_excel(valid_df, 'RAG', valid_xlsx)
         records2 = valid_df.to_dict(orient='records')
         upsert_database_and_collection(uri, db.name, valid_collection_name, records2)
     else:
         # Send top-ranked output to an Excel file
         xlsx = top_5 + '.xlsx'
-        send_excel(top_ranked_with_ties_df, 'RAG', xlsx)
         records1 = top_ranked_with_ties_df.to_dict(orient='records')
         replace_database_collection(uri, db.name, top_5, records1)
         valid_xlsx = valid_collection_name + '.xlsx'
-        # Send the cleaned valid rows to an Excel file
-        send_excel(valid_df, 'RAG', valid_xlsx)
         records2 = valid_df.to_dict(orient='records')
         replace_database_collection(uri, db.name, valid_collection_name, records2)
 
     # Combine invalid rows and matches into one DataFrame
     invalid_df = pd.concat([pd.DataFrame(invalid_rows), matches_df], ignore_index=True)
     invalid_xlsx = not_match + '.xlsx'
-    send_excel(invalid_df, 'RAG', invalid_xlsx)
     records3 = invalid_df.to_dict(orient='records')
     insert_documents(uri, db.name, not_match, records3)
 

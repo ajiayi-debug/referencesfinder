@@ -21,7 +21,6 @@ db = client['data']
 
 #chunked and embedded original refs database, new database name to store output
 def process_old_references(collection_processed_name, collection_name):
-    output_directory = 'RAG'  # Fixed output directory
     pdf_to_check = os.getenv("PDF")
     
     # Get collections from MongoDB
@@ -84,7 +83,7 @@ def process_old_references(collection_processed_name, collection_name):
     print("Data sent to MongoDB Atlas.")
 
 def process_new_references(collection_processed_name, new_collection_name, collection_found):
-    output_directory = 'RAG'  # Fixed output directory
+    output_directory = 'backend'  # Fixed output directory
     
     # Get collections from MongoDB
     collection_processed = db[collection_processed_name]
