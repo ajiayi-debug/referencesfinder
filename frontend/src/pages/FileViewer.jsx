@@ -74,7 +74,6 @@ const FileViewer = () => {
       setEdits(editsData);
     } catch (error) {
       console.error(error);
-      // Optionally set error states here
     }
   };
 
@@ -128,28 +127,25 @@ const FileViewer = () => {
 
   // Handle Download
   const handleDownload = () => {
-    // Create a blob from the edited content
     const fileContent = new Blob([content2], { type: 'text/plain' });
     const url = URL.createObjectURL(fileContent);
 
-    // Create a temporary link to trigger the download
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'output.txt'; // Name of the file to be downloaded
+    link.download = 'output.txt';
     document.body.appendChild(link);
     link.click();
 
-    // Clean up the URL and link
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
 
-  // Clear Changes Function (renamed from handleClearEdits)
+  // Clear Changes Function
   const handleClearChanges = async () => {
     try {
       console.log('Clearing changes...');
       const response = await fetch('http://127.0.0.1:8000/delete_changes', {
-        method: 'POST', // Use DELETE or POST as per your API design
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -167,7 +163,7 @@ const FileViewer = () => {
     }
   };
 
-  // Handle Regenerate Function
+  // Handle Regenerate
   const handleRegenerateClick = async () => {
     try {
       setLoading(true);
@@ -188,7 +184,6 @@ const FileViewer = () => {
       const regenerateResult = await response.json();
       console.log('Regenerate response:', regenerateResult);
 
-      // Now re-fetch data
       await fetchData();
 
       setRegenerateStatus('success');
@@ -200,7 +195,6 @@ const FileViewer = () => {
     }
   };
 
-  // Clear Status Messages
   const renderClearStatusMessage = () => {
     if (clearStatus === 'success') {
       return (
@@ -219,7 +213,6 @@ const FileViewer = () => {
     return null;
   };
 
-  // Regenerate Status Messages
   const renderRegenerateStatusMessage = () => {
     if (regenerateStatus === 'success') {
       return (
@@ -252,16 +245,12 @@ const FileViewer = () => {
 
       {/* Save Status Messages */}
       {saveStatus === 'success' && (
-        <div
-          style={{ color: 'green', textAlign: 'center', marginBottom: '10px' }}
-        >
+        <div style={{ color: 'green', textAlign: 'center', marginBottom: '10px' }}>
           File updated successfully!
         </div>
       )}
       {saveStatus === 'error' && (
-        <div
-          style={{ color: 'red', textAlign: 'center', marginBottom: '10px' }}
-        >
+        <div style={{ color: 'red', textAlign: 'center', marginBottom: '10px' }}>
           Failed to update the file.
         </div>
       )}
@@ -335,7 +324,7 @@ const FileViewer = () => {
             borderRadius: '5px',
           }}
         >
-          Clear Changes
+          Clear Updates
         </button>
       </div>
 
@@ -393,6 +382,16 @@ const FileViewer = () => {
         </div>
       )}
 
+      {/* Headings above DiffViewer */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+        <div style={{ flex: 1, textAlign: 'center' }}>
+          <h3>Original Article</h3>
+        </div>
+        <div style={{ flex: 1, textAlign: 'center' }}>
+          <h3>Updated Article</h3>
+        </div>
+      </div>
+
       {/* Diff Viewer */}
       <div style={{ marginTop: '20px', overflowX: 'auto' }}>
         <DiffViewer
@@ -400,6 +399,7 @@ const FileViewer = () => {
           newValue={isEditing ? normalizeText(editedContent2) : normalizeText(content2)}
           splitView={true}
           showDiffOnly={false}
+          enableSyntaxHighlight={false}
           styles={{
             variables: {
               light: {
@@ -412,10 +412,9 @@ const FileViewer = () => {
             },
             diffContainer: {
               overflow: 'auto',
-              fontSize: '12px', // Smaller font size
+              fontSize: '12px',
             },
           }}
-          enableSyntaxHighlight={false} // Disable syntax highlighting for plain text
         />
       </div>
 
@@ -544,4 +543,5 @@ const styles = {
 };
 
 export default FileViewer;
+
 

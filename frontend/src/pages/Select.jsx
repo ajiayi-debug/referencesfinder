@@ -129,7 +129,7 @@ function Select() {
             onChange={() => setGlobalOverride(!globalOverride)} 
             className="h-4 w-4"
           />
-          Override All with Global Mode
+          Enable All
         </label>
       </div>
       

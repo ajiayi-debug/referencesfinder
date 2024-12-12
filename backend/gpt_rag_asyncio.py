@@ -123,10 +123,10 @@ async def call_retrieve_sieve_with_async(chunk, ref):
     await initialize_client()
     return await async_retry_on_exception(retriever_and_siever_async, chunk, ref)
 
-#retriever and siever for sanity checking (no classification)
-async def call_retrieve_sieve_with_async_check(chunk, ref):
-    await initialize_client()
-    return await async_retry_on_exception(retriever_and_siever_async_check, chunk, ref)
+# #retriever and siever for sanity checking (no classification)
+# async def call_retrieve_sieve_with_async_check(chunk, ref):
+#     await initialize_client()
+#     return await async_retry_on_exception(retriever_and_siever_async_check, chunk, ref)
 
 # Keyword search function
 async def call_keyword_search_async(text, prompt=None):
@@ -257,7 +257,7 @@ async def retriever_and_siever_async(chunk, ref):
         1.	For cited or referenced parts: Extract ALL relevant parts of the ‘Reference Article Text’ that are referenced. Start with ‘Support ([Confidence Score]):’.
         2.	For opposing parts: Extract ALL relevant parts of the ‘Reference Article Text’ that are opposed. Start with ‘Oppose ([Confidence Score]):’.
         3.	If no match exists, respond with ‘no’.
-        4.  If the ‘Reference Article Text’ is a citation, no matter the classification, give it a score lower than 70
+        4.  If the matched ‘Reference Article Text’ is a citation of the reference article (e.g aba citations, DOI, etc...), no matter the classification, give it a score lower than 70
 
     Example Outputs with Confidence Scores:
 
@@ -268,15 +268,15 @@ async def retriever_and_siever_async(chunk, ref):
     Output:
     'Support (90): Bacterial fermentation of lactose produces gases like hydrogen, methane, and CO2, impacting GI function.'
 
-    Supporting Example but is citation:
+    Supporting Example but is citation of the reference article:
 
-    Input:
-    'Reference Article Text: Improvement of lac-tose digestion by humans following ingestion of unfermented aci-dophilus milk: inﬂuence of bile sensitivity, lactose transport, andacid tolerance of Lactobacillus acidophilus.Journal of Dairy Science80 (8):1537–1545.Odamaki, T., H.Sugahara, and S.Yonezawa. 2012.Effect of the oral intakeof yogurt containing Biﬁdobacterium longum BB536 on the cell num-bers of enterotoxigenic Bacteroides fragilis in microbiota.Anaerobe 18(1):14–18.Ojetti, V., G.Gigante, and M.Gabrielli. 2010.The effect of oral supplemen-tation with Lactobacillus reuteri or tilactase in lactose intolerantpatients: randomized trial.European Review for Medical and Pharma-cological Sciences 14 (3):163–70.Pakdaman, M.N., J.K.Udani, J.P.Molina, and M.Shahani. 2016.
-    Text Referencing The Reference Article: Pre- and probiotics may have a positive effect on lactose tolerance.'
+    Input:  
+    'Reference Article Text:Citation: Marabotto, E.; Ferone, D.;Sheijani, A.D.; Vera, L.; Ziola, S.;Savarino, E.; Bodini, G.; Furnari, M.;Zentilin, P.; Savarino, V.; et al.Prevalence of Lactose Intolerance inPatients with Hashimoto Thyroiditisand Impact on LT4 ReplacementDose.Nutrients 2022, 14, 3017.https://doi.org/10.3390/nu14153017Academic Editors:Elena Grasselliand Ilaria DemoriReceived: 31 May 2022Accepted: 15 July 2022Published: 22 July 2022Publisher’s Note:  
+    'Text Referencing The Reference Article: A meta-analysis reveals that clinical symptoms (abdominal pain, diarrhoea) or self-reporting are not reliable indices for the diagnosis of lactose intolerance.’
 
-    Output:
-    'Support (60) improvement of lactose digestion by humans following ingestion of unfermented acidophilus milk: influence of bile sensitivity, lactose transport, and acid tolerance of lactobacillus acidophilus.'
-    
+    Output:  
+    'Support (60): Prevalence of Lactose Intolerance inPatients with Hashimoto Thyroiditisand Impact on LT4 ReplacementDose.'
+
     Opposing Example:
     Input:
     'Reference Article Text: “Lactose intolerance affects around 70 percent of the population.'
@@ -284,13 +284,14 @@ async def retriever_and_siever_async(chunk, ref):
     Output:
     'Oppose (85): Lactose intolerance affects around 70 percent of the population.'
 
-    Opposing Example but is citation:
+    Opposing Example but is citation of the reference article:
 
-    Input:
-    'Reference Article Text: Dig.Dis. 2018, 36, 271–280. [CrossRef] [PubMed]30.Triggs, C.M.; Munday, K.; Hu, R.; Fraser, A.G.; Gearry, R.B.; Barclay, M.L.; Ferguson, L.R.Dietary factors in chronic inﬂammation:Food tolerances and intolerances of a New Zealand Caucasian Crohn’s disease population.Mutat.Res. 2010, 690, 123–138.[CrossRef]31.Labayen, I.; Forga, L.; Gonzalez, A.; Lenoir-Wijnkoop, I.; Nutr, R.; Martinez, J.A.Relationship between lactose digestion, gastroin-testinal transit time and symptoms in lactose malabsorbers after dairy consumption.Aliment.Pharmacol.Ther. 2001, 15, 543–549.[CrossRef] [PubMed]32.Pelletier, X.; Laure-Boussuge, S.; Donazzolo, Y.Hydrogen excretion upon ingestion of dairy products in lactose-intolerant malesubjects:
-    Text Referencing The Reference Article: A meta-analysis reveals that clinical symptoms (abdominal pain, diarrhoea) or self-reporting are not reliable indices for the diagnosis of lactose intolerance.
-    Output:
-    'Oppose (60) relationship between lactose digestion, gastroin-testinal transit time and symptoms in lactose malabsorbers after dairy consumption.'
+    Input:  
+    'Reference Article Text: Nutr. 2015, 60, 131–141. [CrossRef] [PubMed]' 
+    'Text Referencing The Reference Article: A meta-analysis reveals that clinical symptoms (abdominal pain, diarrhoea) or self-reporting are not reliable indices for the diagnosis of lactose intolerance.'
+
+    Output:  
+    'Support (60): Nutr. 2015, 60, 131–141. [CrossRef] [PubMed].'
 
     Non-Matching Case:
     
@@ -315,69 +316,69 @@ async def retriever_and_siever_async(chunk, ref):
     response = await async_client.chat.completions.create(**data)
     return response.choices[0].message.content.lower()
 
-#no support or oppose classification (for sanity checking)
-async def retriever_and_siever_async_check(chunk, ref):
-    pro = """
-    Compare the 'Reference Article Text' (which is a chunk of the reference article) to the 'Text Referencing The Reference Article' (which cites the reference article). Identify which parts of the 'Reference Article Text' are being cited or referenced by the 'Text Referencing The Reference Article.' Referencing The Reference Article’ (which cites the reference article). Additionally, assign a confidence score (0-100) to each comparison and place it in brackets at the start of the output based on how likely 'Text Referencing The Reference Article' cites the 'Reference Article Text'.
+#no support or oppose classification (for sanity checking) (depreciated)
+# async def retriever_and_siever_async_check(chunk, ref):
+#     pro = """
+#     Compare the 'Reference Article Text' (which is a chunk of the reference article) to the 'Text Referencing The Reference Article' (which cites the reference article). Identify which parts of the 'Reference Article Text' are being cited or referenced by the 'Text Referencing The Reference Article.' Referencing The Reference Article’ (which cites the reference article). Additionally, assign a confidence score (0-100) to each comparison and place it in brackets at the start of the output based on how likely 'Text Referencing The Reference Article' cites the 'Reference Article Text'.
 
-    By 'citing,' we mean that the 'Text Referencing The Reference Article' refers to or aligns with the information, facts, or concepts in the 'Reference Article Text.' The match can be direct, paraphrased, or conceptually similar.
+#     By 'citing,' we mean that the 'Text Referencing The Reference Article' refers to or aligns with the information, facts, or concepts in the 'Reference Article Text.' The match can be direct, paraphrased, or conceptually similar.
 
-    Guidelines:
-    - Extract ALL relevant parts of the 'Reference Article Text' (chunk) that is being referenced in the 'Text Referencing The Reference Article.' You may output the whole 'Reference Article Text' (chunk) if the whole chunk is relevant.
-    - The match does not need to be exact; it can be a paraphrased or conceptually aligned statement.
-    - Consider not only direct references, but also cases where the 'Text Referencing The Reference Article' discusses related facts or concepts in different wording.
-    - If no part of the 'Reference Article Text' is cited, respond with 'no'.
-    - If the ‘Reference Article Text’ is a citation, no matter the classification, give it a score lower than 70
+#     Guidelines:
+#     - Extract ALL relevant parts of the 'Reference Article Text' (chunk) that is being referenced in the 'Text Referencing The Reference Article.' You may output the whole 'Reference Article Text' (chunk) if the whole chunk is relevant.
+#     - The match does not need to be exact; it can be a paraphrased or conceptually aligned statement.
+#     - Consider not only direct references, but also cases where the 'Text Referencing The Reference Article' discusses related facts or concepts in different wording.
+#     - If no part of the 'Reference Article Text' is cited, respond with 'no'.
+#     - If the ‘Reference Article Text’ is a citation, no matter the classification, give it a score lower than 70
 
-    Important Note:
-    There might be cases where the phrasing between the 'Reference Article Text' and the 'Text Referencing The Reference Article' differs, but the underlying concepts are aligned. For example, if the 'Reference Article Text' discusses gas production due to bacterial fermentation of lactose and the 'Text Referencing The Reference Article' discusses bloating and flatulence after lactose ingestion, these are conceptually aligned, and the relevant portion from the 'Reference Article Text' should be extracted.
+#     Important Note:
+#     There might be cases where the phrasing between the 'Reference Article Text' and the 'Text Referencing The Reference Article' differs, but the underlying concepts are aligned. For example, if the 'Reference Article Text' discusses gas production due to bacterial fermentation of lactose and the 'Text Referencing The Reference Article' discusses bloating and flatulence after lactose ingestion, these are conceptually aligned, and the relevant portion from the 'Reference Article Text' should be extracted.
 
-    Example of Matching Case:
+#     Example of Matching Case:
 
-    Input:
-    'Reference Article Text: Bacterial fermentation of lactose results in production of gases including hydrogen (H2), carbon dioxide (CO2), methane (CH4), and short-chain fatty acids (SCFA) that have effects on GI function (figure 1). Lactose intolerance. Lactose malabsorption (LM) is a necessary precondition for lactose intolerance (LI). However, the two must not be confused and the causes of symptoms must be considered separately. Many individuals with LM have no symptoms after ingestion of a standard serving of dairy products (table 1), whereas others develop symptoms (‘intolerance’) such as abdominal pain, borborygmi (rumbling tummy), and bloating after lactose intake (figure 1).
+#     Input:
+#     'Reference Article Text: Bacterial fermentation of lactose results in production of gases including hydrogen (H2), carbon dioxide (CO2), methane (CH4), and short-chain fatty acids (SCFA) that have effects on GI function (figure 1). Lactose intolerance. Lactose malabsorption (LM) is a necessary precondition for lactose intolerance (LI). However, the two must not be confused and the causes of symptoms must be considered separately. Many individuals with LM have no symptoms after ingestion of a standard serving of dairy products (table 1), whereas others develop symptoms (‘intolerance’) such as abdominal pain, borborygmi (rumbling tummy), and bloating after lactose intake (figure 1).
 
-    Text Referencing The Reference Article: The bacteria in the large intestine ferment lactose, resulting in gas formation, which can cause symptoms such as bloating and flatulence after lactose ingestion.'
+#     Text Referencing The Reference Article: The bacteria in the large intestine ferment lactose, resulting in gas formation, which can cause symptoms such as bloating and flatulence after lactose ingestion.'
 
-    Output:
-    '(90) Bacterial fermentation of lactose results in production of gases including hydrogen (H2), carbon dioxide (CO2), methane (CH4), and short-chain fatty acids (SCFA) that have effects on GI function (figure 1). Many individuals with LM have no symptoms after ingestion of a standard serving of dairy products (table 1), whereas others develop symptoms (‘intolerance’) such as abdominal pain, borborygmi (rumbling tummy), and bloating after lactose intake (figure 1).'
+#     Output:
+#     '(90) Bacterial fermentation of lactose results in production of gases including hydrogen (H2), carbon dioxide (CO2), methane (CH4), and short-chain fatty acids (SCFA) that have effects on GI function (figure 1). Many individuals with LM have no symptoms after ingestion of a standard serving of dairy products (table 1), whereas others develop symptoms (‘intolerance’) such as abdominal pain, borborygmi (rumbling tummy), and bloating after lactose intake (figure 1).'
 
-    Example of Matching Case but is citation:
+#     Example of Matching Case but is citation:
 
-    Input:
-    'Reference Article Text: Improvement of lac-tose digestion by humans following ingestion of unfermented aci-dophilus milk: inﬂuence of bile sensitivity, lactose transport, andacid tolerance of Lactobacillus acidophilus.Journal of Dairy Science80 (8):1537–1545.Odamaki, T., H.Sugahara, and S.Yonezawa. 2012.Effect of the oral intakeof yogurt containing Biﬁdobacterium longum BB536 on the cell num-bers of enterotoxigenic Bacteroides fragilis in microbiota.Anaerobe 18(1):14–18.Ojetti, V., G.Gigante, and M.Gabrielli. 2010.The effect of oral supplemen-tation with Lactobacillus reuteri or tilactase in lactose intolerantpatients: randomized trial.European Review for Medical and Pharma-cological Sciences 14 (3):163–70.Pakdaman, M.N., J.K.Udani, J.P.Molina, and M.Shahani. 2016.
-    Text Referencing The Reference Article: Pre- and probiotics may have a positive effect on lactose tolerance.'
+#     Input:
+#     'Reference Article Text: Improvement of lac-tose digestion by humans following ingestion of unfermented aci-dophilus milk: inﬂuence of bile sensitivity, lactose transport, andacid tolerance of Lactobacillus acidophilus.Journal of Dairy Science80 (8):1537–1545.Odamaki, T., H.Sugahara, and S.Yonezawa. 2012.Effect of the oral intakeof yogurt containing Biﬁdobacterium longum BB536 on the cell num-bers of enterotoxigenic Bacteroides fragilis in microbiota.Anaerobe 18(1):14–18.Ojetti, V., G.Gigante, and M.Gabrielli. 2010.The effect of oral supplemen-tation with Lactobacillus reuteri or tilactase in lactose intolerantpatients: randomized trial.European Review for Medical and Pharma-cological Sciences 14 (3):163–70.Pakdaman, M.N., J.K.Udani, J.P.Molina, and M.Shahani. 2016.
+#     Text Referencing The Reference Article: Pre- and probiotics may have a positive effect on lactose tolerance.'
 
-    Output:
-    '(60) improvement of lactose digestion by humans following ingestion of unfermented acidophilus milk: influence of bile sensitivity, lactose transport, and acid tolerance of lactobacillus acidophilus.'
+#     Output:
+#     '(60) improvement of lactose digestion by humans following ingestion of unfermented acidophilus milk: influence of bile sensitivity, lactose transport, and acid tolerance of lactobacillus acidophilus.'
 
-    Example of Non-Matching Case (When to Respond with 'No'):
+#     Example of Non-Matching Case (When to Respond with 'No'):
 
-    Input:
-    'Reference Article Text: Lactase persistence is common among populations of Northern European descent. The LCT −13’910:C/C genotype is associated with the ability to digest lactose in adulthood.
+#     Input:
+#     'Reference Article Text: Lactase persistence is common among populations of Northern European descent. The LCT −13’910:C/C genotype is associated with the ability to digest lactose in adulthood.
 
-    Text Referencing The Reference Article: The bacteria in the large intestine ferment lactose, resulting in gas formation, which can cause symptoms such as bloating and flatulence after lactose ingestion.'
+#     Text Referencing The Reference Article: The bacteria in the large intestine ferment lactose, resulting in gas formation, which can cause symptoms such as bloating and flatulence after lactose ingestion.'
 
-    Output:
-    'no'
+#     Output:
+#     'no'
 
-    Why this case results in 'no':
-    In this case, the 'Reference Article Text' discusses lactase persistence and a genetic factor related to lactose digestion, while the 'Text Referencing The Reference Article' discusses gas formation due to bacterial fermentation of lactose. These are different concepts, and no alignment exists between the two texts. Therefore, the correct response is 'no.'
+#     Why this case results in 'no':
+#     In this case, the 'Reference Article Text' discusses lactase persistence and a genetic factor related to lactose digestion, while the 'Text Referencing The Reference Article' discusses gas formation due to bacterial fermentation of lactose. These are different concepts, and no alignment exists between the two texts. Therefore, the correct response is 'no.'
 
-    Output ONLY the extraction. (the quoted texts after Output: in examples shown).
-    """
-    data = {
-        "model": "gpt-4o",
-        "messages": [
-            {"role": "system", "content": pro},
-            {"role": "user", "content": f"Reference Article Text: {chunk}, Text Referencing The Reference Article: {ref}"}
-        ],
-        "temperature": 0
-    }
+#     Output ONLY the extraction. (the quoted texts after Output: in examples shown).
+#     """
+#     data = {
+#         "model": "gpt-4o",
+#         "messages": [
+#             {"role": "system", "content": pro},
+#             {"role": "user", "content": f"Reference Article Text: {chunk}, Text Referencing The Reference Article: {ref}"}
+#         ],
+#         "temperature": 0
+#     }
 
-    # Make an asynchronous API call using the async client
-    response = await async_client.chat.completions.create(**data)
-    return response.choices[0].message.content.lower()
+#     # Make an asynchronous API call using the async client
+#     response = await async_client.chat.completions.create(**data)
+#     return response.choices[0].message.content.lower()
 
 
 
