@@ -133,6 +133,7 @@ x-api-key=[semantic_scholar_api]
 
 ## Installing dependencies backend
 In the root directory:
+
 Install the required packages for backend:
 
 ```sh
@@ -169,7 +170,12 @@ npm install
    npm run dev
    ```
 
-### **frontend**
+### **Frontend**
+#### **Overview**
+The frontend allows non-technical users to run the code to:
+1) Guide the agents in the correct direction
+2) Run background tasks while performing other duties
+3) Obtain a final output
 
 #### **/**
 Upload main article and reference article(s) to process. Edit extracted output in event LLM hallucinates
@@ -202,7 +208,7 @@ Allow user to see the difference in the article after the update together with t
 ![image](https://github.com/user-attachments/assets/01b70809-cb64-4dcc-9b36-e763f0ee4365)
 ![image](https://github.com/user-attachments/assets/2f2b866b-54e7-472d-8f60-a01b40045762)
 
-### **backend**
+### **Backend**
 
 #### **Overview**  
 The backend checks the main article’s integrity, discovers new references, evaluates how these references support or contradict the article’s cited statements and searches for new reference papers as well as check their integrity, how they support or contradict the main articles' cited statements if the current papers are not sufficient (for more details, refer to the [wiki](https://github.com/ajiayi-debug/referencesfinder/wiki/5-Workflow-%E2%80%90-Agentic-search-using-Agentic-AI)).
