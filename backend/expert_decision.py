@@ -246,6 +246,7 @@ def switch_sentiment(df_replacee):
 #then, we take all sieving by gpt 4o to summarize according t how much support/oppose reference text in main article
 #We also need to score how much paper supports/oppose statement as an overall of all top sieved chunks. 
 #include authors for citation
+#Remove row where score == irrelevant
 def make_pretty_for_expert(top_5, new_ref_collection, expert):
     collection_top5 = db[top_5]
     documents = list(
@@ -318,11 +319,13 @@ def make_pretty_for_expert(top_5, new_ref_collection, expert):
     # Remove the last occurrence of text in parentheses from the original 'Summary' column
     test['Summary'] = test['Summary'].str.replace(r'[\(\[]([^()\[\]]+)[\)\]]$', '', regex=True)
 
+    #Remove rows that are irrelevant
+    test = test[test['score'] == 'Relevant']
+
     # Switch sentiment for wrongly classified chunks (rarely occurs)
     test = switch_sentiment(test)
 
     name = expert + '.xlsx'
-    send_excel(test,'RAG',name)
     records = test.to_dict(orient='records')
     replace_database_collection(uri, db.name, expert, records)
 
@@ -1160,7 +1163,6 @@ def formatting():
     else:
         df_changes = pd.concat([df_replace, df_addition, df_edition], ignore_index=True)
         print('all dfs have data')
-    send_excel(df_changes,'RAG','changes.xlsx')
 
     updated_df_change,remove_ref,add_ref = update_references(df_main, df_changes)
 
