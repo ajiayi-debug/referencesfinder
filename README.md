@@ -132,6 +132,7 @@ x-api-key=[semantic_scholar_api]
 ```
 
 ## Installing dependencies backend
+In the root directory:
 Install the required packages for backend:
 
 ```sh
