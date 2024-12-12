@@ -102,9 +102,9 @@ function Processing() {
       updateStepStatus(i, "in-progress");
 
       const stepStartTime = Date.now();
+      let response; // Define response here to ensure it's always in scope
 
       try {
-        let response;
         switch (step.name) {
           case "Embed & Chunk Existing":
             response = await fetch("http://127.0.0.1:8000/embedandchunkexisting", {
@@ -112,20 +112,23 @@ function Processing() {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ email: userEmail }),
             });
+            
             break;
+
           case "Evaluate Existing References":
             try {
-              const response = await fetch("http://127.0.0.1:8000/evaluateexisting", {
+              const evalResponse = await fetch("http://127.0.0.1:8000/evaluateexisting", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email: userEmail }),
               });
 
-              if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+              if (!evalResponse.ok) {
+                throw new Error(`HTTP error! status: ${evalResponse.status}`);
               }
 
-              const blob = await response.blob();
+              // Download the Excel file
+              const blob = await evalResponse.blob();
               const url = window.URL.createObjectURL(blob);
               const a = document.createElement("a");
               a.href = url;
@@ -134,15 +137,19 @@ function Processing() {
               a.click();
               a.remove();
               window.URL.revokeObjectURL(url);
+
+              // Create a dummy response to keep code consistent
+              response = new Response(JSON.stringify({ success: true }), {
+                status: 200,
+                headers: { "Content-Type": "application/json" },
+              });
             } catch (error) {
               console.error("Error during file download:", error);
+              updateStepStatus(i, "failed");
+              throw error; // Stop the loop on failure
             }
-            // Simulate success after download
-            response = new Response(JSON.stringify({ success: true }), {
-              status: 200,
-              headers: { "Content-Type": "application/json" },
-            });
             break;
+
           case "Clean Existing References":
             response = await fetch("http://127.0.0.1:8000/cleanexisting", {
               method: "POST",
@@ -150,6 +157,7 @@ function Processing() {
               body: JSON.stringify({ email: userEmail }),
             });
             break;
+
           case "Search New References":
             response = await fetch("http://127.0.0.1:8000/search", {
               method: "POST",
@@ -157,6 +165,7 @@ function Processing() {
               body: JSON.stringify({ email: userEmail }),
             });
             break;
+
           case "Embed & Chunk New References":
             response = await fetch("http://127.0.0.1:8000/embedandchunknew", {
               method: "POST",
@@ -164,6 +173,7 @@ function Processing() {
               body: JSON.stringify({ email: userEmail }),
             });
             break;
+
           case "Evaluate New References":
             response = await fetch("http://127.0.0.1:8000/evaluatenew", {
               method: "POST",
@@ -171,6 +181,7 @@ function Processing() {
               body: JSON.stringify({ email: userEmail }),
             });
             break;
+
           case "Clean New References":
             response = await fetch("http://127.0.0.1:8000/cleannew", {
               method: "POST",
@@ -178,6 +189,7 @@ function Processing() {
               body: JSON.stringify({ email: userEmail }),
             });
             break;
+
           case "Agentic Search":
             response = await fetch("http://127.0.0.1:8000/agenticsearch", {
               method: "POST",
@@ -185,6 +197,7 @@ function Processing() {
               body: JSON.stringify({ email: userEmail }),
             });
             break;
+
           case "Expert Presentation":
             response = await fetch("http://127.0.0.1:8000/expertpresentation", {
               method: "POST",
@@ -192,21 +205,24 @@ function Processing() {
               body: JSON.stringify({ email: userEmail }),
             });
             break;
+
           default:
             throw new Error(`Unknown step: ${step.name}`);
         }
 
-        if (!response.ok) {
+        // Ensure response is defined and check .ok
+        if (!response || !response.ok) {
           throw new Error(`Failed at step: ${step.name}`);
         }
 
+        // For consistency, await response.json() since other steps return JSON
         const result = await response.json();
         console.log(`${step.name} Result:`, result);
 
         const stepEndTime = Date.now();
         const stepDuration = ((stepEndTime - stepStartTime) / 1000).toFixed(2);
-
         updateStepStatus(i, "completed", parseFloat(stepDuration));
+
       } catch (error) {
         console.error(`Error during ${step.name}:`, error);
         updateStepStatus(i, "failed");
@@ -341,7 +357,7 @@ function Processing() {
               isLoading || referencesLoading ? "opacity-50 cursor-not-allowed" : ""
             }`}
           >
-            Upload a folder of personally found new references 
+            Upload a folder of personally found new references
           </button>
           <input
             type="file"

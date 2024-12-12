@@ -146,8 +146,7 @@ def search_and_retrieve_keyword(collection_name, collection1_name,p=None):
     df_updated=add_pdf_url_column(df,download)
     #for now we move after checks to show what semantic scholar api misses out on, but eventually we will move first then update df
     move_pdf_files(ex_pdf, pdf_folder)
-    final_ans = 'new_ref_paper_ids_EXT_IDS_check.xlsx'
-    send_excel(df_updated, 'RAG', final_ans)
+    
     # Convert DataFrames to records
     records = df_updated.to_dict(orient='records')
 
@@ -263,10 +262,6 @@ def search_and_retrieve_keyword_agentic(new_metadata,old_metadata,p=None):
 
     # Move PDF files
     move_pdf_files(ex_pdf, pdf_folder)
-
-    #new data send to excel (new_metadata)
-    final_ans = 'new_ref_paper_ids_EXT_IDS_retry.xlsx'
-    send_excel(df_updated, 'RAG', final_ans)
 
     # Convert DataFrames to records
     records = df_updated.to_dict(orient='records')

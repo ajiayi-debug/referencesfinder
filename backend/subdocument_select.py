@@ -74,8 +74,8 @@ def main():
         # dfs.append(similiar)
     output_df = pd.concat(dfs, ignore_index=True)
 
-    send_excel(output_df,'RAG','data.xlsx')
-    send_excel(code_df, 'RAG', 'main_paper_extract.xlsx')
+    send_excel(output_df,'backend','data.xlsx')
+    send_excel(code_df, 'backend', 'main_paper_extract.xlsx')
 
     # Convert DataFrames to records
     records = output_df.to_dict(orient='records')

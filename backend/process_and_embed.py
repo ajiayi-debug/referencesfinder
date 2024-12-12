@@ -46,8 +46,6 @@ def process_pdfs_to_mongodb(files_directory, collection1, collection2):
     chunki = chunking(token_df, 'Text Content', 8190)
 
     emb=embed(chunki)
-    # final_ans='ref_emb.xlsx'
-    # send_excel(emb,'RAG', final_ans)
 
     # Convert DataFrames to records
     records1 = df_exploded.to_dict(orient='records')
@@ -103,8 +101,6 @@ def process_new_pdfs_to_mongodb(files_directory, collection1, collection2):
     chunki = chunking(token_df, 'Text Content', 8190)
 
     emb=embed(chunki)
-    final_ans='new_ref_emb.xlsx'
-    send_excel(emb,'RAG', final_ans)
 
     # Convert DataFrames to records
     records1 = df_exploded.to_dict(orient='records')
@@ -201,7 +197,7 @@ def process_pdfs_to_mongodb_noembed_new(files_directory, collection1, change_to_
 
     # Save data to MongoDB
     print("Sending data to MongoDB Atlas...")
-    send_excel(df_exploded,'RAG','test_async_chunk.xlsx')
+
     # Send all records at once for collection1
     if change_to_add:
         insert_documents(uri,db.name,collection1,records1)
