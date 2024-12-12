@@ -173,12 +173,20 @@ npm install
 
 #### **/**
 Upload main article and reference article(s) to process. Edit extracted output in event LLM hallucinates
+![image](https://github.com/user-attachments/assets/700b4b5c-9343-4996-beaf-819788551121)
+![image](https://github.com/user-attachments/assets/9e67fe40-1d01-4a35-8297-1108623c0d2f)
+![image](https://github.com/user-attachments/assets/3b359cfa-9b97-40cd-89ad-cb3465ce818a)
+![image](https://github.com/user-attachments/assets/7c8686fc-aad7-4e85-ba09-e17aaa3b5ead)
 
 #### **/processing**
-Allow user to upload any new reference that they want to check to see if they are relevant to main article. Check existing references for retractions and corrections and downloads an excel file for user to take note. Runs through finding new references and selecting those that are deemed valid for presentation. Notify user when whole process is done (in progress)
+Allow user to upload any new reference they have found that they want to check to see if they are relevant to main article. Check existing references for retractions and corrections and downloads an excel file for user to take note. Runs through finding new references and selecting those that are deemed valid for presentation. Notify user when whole process is done (in progress)
+![image](https://github.com/user-attachments/assets/0fe92695-7af1-44c5-9f92-85859f1ceee9)
+![image](https://github.com/user-attachments/assets/796f3e42-010b-4b01-bf34-2abbcd71b9bd)
+
 
 #### **/select**
 Allow user to select new reference papers that they deem as relevant to the main article and send for further processing.
+![image](https://github.com/user-attachments/assets/4a2624c3-3b4d-459e-94fc-611bcb37b470)
 
 #### **/udecide**
 Allow user to use the new selected reference article to update the article based on 
@@ -186,9 +194,13 @@ Allow user to use the new selected reference article to update the article based
 2) Adding new references to exisiting statements
 3) Adding edits together with new reference to back of statements in case of change in content
 Then, use an LLM to edit the article based on the user's selected edits
+![image](https://github.com/user-attachments/assets/9fd66f1b-0214-4dca-9dea-d33ecb4a1ef2)
+
 
 #### **/fileviewer**
-ALlow user to see the difference in the article after the update together with the edits made to the article in table form. Allow user to regenerate the edit process, download the article and clear all edits. ALso allow user to edit the article itself in event of LLM hallucination.
+Allow user to see the difference in the article after the update together with the edits made to the article in table form. Allow user to regenerate the edit process, download the article and clear all edits. Also allow user to edit the article itself in event of LLM hallucination.
+![image](https://github.com/user-attachments/assets/01b70809-cb64-4dcc-9b36-e763f0ee4365)
+![image](https://github.com/user-attachments/assets/2f2b866b-54e7-472d-8f60-a01b40045762)
 
 ### **backend**
 
