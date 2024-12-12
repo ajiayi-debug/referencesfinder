@@ -50,33 +50,33 @@ async def process_row_async(row, code):
     else:
         return 'no', new_row
     
-
-async def process_row_async_check(row, code):
-    """Async function to process each row in the DataFrame using the async Azure OpenAI call."""
-    chunk = row['Text Content']
-    ref = code[0]
+#deprecieted: classification for existing reference is important as well
+# async def process_row_async_check(row, code):
+#     """Async function to process each row in the DataFrame using the async Azure OpenAI call."""
+#     chunk = row['Text Content']
+#     ref = code[0]
     
 
-    await asyncio.sleep(10)
-    # Use the async wrapper to call the GPT service with retry logic
-    ans = await call_retrieve_sieve_with_async_check(chunk, ref)
+#     await asyncio.sleep(10)
+#     # Use the async wrapper to call the GPT service with retry logic
+#     ans = await call_retrieve_sieve_with_async_check(chunk, ref)
 
 
     
-    # Create a new row regardless of the answer
-    new_row = pd.DataFrame({
-        'Reference article name': [code[1]],
-        'Reference text in main article': [code[0]],
-        'Sieving by gpt 4o': [ans],
-        'Chunk': [chunk],
-        'Date': [code[2]]
-    })
+#     # Create a new row regardless of the answer
+#     new_row = pd.DataFrame({
+#         'Reference article name': [code[1]],
+#         'Reference text in main article': [code[0]],
+#         'Sieving by gpt 4o': [ans],
+#         'Chunk': [chunk],
+#         'Date': [code[2]]
+#     })
     
-    # Determine which category the result falls into
-    if ans not in ["'no'", "'no.'", "'"+ref.lower()+"'", "no", "no.", '', None]:
-        return 'valid', new_row
-    else:
-        return 'no', new_row
+#     # Determine which category the result falls into
+#     if ans not in ["'no'", "'no.'", "'"+ref.lower()+"'", "no", "no.", '', None]:
+#         return 'valid', new_row
+#     else:
+#         return 'no', new_row
 
 
 async def retrieve_sieve_async(df, code):
