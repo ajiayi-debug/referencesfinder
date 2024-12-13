@@ -58,10 +58,11 @@ The automation of reference management and article updates enables FC Institute 
 - A larger database to store different articles and all their related data such as old and new reference papers and their chunked content
 - Automation of final article edits instead of relying on experts in the event experts are unavailable (though not advised due to potential hallucination of LLMs)
 ---
-## Architecture of **Current** workflow
-![image](https://github.com/user-attachments/assets/71b8b450-e8ec-403f-ae02-38ea2e6a825e)
+## Architecture of workflow
+![image](https://github.com/user-attachments/assets/70e765f3-f2db-4ebe-97db-83c042a35abf)
 
-## Diagram of **Current** workflow
+
+## Diagram of workflow
 ![image](https://github.com/user-attachments/assets/a05bbda7-98ce-408f-98bd-82ab879bda90)
 
 ## Legend
