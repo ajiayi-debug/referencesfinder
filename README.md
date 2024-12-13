@@ -63,23 +63,6 @@ The automation of reference management and article updates enables FC Institute 
 ### Tech stack:
 ![image](https://github.com/user-attachments/assets/ddc8a7a4-d1fa-4501-9191-15a6c0fb0de2)
 
-## Diagram of workflow
-![image](https://github.com/user-attachments/assets/a05bbda7-98ce-408f-98bd-82ab879bda90)
-
-## Legend
-![image](https://github.com/user-attachments/assets/2aaad6da-0f6b-45bd-95b8-a581129d56cf)
-
-## Symbols
-![image](https://github.com/user-attachments/assets/185fb3c1-7f2f-4294-a767-1ced9900ca97)
-
-![image](https://github.com/user-attachments/assets/e32db32f-e6d9-48c4-bf08-e537d347ee5a)
-
-![image](https://github.com/user-attachments/assets/b8062c68-c2da-4a40-bd63-1ab41112f109)
-
-![image](https://github.com/user-attachments/assets/0995aa0e-ee29-4334-b96e-63196d1d1a71)
-
-**Note:** The conditional database will not be created at all if all statements have satisfactory papers (refer to the [wiki](https://github.com/ajiayi-debug/referencesfinder/wiki/5-Workflow-%E2%80%90-Agentic-search-using-Agentic-AI) for definition of satisfactory/unsatisfactory papers) and the [agentic search loop](https://github.com/ajiayi-debug/referencesfinder/wiki/5-Workflow-%E2%80%90-Agentic-search-using-Agentic-AI) will stop/ will not start at all
-
 # Instructions for project (as of 11/12/2024)
 ### Frontend set up
 Download node.js from [node.js](https://nodejs.org/en)
