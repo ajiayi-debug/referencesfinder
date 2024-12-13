@@ -60,7 +60,8 @@ The automation of reference management and article updates enables FC Institute 
 ---
 ## Architecture of workflow
 ![image](https://github.com/user-attachments/assets/70e765f3-f2db-4ebe-97db-83c042a35abf)
-
+### Tech stack:
+![image](https://github.com/user-attachments/assets/ddc8a7a4-d1fa-4501-9191-15a6c0fb0de2)
 
 ## Diagram of workflow
 ![image](https://github.com/user-attachments/assets/a05bbda7-98ce-408f-98bd-82ab879bda90)
