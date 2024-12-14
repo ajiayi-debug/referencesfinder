@@ -59,7 +59,8 @@ The automation of reference management and article updates enables FC Institute 
 - Automation of final article edits instead of relying on experts in the event experts are unavailable (though not advised due to potential hallucination of LLMs)
 ---
 ## Architecture of workflow
-![image](https://github.com/user-attachments/assets/70e765f3-f2db-4ebe-97db-83c042a35abf)
+![image](https://github.com/user-attachments/assets/621b1133-5ff1-4079-ba39-24afd79c6ac1)
+
 ### Tech stack:
 ![image](https://github.com/user-attachments/assets/ddc8a7a4-d1fa-4501-9191-15a6c0fb0de2)
 
