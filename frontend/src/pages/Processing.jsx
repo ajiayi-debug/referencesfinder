@@ -288,9 +288,18 @@ function Processing() {
   const progressPercentage = steps.length > 0 ? (completedSteps / steps.length) * 100 : 0;
 
   useEffect(() => {
-    const total = steps.reduce((acc, step) => acc + (step.time ? step.time : 0), 0);
-    setTotalTime(total.toFixed(2));
+    const totalInSeconds = steps.reduce((acc, step) => acc + (step.time ? step.time : 0), 0);
+    const hours = Math.floor(totalInSeconds / 3600);
+    const minutes = Math.floor((totalInSeconds % 3600) / 60);
+    const seconds = Math.floor(totalInSeconds % 60);
+  
+    const formattedTime = `${hours.toString().padStart(2, '0')}:${minutes
+      .toString()
+      .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    
+    setTotalTime(formattedTime);
   }, [steps]);
+  
 
   const handleProcessStart = () => {
     setShowEmailModal(false);
@@ -469,8 +478,9 @@ function Processing() {
         )}
 
         <div className="mt-4 text-center text-gray-700">
-          Total Time Taken: {totalTime} sec
+          Total Time Taken: {totalTime}
         </div>
+
 
         <div className="mt-6 flex justify-center">
           <button
