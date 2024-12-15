@@ -63,8 +63,6 @@ def retrieve_missing_references(valid, retry, statement_df):
 
 #update and send data for missing data
 def update_database_and_excel(missing_ref_df, uri, db):
-    """Update database and save missing references to Excel."""
-    send_excel(missing_ref_df, 'RAG', 'missing.xlsx')
     records = missing_ref_df.to_dict(orient='records')
     replace_database_collection(uri, db.name, 'missing', records)
 
@@ -123,7 +121,6 @@ def process_retry_logic(count, collection_processed_name, new_ref_collection,
             )
         )
         valid=pd.DataFrame(documents_valid)
-        send_excel(valid,'RAG','final_valid.xlsx')
         documents_retry = list(
             collection_retry.find(
                 {}, 
