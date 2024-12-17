@@ -216,25 +216,42 @@ The backend checks the main article’s integrity, discovers new references, eva
 
    GPT-4o matches chunks to statements, extracting exact text matches. Crossref API checks for retractions or corrections, with results saved to Excel.
 
-3. **Keyword Generation & New References:**  
-
-   GPT-4o generates keywords, triggering **Semantic Scholar API** searches. Downloadable papers are saved to the `papers` folder, alongside any PDFs added to `external_pdfs`.
-
-4. **Process New References:**  
-   Newly retrieved references undergo the same chunking process as in step 2.
-
-5. **Sieve and Label:**  
-
-   The agent extracts relevant chunks, labels them as **supporting or opposing**, and assigns **confidence scores**.
-
-6. **Retrieve top 5 paper chunks for each statement and paper:**
+3. **Retrieve top 5 paper chunks for each statement and paper:**
 
    Process the data to output the top 5 chunks per statement per paper per sentiment using **confidence score** given
 
-7. **Perform Agentic Search for poor performing statements:**
+4. **Keyword Generation & New References:**  
+
+   GPT-4o generates keywords, triggering **Semantic Scholar API** searches. Downloadable papers are saved to the `papers` folder, alongside any PDFs added to `external_pdfs`.
+
+5. **Process New References:**  
+   Newly retrieved references undergo the same chunking process as in step 2.
+
+6. **Sieve and Label:**  
+
+   The agent extracts relevant chunks, labels them as **supporting or opposing**, and assigns **confidence scores**.
+
+7. **Retrieve top 5 paper chunks for each statement and paper:**
+
+   Process the data to output the top 5 chunks per statement per paper per sentiment using **confidence score** given
+
+8. **Perform Agentic Search for poor performing statements:**
 
    Statements that do not have papers found or all papers found are poor will go through the search process again with a different prompt formulated by an evaluator agent for keyword generation.
    (Refer to the [wiki](https://github.com/ajiayi-debug/referencesfinder/wiki/5-Workflow-%E2%80%90-Agentic-search-using-Agentic-AI) for more information)
+9. **Retrieve top 5 paper chunks for each statement and paper:**
+
+   Process the data to output the top 5 chunks per statement per paper per sentiment using **confidence score** given
 
 
+#### **/select**
 
+Presents relevant papers with top 5 chunks and a summary for the chunks based on how relevant the papers are to the statement. Allows users to select papers for edits to the main article
+
+#### **/udecide**
+
+Allows users to edit the main article with a click of a few buttons using gpt 4o
+
+#### **/fileviewer**
+
+Allows users to see the final output and edit if necessary.
