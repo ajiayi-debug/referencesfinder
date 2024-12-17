@@ -379,23 +379,33 @@ def extract_classification(text):
         return None  # No valid matches found
 
 
-
-
-#output top score if >5 sieved content contain same top score, else output top 5 score
-def top_5_or_all_top_scores(group):
+def top_5_or_all_top_scores(group, threshold):
+    """
+    Returns all rows with the top score if more than 5 rows have the top score 
+    and all scores are above the threshold. Otherwise, returns up to 5 rows 
+    where all scores are above the threshold.
+    """
     # Sort the group by 'Confidence Score' in descending order
     sorted_group = group.sort_values(by='Confidence Score', ascending=False)
-    # Get the top score
-    top_score = sorted_group['Confidence Score'].iloc[0]
+    # Filter rows where 'Confidence Score' is above the threshold
+    filtered_group = sorted_group[sorted_group['Confidence Score'] >= threshold]
+    
+    if filtered_group.empty:
+        # If no rows meet the threshold, return an empty DataFrame
+        return filtered_group
+    
+    # Get the top score from the filtered group
+    top_score = filtered_group['Confidence Score'].iloc[0]
     # Check how many rows have the top score
-    top_score_count = (sorted_group['Confidence Score'] == top_score).sum()
+    top_score_count = (filtered_group['Confidence Score'] == top_score).sum()
     
     if top_score_count > 5:
         # If more than 5 rows have the top score, return all rows with that top score
-        return sorted_group[sorted_group['Confidence Score'] == top_score]
+        return filtered_group[filtered_group['Confidence Score'] == top_score]
     else:
-        # Otherwise, return the top 5 rows with the highest scores
-        return sorted_group.head(5)
+        # Otherwise, return all rows up to the top 5 that are above the threshold
+        return filtered_group.head(5)
+
 #get top score of each grp and check if below threshold
 
 #check if that particular statement's new ref article none of chunks meet threshold OR all chunks are negative
@@ -518,7 +528,7 @@ def cleaning(valid_collection_name, not_match, top_5, threshold=75, change_to_ad
     top_ranked_with_ties_df = (
         valid_df.groupby(
             ['Reference article name', 'Reference text in main article', 'Sentiment'], as_index=False
-        ).apply(top_5_or_all_top_scores).reset_index(drop=True)
+        ).apply(top_5_or_all_top_scores, threshold=threshold).reset_index(drop=True)
     )
 
     if change_to_add:
@@ -780,7 +790,7 @@ def cleaning_initial(valid_collection_name, not_match, top_5, threshold=75, chan
     top_ranked_with_ties_df = (
         valid_df.groupby(
             ['Reference article name', 'Reference text in main article', 'Sentiment'], as_index=False
-        ).apply(top_5_or_all_top_scores).reset_index(drop=True)
+        ).apply(top_5_or_all_top_scores, threshold=threshold).reset_index(drop=True)
     )
 
     if change_to_add:
