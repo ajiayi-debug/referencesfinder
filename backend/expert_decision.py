@@ -974,32 +974,23 @@ def edit_paper(df_main,text,remove_ref,add_ref):
 #format based on selection
 def formatting():
     #main paper data
-    text = read_text_file('extracted.txt')
-    result = edit_list(text)
-    data=ast.literal_eval(result)
-    print('Processing main df')
-    # Convert the nested structure to a DataFrame
-    df_main = (
-        pd.DataFrame(data, columns=["statement", "References"])  # Create DataFrame
-        .explode("References")  # Explode References column
-        .assign(
-            Citation=lambda df_replacee: df_replacee["References"].map(lambda x: x[0] if isinstance(x, list) else None),
-            Full_Reference=lambda df_replacee: df_replacee["References"].map(lambda x: x[1] if isinstance(x, list) else None)
-        )  # Extract Citation and Full Reference
-        .drop(columns=["References"])  # Drop the original References column
+    collection_main = db['collated_statements_and_citations']
+    documents_main = list(
+        collection_main.find(
+            {},
+            {
+                'Reference article name': 1,
+                'Reference text in main article': 1,
+                'Date': 1,
+                'Name of authors': 1
+            }
+        )
     )
-
-    pattern_removecitation = r"\([^)]*\)\s*$"
-
-    df_main['statement']=df_main['statement'].str.replace(pattern_removecitation, "", regex=True)
-    pattern_split = r'^(.*?)(?:,?\s+)?(\d{4})$'
-    df_main[['authors','date']]=df_main['Citation'].str.extract(pattern_split)
-
-    pattern_title =  r'\)\.\s*(.*?)(?:\. [A-Z]|$)'
-    df_main['articleName']=df_main['Full_Reference'].str.extract(pattern_title)
-    df_main=df_main.drop(columns=['Citation','Full_Reference'])
+    text = read_text_file('extracted.txt')
+    print('Processing main df')
+    df_main=pd.DataFrame(documents_main)
+    df_main=df_main.rename(columns={'Reference article name':'articleName','Reference text in main article':'statement','Date':'date','Name of authors':'authors'})
     df_main['edits']=''
-    df_original=df_main
     print('Processing updates')
     """For edits"""
     edit=db['edit']
