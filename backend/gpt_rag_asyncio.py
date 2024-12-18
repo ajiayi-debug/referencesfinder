@@ -664,7 +664,6 @@ async def extract_to_edit(file_content):
     return response.choices[0].message.content
 
 async def extract_statement_citation(text, new_statements):
-    print(new_statements)
     extraction_prompt = f"""
     You are a text editor. You edit the following text:
     {text}
@@ -733,7 +732,7 @@ async def convert_to_replace(row,text):
                     - If matching references are found, output them in the exact same format as they appear in the document to enable regex matching.
                     - Use only the information from the provided document and row data to create the output.
                     - If the input data matches the existing references in the document, repeat them exactly.
-                    - Respond with the output **only** in the specified structured format: [Statement(citation), Reference].
+                    - Respond with the output **only** in the specified structured format: [Statement(citation), [Reference]].
                     """
     data={
         "model":"gpt-4o",
@@ -800,8 +799,6 @@ async def find_reference_list(text):
 
 
 async def replace_reference_list(reference_list,remove_list,add_list):
-    print(remove_list)
-    print(add_list)
     replacement_list_prompt = f"""
     You are a reference list editor. Edit the Reference list by:
     1. Removing references found in the Reference removal list.
