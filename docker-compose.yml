@@ -10,11 +10,6 @@ services:
       - .env
     ports:
       - "8000:8000"
-    # If you want to pass extra environment variables or volumes, do it here
-    # environment:
-    #   ADDITIONAL_ENV: "Something"
-    # volumes:
-    #   - .:/app  # only for local dev if you want live code mounting
 
   frontend:
     build:
