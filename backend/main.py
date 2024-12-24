@@ -434,7 +434,7 @@ def evaluate_existing_references(request: EmailRequest):
         headers={"Content-Disposition": "attachment; filename=crossref.xlsx"}
     )
 @app.post('/cleanexisting', dependencies=[Depends(verify_internet_connection)])
-def clean_exisitng(request: EmailRequest):
+def clean_existing(request: EmailRequest):
     try:
         """Clean the old references for a summary for comparison when updating articles"""
         cleaning_initial(valid_collection_name='Agentic_sieved_RAG_original', not_match='No_match_agentic_original', top_5='top_5_original')
@@ -474,7 +474,7 @@ def evaluate_new_references(request: EmailRequest):
     return {"status":"Evaluate New References completed successfully."}
 
 @app.post('/cleannew', dependencies=[Depends(verify_internet_connection)])
-def clean_exisitng(request: EmailRequest):
+def clean_new(request: EmailRequest):
     try:
         """Clean the new references for a summary for comparison when updating articles"""
         cleaning('Agentic_sieved_RAG_new_support_nosupport_confidence','no_match_confidence','top_5',threshold=80)
