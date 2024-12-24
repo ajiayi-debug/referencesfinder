@@ -1,5 +1,6 @@
 # **References Finder**
-**Note** Until I get access to service principal access in azure, I am unable to dockerise the application due to the inability to automate token refresh without service principal access
+**Note** Until I get access to service principal access in azure, I am unable to dockerise the application due to the inability to automate token refresh without service principal access in a dockerised container.
+
 ## **Overview**
 The **References Finder** project aims to automate the updating process of non-branded educational articles for **FrieslandCampina (FC) Institute**. By leveraging **semi-agentic Retrieval-Augmented Generation (RAG)**, **Agentic Search** and **semantic chunking**, the project addresses the challenges of manual reference management. This approach reduces both **time and financial costs** involved in outsourcing to vendors and the manual effort of reading and validating scientific articles.
 ### For more information on experiments run on the differing methods and/or the detailed explanation on the methods, please refer to the [wiki](https://github.com/ajiayi-debug/referencesfinder/wiki) of this repository
@@ -13,14 +14,13 @@ The **retrieval, sieving and ranking agent** decides which of the semantic chunk
 #### 2. **Agentic Search**
 The **fully agentic search capability** will autonomously refine the **keyword search process**. If new papers (or semantic chunks) do not meet a confidence score threshold or no relevant papers are found to support a statement, the system will **retry by adjusting the keyword generator prompt**. This iterative approach aims to optimize retrieval and sieving for higher accuracy without human intervention.
 
-### **User experience**
-
-#### 1. **Easy updating of article using frontend interface**
-The frontend allows users to **Automate checking exisiting references and finding new references while away** with **a click of a button**. It also allows users to **edit the article with just a few clicks**
-
 ### **Semantic Chunking**
 #### 1. **Aurelio labs Semantic Chunker** 
 From comparison of the available semantic chunkers, Aurelio Labs semantic chunker was chosen. For more details, refer to the [wiki](https://github.com/ajiayi-debug/referencesfinder/wiki/3-Workflow-%E2%80%90-Existing-reference-articles)
+
+### **User experience**
+#### 1. **Easy updating of article using frontend interface**
+The frontend allows users to **Automate checking exisiting references and finding new references while away** with **a click of a button**. It also allows users to **edit the article with just a few clicks**
 
 ---
 
@@ -57,6 +57,8 @@ The automation of reference management and article updates enables FC Institute 
 - Fine-tuning of agents for more accurate retrieval, sieving, scoring and search
 - A larger database to store different articles and all their related data such as old and new reference papers and their chunked content
 - Automation of final article edits instead of relying on experts in the event experts are unavailable (though not advised due to potential hallucination of LLMs)
+- Cloud deployment for multiple user use
+  
 ---
 ## Architecture of workflow
 ![image](https://github.com/user-attachments/assets/621b1133-5ff1-4079-ba39-24afd79c6ac1)
@@ -196,7 +198,6 @@ Allow user to see the difference in the article after the update together with t
 ![image](https://github.com/user-attachments/assets/2f2b866b-54e7-472d-8f60-a01b40045762)
 
 ### **Backend**
-
 #### **Overview**  
 The backend checks the main article’s integrity, discovers new references, evaluates how these references support or contradict the article’s cited statements and searches for new reference papers as well as check their integrity, how they support or contradict the main articles' cited statements if the current papers are not sufficient (for more details, refer to the [wiki](https://github.com/ajiayi-debug/referencesfinder/wiki/5-Workflow-%E2%80%90-Agentic-search-using-Agentic-AI)).
 
