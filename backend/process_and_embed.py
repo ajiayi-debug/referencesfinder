@@ -120,91 +120,88 @@ def process_new_pdfs_to_mongodb(files_directory, collection1, collection2):
     delete_folder(directory)
 
 def process_pdfs_to_mongodb_noembed(files_directory, collection1):
-    #Note no embed means embedding not used for retrieval but embedding is used to calculate chunking boundary!!!
-    
-    directory = 'doc'  # Fixed directory
-    delete_folder(directory)
-    pdf_list = read_pdf_file_list(files_directory)
-    
-    # Process and save PDFs
-    process_and_save_pdfs(pdf_list, directory)
-    filenames = get_txt_names(files_directory)
+    """
+    Process PDFs into MongoDB (without using embeddings for retrieval).
+    """
+    try:
+        directory = 'doc'  # Fixed directory
+        delete_folder(directory)
+        pdf_list = read_pdf_file_list(files_directory)
 
-    processed_texts = read_processed_texts(directory, filenames)
-    processed_name = get_names(filenames, directory)
-    
+        # Example: show a simple progress bar for PDF processing
+        with tqdm(total=len(pdf_list), desc="Processing PDFs") as pbar:
+            process_and_save_pdfs(pdf_list, directory)
+            pbar.update(len(pdf_list))
 
-    data = {'PDF File': processed_name, 'Text Content': processed_texts}
-    df = pd.DataFrame(data)
-    df=process_dataframe_sc1(df)
+        filenames = get_txt_names(files_directory)
+        processed_texts = read_processed_texts(directory, filenames)
+        processed_name = get_names(filenames, directory)
 
-    #df = process_dataframe_into_chunks(df)
-    
-    df_exploded = df.explode('text_chunks').drop(columns=['Text Content'])
-    
-    # Rename the columns for clarity
-    df_exploded.rename(columns={'text_chunks': 'Text Content'}, inplace=True)
+        data = {'PDF File': processed_name, 'Text Content': processed_texts}
+        df = pd.DataFrame(data)
+        df = process_dataframe_sc1(df)
 
+        df_exploded = df.explode('text_chunks').drop(columns=['Text Content'])
+        df_exploded.rename(columns={'text_chunks': 'Text Content'}, inplace=True)
 
-    # Convert DataFrames to records
-    records1 = df_exploded.to_dict(orient='records')
+        records1 = df_exploded.to_dict(orient='records')
 
-    # Save data to MongoDB
-    print("Sending data to MongoDB Atlas...")
+        print("Sending data to MongoDB Atlas...")
+        replace_database_collection(uri, db.name, collection1, records1)
+        print(f"Data sent to MongoDB Atlas for collection: {collection1}")
 
-    # Send all records at once for collection1
-    replace_database_collection(uri, db.name, collection1, records1)
-    print(f"Data sent to MongoDB Atlas for collection: {collection1}")
+        delete_folder(directory)
 
-
-    delete_folder(directory)
+    finally:
+        # Force clear any leftover tqdm instances
+        tqdm._instances.clear()
 
 
 def process_pdfs_to_mongodb_noembed_new(files_directory, collection1, change_to_add=False):
-    directory = 'doc'  # Fixed directory
-    delete_folder(directory)
-    pdf_list = read_pdf_file_list(files_directory)
-    #filenames = get_txt_names(files_directory)
-    
-    # Process and save PDFs
-    process_invalid_pdfs(pdf_list)
-    pdf_list = read_pdf_file_list(files_directory)
-    #print(pdf_list)
-    process_and_save_pdfs(pdf_list, directory)
-    filenames= get_txt_names(files_directory)
+    """
+    Process new PDFs into MongoDB (without using embeddings for retrieval).
+    """
+    try:
+        directory = 'doc'  # Fixed directory
+        delete_folder(directory)
+        pdf_list = read_pdf_file_list(files_directory)
 
+        # Process invalid PDFs (whatever that entails)
+        process_invalid_pdfs(pdf_list)
 
-    processed_texts = read_processed_texts(directory, filenames)
-    #processed_name = get_names(filenames, directory)
-    processed_name=list_pdf_bases(files_directory)
-    
-    
+        # Refresh PDF list after invalid ones are removed
+        pdf_list = read_pdf_file_list(files_directory)
 
-    data = {'PDF File': processed_name, 'Text Content': processed_texts}
-    df = pd.DataFrame(data)
-    df=process_dataframe_sc1(df)
+        # Example: show a simple progress bar for PDF processing
+        with tqdm(total=len(pdf_list), desc="Processing NEW PDFs") as pbar:
+            process_and_save_pdfs(pdf_list, directory)
+            pbar.update(len(pdf_list))
 
-    #df = process_dataframe_into_chunks(df)
-    
-    df_exploded = df.explode('text_chunks').drop(columns=['Text Content'])
-    
-    # Rename the columns for clarity
-    df_exploded.rename(columns={'text_chunks': 'Text Content'}, inplace=True)
+        filenames = get_txt_names(files_directory)
 
-    
-    # Convert DataFrames to records
-    records1 = df_exploded.to_dict(orient='records')
+        processed_texts = read_processed_texts(directory, filenames)
+        processed_name = list_pdf_bases(files_directory)
 
-    # Save data to MongoDB
-    print("Sending data to MongoDB Atlas...")
+        data = {'PDF File': processed_name, 'Text Content': processed_texts}
+        df = pd.DataFrame(data)
+        df = process_dataframe_sc1(df)
 
-    # Send all records at once for collection1
-    if change_to_add:
-        insert_documents(uri,db.name,collection1,records1)
-    else:
-        replace_database_collection(uri, db.name, collection1, records1)
+        df_exploded = df.explode('text_chunks').drop(columns=['Text Content'])
+        df_exploded.rename(columns={'text_chunks': 'Text Content'}, inplace=True)
 
-    print(f"Data sent to MongoDB Atlas for collection: {collection1}")
+        records1 = df_exploded.to_dict(orient='records')
 
+        print("Sending data to MongoDB Atlas...")
 
-    delete_folder(directory)
+        if change_to_add:
+            insert_documents(uri, db.name, collection1, records1)
+        else:
+            replace_database_collection(uri, db.name, collection1, records1)
+
+        print(f"Data sent to MongoDB Atlas for collection: {collection1}")
+
+        delete_folder(directory)
+
+    finally:
+        # Force clear any leftover tqdm instances
+        tqdm._instances.clear()

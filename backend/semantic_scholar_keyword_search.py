@@ -48,235 +48,230 @@ async def async_process_dataframe(df_latest, p=None, max_concurrent_tasks=10):
 
 
 
+def search_and_retrieve_keyword(collection_name, collection1_name, p=None):
+    try:
+        delete_folder('papers')
+        collection = db[collection_name]
+        collection1 = collection1_name
+        documents = list(collection.find({}, {
+            '_id': 1,
+            'Reference article name': 1,
+            'Reference text in main article': 1,
+            'Date': 1
+        }))
+        df = pd.DataFrame(documents)
+        """Keep only latest date"""
+        # Convert 'Date' column to numeric to enable comparison
+        df['Date'] = pd.to_numeric(df['Date'], errors='coerce')
 
-def search_and_retrieve_keyword(collection_name, collection1_name,p=None):
-    delete_folder('papers')
-    collection=db[collection_name]
-    collection1=collection1_name
-    documents = list(collection.find({}, {'_id': 1, 'Reference article name': 1, 'Reference text in main article': 1, 'Date': 1 }))
-    df = pd.DataFrame(documents)
-    """Keep only latest date"""
-    # Convert 'Date' column to numeric to enable comparison
-    df['Date'] = pd.to_numeric(df['Date'], errors='coerce')
+        # Drop rows where 'Date' is NaN
+        df = df.dropna(subset=['Date'])
 
-    # Drop rows where 'Date' is NaN (if conversion fails for some entries)
-    df = df.dropna(subset=['Date'])
+        # Sort by 'Reference text in main article' and 'Date' in descending order
+        df = df.sort_values(by=['Reference text in main article', 'Date'], ascending=[True, False])
 
-    # Sort by 'Reference text in main article' and 'Date' in descending order
-    df = df.sort_values(by=['Reference text in main article', 'Date'], ascending=[True, False])
+        # Drop duplicates, keeping only the latest entry
+        df_latest = df.drop_duplicates(subset=['Reference text in main article'], keep='first')
+        df_latest.reset_index(drop=True, inplace=True)
 
-    # Drop duplicates, keeping only the first (latest) entry for each unique 'Reference text in main article'
-    df_latest = df.drop_duplicates(subset=['Reference text in main article'], keep='first')
+        print("Running async process on dataframe rows...")
+        keywords = asyncio.run(async_process_dataframe(df_latest, p))
 
+        # Integrate keywords with the data
+        nametextdate = []
+        for index, row in df_latest.iterrows():
+            name = row['Reference article name']
+            text = row['Reference text in main article']
+            date = row['Date']
+            keyword = keywords[index]
+            nametextdate.append([name, text, date, keyword])
 
-    # Reset index for cleanliness (optional)
-    df_latest.reset_index(drop=True, inplace=True)
-    print("Running async process on dataframe rows...")
-    keywords = asyncio.run(async_process_dataframe(df_latest,p))
+        download = []
+        ext_id = []
+        field = 'paperId,title,year,externalIds,openAccessPdf,isOpenAccess,authors'
 
-    # Create a list of tuples to integrate keywords with existing data
-    nametextdate = []
-    for index, row in df_latest.iterrows():
-        name = row['Reference article name']
-        text = row['Reference text in main article']
-        date = row['Date']
-        keyword = keywords[index]  # Use the corresponding keyword returned from async function
-        nametextdate.append([name, text, date, keyword])
+        # Process references with progress bar
+        for ntd in tqdm(nametextdate, desc="Processing references"):
+            n = ntd[0]
+            t = ntd[1]
+            d = ntd[2]
+            keyword = ntd[3]
 
-    download = []
-    ext_id = []
-    field = 'paperId,title,year,externalIds,openAccessPdf,isOpenAccess,authors'
-    
-    # Continue with the existing logic using the `nametextdate` that now includes keywords
-    for ntd in tqdm(nametextdate, desc="Processing references"):
-        n = ntd[0]
-        t = ntd[1]
-        d = ntd[2]
-        keyword = ntd[3]
-        
-        # Proceed with further logic using `keyword` instead of calling `process_row_async` again
-        papers = total_search_by_grouped_keywords(keyword, year=d, exclude_name=n, fields=field)
-        external_id_list, filtered_metadata_list = preprocess_paper_metadata(papers)
-        
-        for data in filtered_metadata_list:
-            download.append(data)
-        
-        total = papers
-        paper_ids = extract_paper_ids(total)
-        title = extract_title(total)
-        year = extract_year(total)
-        authors = extract_author(total)
-        
-        paperidandtitleandyearandauthors = []
-        for k in range(len(paper_ids)):
-            paperidandtitleandyearandauthors.append([paper_ids[k], title[k], year[k],authors[k]])
-        
-        # Append the paper ID and title information to `ntd`
-        ntd.append(paperidandtitleandyearandauthors)
-        
-        # Collect external IDs for tracking purposes
-        for j in external_id_list:
-            ext_id.append(j)
-    # print(nametextdate)
-    # print(download)
-    failed_downloads, successful_downloads=asyncio.run(process_and_download(download, directory='papers'))
+            papers = total_search_by_grouped_keywords(keyword, year=d, exclude_name=n, fields=field)
+            external_id_list, filtered_metadata_list = preprocess_paper_metadata(papers)
 
-    
-    flattened_data = []
-    for row in tqdm(nametextdate, desc="Flattening data"):
-        name, text, yearoforiginal, keyword, paper_idsandtitleandyearandauthors= row
-        if paper_idsandtitleandyearandauthors:  # If paper_idsandtitle is not empty
-            for pidty in paper_idsandtitleandyearandauthors:
-                paper_id=pidty[0]
-                title=pidty[1]
-                year=pidty[2]
-                authors=pidty[3]
-                flattened_data.append([name, text, yearoforiginal, keyword, paper_id, title,year,authors])
-        else:  # If paper_idsandtitle is empty
-            flattened_data.append([name, text, yearoforiginal, keyword, '','', '',''])  # Empty cell for paper_id and title
+            download.extend(filtered_metadata_list)
+            paper_ids = extract_paper_ids(papers)
+            title = extract_title(papers)
+            year = extract_year(papers)
+            authors = extract_author(papers)
 
+            paperidandtitleandyearandauthors = []
+            for k in range(len(paper_ids)):
+                paperidandtitleandyearandauthors.append(
+                    [paper_ids[k], title[k], year[k], authors[k]]
+                )
 
-    columns=['Title of original reference article', 'Text in main article referencing reference article', 'Year reference article released', 'Keywords for graph paper search','Paper Id of new reference article found', 'Title of new reference article found','Year new reference article found published','authors']
-    df=pd.DataFrame(flattened_data,columns=columns)
-    ex_pdf='external_pdfs'
-    pdf_folder = 'papers'
-    df= update_downloadable_status(df, pdf_folder)
-    df=add_external_id_to_undownloadable_papers(df,ext_id)
-    df=update_failure_reasons(df, failed_downloads)
-    df_updated=add_pdf_url_column(df,download)
-    #for now we move after checks to show what semantic scholar api misses out on, but eventually we will move first then update df
-    move_pdf_files(ex_pdf, pdf_folder)
-    
-    # Convert DataFrames to records
-    records = df_updated.to_dict(orient='records')
+            ntd.append(paperidandtitleandyearandauthors)
+            ext_id.extend(external_id_list)
 
-    # Save data to MongoDB
-    # Track progress for MongoDB operations
-    print("Sending data to MongoDB Atlas...")
-    replace_database_collection(uri, database, collection1, records)
+        failed_downloads, successful_downloads = asyncio.run(process_and_download(download, directory='papers'))
 
-
-def search_and_retrieve_keyword_agentic(new_metadata,old_metadata,p=None):
-    collection = db['missing']
-    collection1 = old_metadata
-    collection2 = new_metadata
-
-    # Include 'Reference article name' in your query
-    documents = list(collection.find({}, {'_id': 1, 'Reference article name': 1, 'Reference text in main article': 1, 'Date': 1}))
-    df = pd.DataFrame(documents)
-
-    # Ensure 'Reference article name' is in the DataFrame
-    if 'Reference article name' not in df.columns:
-        print("Error: 'Reference article name' not found in the DataFrame.")
-        return
-
-    # async function
-    keywords = asyncio.run(async_process_dataframe(df, p))
-
-    # Create a list of tuples to integrate keywords with existing data
-    nametextdate = []
-    for index, row in df.iterrows():
-        name = row['Reference article name']
-        text = row['Reference text in main article']
-        date = row['Date']
-        keyword = keywords[index]  # Use the corresponding keyword returned from async function
-        nametextdate.append([name, text, date, keyword])
-
-    download = []
-    ext_id = []
-    field = 'paperId,title,year,externalIds,openAccessPdf,isOpenAccess,authors'
-
-    # Initialize a new list to collect additional data
-    nametextdate_updated = []
-
-    # Continue with the existing logic using the `nametextdate` that now includes keywords
-    for ntd in tqdm(nametextdate, desc="Processing references"):
-        n = ntd[0]
-        t = ntd[1]
-        d = ntd[2]
-        keyword = ntd[3]
-
-        # Proceed with further logic using `keyword`
-        papers = total_search_by_grouped_keywords(keyword, year=d, exclude_name=n, fields=field)
-        external_id_list, filtered_metadata_list = preprocess_paper_metadata(papers)
-
-        download.extend(filtered_metadata_list)
-        total = papers
-        paper_ids = extract_paper_ids(total)
-        titles = extract_title(total)
-        years = extract_year(total)
-        authors = extract_author(total)
-
-        paperidandtitleandyearandauthors = []
-        for k in range(len(paper_ids)):
-            paperidandtitleandyearandauthors.append([paper_ids[k], titles[k], years[k],authors[k]])
-
-        # Append the paper ID and title information to `ntd`
-        ntd_extended = ntd + [paperidandtitleandyearandauthors]
-        nametextdate_updated.append(ntd_extended)
-
-        # Collect external IDs for tracking purposes
-        ext_id.extend(external_id_list)
-
-    # Replace the old nametextdate with the updated one
-    nametextdate = nametextdate_updated
-
-    failed_downloads, successful_downloads = asyncio.run(process_and_download(download, directory='retry_paper'))
-
-    # Flatten the data
-    flattened_data = []
-    for row in tqdm(nametextdate, desc="Flattening data"):
-        if len(row) == 5:
+        flattened_data = []
+        for row in tqdm(nametextdate, desc="Flattening data"):
             name, text, yearoforiginal, keyword, paper_idsandtitleandyearandauthors = row
-        else:
-            name, text, yearoforiginal, keyword = row
-            paper_idsandtitleandyearandauthors = []
+            if paper_idsandtitleandyearandauthors:
+                for pidty in paper_idsandtitleandyearandauthors:
+                    paper_id = pidty[0]
+                    title = pidty[1]
+                    yr = pidty[2]
+                    auth = pidty[3]
+                    flattened_data.append([name, text, yearoforiginal, keyword, paper_id, title, yr, auth])
+            else:
+                flattened_data.append([name, text, yearoforiginal, keyword, '', '', '', ''])
 
-        if paper_idsandtitleandyearandauthors:  # If paper_idsandtitleandyear is not empty
-            for pidty in paper_idsandtitleandyearandauthors:
-                paper_id = pidty[0]
-                title = pidty[1]
-                year = pidty[2]
-                authors = pidty[3]
-                flattened_data.append([name, text, yearoforiginal, keyword, paper_id, title, year,authors])
-        else:  # If paper_idsandtitleandyear is empty
-            flattened_data.append([name, text, yearoforiginal, keyword, '', '', '',''])  # Empty cells
+        columns = [
+            'Title of original reference article',
+            'Text in main article referencing reference article',
+            'Year reference article released',
+            'Keywords for graph paper search',
+            'Paper Id of new reference article found',
+            'Title of new reference article found',
+            'Year new reference article found published',
+            'authors'
+        ]
+        df = pd.DataFrame(flattened_data, columns=columns)
+        ex_pdf = 'external_pdfs'
+        pdf_folder = 'papers'
+        df = update_downloadable_status(df, pdf_folder)
+        df = add_external_id_to_undownloadable_papers(df, ext_id)
+        df = update_failure_reasons(df, failed_downloads)
+        df_updated = add_pdf_url_column(df, download)
 
-    columns = [
-        'Title of original reference article',
-        'Text in main article referencing reference article',
-        'Year reference article released',
-        'Keywords for graph paper search',
-        'Paper Id of new reference article found',
-        'Title of new reference article found',
-        'Year new reference article found published',
-        'authors'
-    ]
-    df = pd.DataFrame(flattened_data, columns=columns)
-    ex_pdf = 'external_pdfs'
-    pdf_folder = 'retry_paper'
-    df = update_downloadable_status(df, pdf_folder)
-    df = add_external_id_to_undownloadable_papers(df, ext_id)
-    df = update_failure_reasons(df, failed_downloads)
-    df_updated = add_pdf_url_column(df, download)
+        move_pdf_files(ex_pdf, pdf_folder)
 
-    # Move PDF files
-    move_pdf_files(ex_pdf, pdf_folder)
+        records = df_updated.to_dict(orient='records')
 
-    # Convert DataFrames to records
-    records = df_updated.to_dict(orient='records')
+        print("Sending data to MongoDB Atlas...")
+        replace_database_collection(uri, database, collection1, records)
 
-    # Save data to MongoDB
-    print("Sending data to MongoDB Atlas...")
-    # Ensure 'uri' and 'db' are defined
-    # Assuming 'db' is your database object, extract the database name
-    database_name = db.name
-    # ADD new found meta data to old meta data
-    insert_documents(uri, database_name, collection1, records)
-    #send new found metat data to a new collection (or replace if alr have)
-    replace_database_collection(uri,database_name,collection2,records)
-    #output new meta data in df form
-    return df_updated
+    finally:
+        # Force clear any leftover tqdm instances
+        tqdm._instances.clear()
 
 
+def search_and_retrieve_keyword_agentic(new_metadata, old_metadata, p=None):
+    try:
+        collection = db['missing']
+        collection1 = old_metadata
+        collection2 = new_metadata
 
+        documents = list(collection.find({}, {
+            '_id': 1,
+            'Reference article name': 1,
+            'Reference text in main article': 1,
+            'Date': 1
+        }))
+        df = pd.DataFrame(documents)
+
+        if 'Reference article name' not in df.columns:
+            print("Error: 'Reference article name' not found in the DataFrame.")
+            return
+
+        keywords = asyncio.run(async_process_dataframe(df, p))
+
+        nametextdate = []
+        for index, row in df.iterrows():
+            name = row['Reference article name']
+            text = row['Reference text in main article']
+            date = row['Date']
+            keyword = keywords[index]
+            nametextdate.append([name, text, date, keyword])
+
+        download = []
+        ext_id = []
+        field = 'paperId,title,year,externalIds,openAccessPdf,isOpenAccess,authors'
+
+        nametextdate_updated = []
+        for ntd in tqdm(nametextdate, desc="Processing references"):
+            n = ntd[0]
+            t = ntd[1]
+            d = ntd[2]
+            keyword = ntd[3]
+
+            papers = total_search_by_grouped_keywords(keyword, year=d, exclude_name=n, fields=field)
+            external_id_list, filtered_metadata_list = preprocess_paper_metadata(papers)
+
+            download.extend(filtered_metadata_list)
+            paper_ids = extract_paper_ids(papers)
+            titles = extract_title(papers)
+            years = extract_year(papers)
+            authors = extract_author(papers)
+
+            paperidandtitleandyearandauthors = []
+            for k in range(len(paper_ids)):
+                paperidandtitleandyearandauthors.append([paper_ids[k], titles[k], years[k], authors[k]])
+
+            ntd_extended = ntd + [paperidandtitleandyearandauthors]
+            nametextdate_updated.append(ntd_extended)
+            ext_id.extend(external_id_list)
+
+        nametextdate = nametextdate_updated
+        failed_downloads, successful_downloads = asyncio.run(
+            process_and_download(download, directory='retry_paper')
+        )
+
+        flattened_data = []
+        for row in tqdm(nametextdate, desc="Flattening data"):
+            # Ensure row has enough elements
+            if len(row) == 5:
+                name, text, yearoforiginal, keyword, paper_idsandtitleandyearandauthors = row
+            else:
+                name, text, yearoforiginal, keyword = row[:4]
+                paper_idsandtitleandyearandauthors = []
+
+            if paper_idsandtitleandyearandauthors:
+                for pidty in paper_idsandtitleandyearandauthors:
+                    paper_id = pidty[0]
+                    title = pidty[1]
+                    yr = pidty[2]
+                    auth = pidty[3]
+                    flattened_data.append([name, text, yearoforiginal, keyword, paper_id, title, yr, auth])
+            else:
+                flattened_data.append([name, text, yearoforiginal, keyword, '', '', '', ''])
+
+        columns = [
+            'Title of original reference article',
+            'Text in main article referencing reference article',
+            'Year reference article released',
+            'Keywords for graph paper search',
+            'Paper Id of new reference article found',
+            'Title of new reference article found',
+            'Year new reference article found published',
+            'authors'
+        ]
+        df = pd.DataFrame(flattened_data, columns=columns)
+        ex_pdf = 'external_pdfs'
+        pdf_folder = 'retry_paper'
+        df = update_downloadable_status(df, pdf_folder)
+        df = add_external_id_to_undownloadable_papers(df, ext_id)
+        df = update_failure_reasons(df, failed_downloads)
+        df_updated = add_pdf_url_column(df, download)
+
+        move_pdf_files(ex_pdf, pdf_folder)
+
+        records = df_updated.to_dict(orient='records')
+
+        print("Sending data to MongoDB Atlas...")
+        database_name = db.name
+
+        # Insert data into old metadata
+        insert_documents(uri, database_name, collection1, records)
+        # Replace data in new metadata
+        replace_database_collection(uri, database_name, collection2, records)
+
+        return df_updated
+
+    finally:
+        # Force clear any leftover tqdm instances
+        tqdm._instances.clear()

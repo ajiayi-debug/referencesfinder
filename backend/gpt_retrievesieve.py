@@ -178,26 +178,29 @@ def retrieve_sieve_check(df, code):
 
 
 
-#sanity checking existing references
-def retrieve_sieve_references(collection_processed_name, valid_collection_name, invalid_collection_name):
-    output_directory = 'backend'  # Fixed output directory
-    
-    # Get collections from MongoDB
-    collection_processed = db[collection_processed_name]
+from tqdm import tqdm
 
-    # Fetch documents from MongoDB
-    documents = list(collection_processed.find({}, {
-        '_id': 1, 'PDF File': 1, 'Text Content': 1, 'n_tokens': 1, 'Text Chunks': 1
-    }))
-    
-    if not documents:
-        print("No documents found in MongoDB.")
-        return
-    
-    df = pd.DataFrame(documents)
-    codable_collection=db['collated_statements_and_citations']
-    codable_df = list(
-    codable_collection.find(
+# Sanity checking existing references
+def retrieve_sieve_references(collection_processed_name, valid_collection_name, invalid_collection_name):
+    try:
+        output_directory = 'backend'  # Fixed output directory
+        
+        # Get collections from MongoDB
+        collection_processed = db[collection_processed_name]
+
+        # Fetch documents from MongoDB
+        documents = list(collection_processed.find({}, {
+            '_id': 1, 'PDF File': 1, 'Text Content': 1, 'n_tokens': 1, 'Text Chunks': 1
+        }))
+        
+        if not documents:
+            print("No documents found in MongoDB.")
+            return
+        
+        df = pd.DataFrame(documents)
+        codable_collection = db['collated_statements_and_citations']
+        codable_df = list(
+            codable_collection.find(
                 {},  # No filter, retrieve all documents
                 {
                     '_id': 1,
@@ -208,151 +211,187 @@ def retrieve_sieve_references(collection_processed_name, valid_collection_name, 
                 }
             )
         )
-    codable_df = pd.DataFrame(codable_df, columns=[ 'Reference text in main article', 'Reference article name','Date', 'Name of authors'])
-    
-    codable=codable_df.values.tolist()
-    #Check if any paper retracted or corrected. If yes, send to user as an excel file for user to take note (either way we are going to look for more recent papers) and send to mongo db 
-    #for us to edit in final paper if the paper cannot be updated (like its the same paper in the final form)
-    unique_dict = {item[1]: item for item in codable}
-    unique_list = list(unique_dict.values())
-    df_extract_retract=df_check(unique_list)
-    
-    valid_dfs = []
-    non_valid_dfs = []
-    not_dfs=[]
-    for code in tqdm(codable, desc="Retrieving and Sieving with an agent"):
-        # Retrieve the corresponding PDF for the code
-        pdf = retrieve_pdf(df, code)
-        if pdf.empty:
-            print(f"No PDF found for code: {code}")
-            continue
-
-        # Call the wrapper function to retrieve and sieve
-        valid, non_valid, no_df = retrieve_sieve_check(pdf, code)
+        codable_df = pd.DataFrame(codable_df, columns=[
+            'Reference text in main article',
+            'Reference article name',
+            'Date',
+            'Name of authors'
+        ])
         
-        # Append the results to the corresponding lists
-        if not valid.empty:
-            valid_dfs.append(valid)
-        if not non_valid.empty:
-            non_valid_dfs.append(non_valid)
-        if not no_df.empty:
-            not_dfs.append(no_df)
+        codable = codable_df.values.tolist()
         
-
-    # Concatenate non-valid results
-    if non_valid_dfs:
-        non_valid_output_df = pd.concat(non_valid_dfs, ignore_index=True)
-        non_valid=invalid_collection_name+'.xlsx'
-        records = non_valid_output_df.to_dict(orient='records')
-        replace_database_collection(uri, db.name, invalid_collection_name, records)
-    if not_dfs:
-        not_df=pd.concat(not_dfs, ignore_index=True)
-    # Send valid results to MongoDB
-    if valid_dfs:
-        valid_output_df = pd.concat(valid_dfs, ignore_index=True)
-        valid=valid_collection_name+'.xlsx'
-
-        # Convert to records and send to MongoDB
-        records = valid_output_df.to_dict(orient='records')
-        replace_database_collection(uri, db.name, valid_collection_name, records)
+        # Remove duplicates and check retractions/corrections
+        unique_dict = {item[1]: item for item in codable}
+        unique_list = list(unique_dict.values())
+        df_extract_retract = df_check(unique_list)
         
+        valid_dfs = []
+        non_valid_dfs = []
+        not_dfs = []
 
-    print("Process completed and data sent to MongoDB.")
+        # Already using tqdm for the loop
+        for code in tqdm(codable, desc="Retrieving and Sieving with an agent"):
+            pdf = retrieve_pdf(df, code)
+            if pdf.empty:
+                print(f"No PDF found for code: {code}")
+                continue
 
-#checking new references (need to classify)
-def retrieve_sieve_references_new(collection_processed_name, new_ref_collection, valid_collection_name, invalid_collection_name, not_match, change_to_add=False):
-    
-    # Get collections from MongoDB
-    collection_processed = db[collection_processed_name]
-    collection_f=db[new_ref_collection]
-    # Fetch documents from MongoDB
-    documents1 = list(collection_processed.find({}, {'_id': 1, 'PDF File': 1, 'Text Content': 1, 'n_tokens': 1, 'Text Chunks': 1}))
-    if not documents1:
-        print(f"No documents found in '{collection_processed_name}'. Skipping further processing.")
-        return  # Exit the function early
-    df = pd.DataFrame(documents1)
+            # Retrieve and sieve
+            valid, non_valid, no_df = retrieve_sieve_check(pdf, code)
 
-    documents2=list(collection_f.find({},{'_id': 1, 'Title of original reference article': 1, 'Text in main article referencing reference article': 1, 'Year reference article released': 1, 'Keywords for graph paper search': 1, 'Paper Id of new reference article found': 1, 'Title of new reference article found': 1, 'Year new reference article found published': 1,'authors':1, 'downloadable': 1, 'externalId_of_undownloadable_paper': 1, 'reason_for_failure': 1, 'pdf_url':1}))
+            if not valid.empty:
+                valid_dfs.append(valid)
+            if not non_valid.empty:
+                non_valid_dfs.append(non_valid)
+            if not no_df.empty:
+                not_dfs.append(no_df)
 
-    df_found=pd.DataFrame(documents2)
-    df=replace_pdf_file_with_title(df, df_found)
-    df_found=update_downloadable_status_invalid(df_found)
-    df_found = df_found[df_found['downloadable'] != 'no']
-    df_found = df_found[df_found['Paper Id of new reference article found'] != '']
-    
-
-    codable=[]
-    for index, row in df_found.iterrows():
-        text=row['Text in main article referencing reference article']
-        title=row['Title of new reference article found']
-        year=row['Year new reference article found published']
-        codable.append([text,title,year])
-
-    valid_dfs = []
-    non_valid_dfs = []
-    not_dfs=[]
-    for code in tqdm(codable, desc="Retrieving and Sieving with an agent"):
-        pdf = retrieve_pdf(df, code)
-        if pdf.empty:
-            print(f"No PDF found for code: {code}")
-            continue
-
-        # Retrieve and sieve
-        valid, non_valid ,no_df= retrieve_sieve(pdf, code)
-
-        if not valid.empty:
-            valid_dfs.append(valid)
-        if not non_valid.empty:
-            non_valid_dfs.append(non_valid)
-        if not no_df.empty:
-            not_dfs.append(no_df)
-        
-    if change_to_add:
-        if non_valid_dfs:
-            non_valid_output_df = pd.concat(non_valid_dfs, ignore_index=True)
-            non_valid=invalid_collection_name+'.xlsx'
-            records = non_valid_output_df.to_dict(orient='records')
-            insert_documents(uri, db.name, invalid_collection_name, records)
-        if not_dfs:
-            not_df=pd.concat(not_dfs, ignore_index=True)
-            reject=not_match+'.xlsx'
-            records = not_df.to_dict(orient='records')
-            insert_documents(uri, db.name, not_match, records)
-            
-        # Send valid results to MongoDB
-        if valid_dfs:
-            valid_output_df = pd.concat(valid_dfs, ignore_index=True)
-            valid=valid_collection_name+'.xlsx'
-
-            # Convert to records and send to MongoDB
-            records = valid_output_df.to_dict(orient='records')
-            insert_documents(uri, db.name, valid_collection_name, records)
-
-    else:
         # Concatenate non-valid results
         if non_valid_dfs:
             non_valid_output_df = pd.concat(non_valid_dfs, ignore_index=True)
-            non_valid=invalid_collection_name+'.xlsx'
+            non_valid = invalid_collection_name + '.xlsx'
             records = non_valid_output_df.to_dict(orient='records')
             replace_database_collection(uri, db.name, invalid_collection_name, records)
+
         if not_dfs:
-            not_df=pd.concat(not_dfs, ignore_index=True)
-            reject=not_match+'.xlsx'
-            records = not_df.to_dict(orient='records')
-            replace_database_collection(uri, db.name, not_match, records)
-            
+            not_df = pd.concat(not_dfs, ignore_index=True)
+
         # Send valid results to MongoDB
         if valid_dfs:
             valid_output_df = pd.concat(valid_dfs, ignore_index=True)
-            valid=valid_collection_name+'.xlsx'
-
-            # Convert to records and send to MongoDB
+            valid = valid_collection_name + '.xlsx'
             records = valid_output_df.to_dict(orient='records')
             replace_database_collection(uri, db.name, valid_collection_name, records)
 
+        print("Process completed and data sent to MongoDB.")
 
-    print("Process completed and data sent to MongoDB.")
+    finally:
+        # Force clear any leftover tqdm instances
+        tqdm._instances.clear()
 
+
+# Checking new references
+def retrieve_sieve_references_new(
+    collection_processed_name,
+    new_ref_collection,
+    valid_collection_name,
+    invalid_collection_name,
+    not_match,
+    change_to_add=False
+):
+    try:
+        # Get collections from MongoDB
+        collection_processed = db[collection_processed_name]
+        collection_f = db[new_ref_collection]
+
+        # Fetch documents from MongoDB
+        documents1 = list(collection_processed.find({}, {
+            '_id': 1,
+            'PDF File': 1,
+            'Text Content': 1,
+            'n_tokens': 1,
+            'Text Chunks': 1
+        }))
+        if not documents1:
+            print(f"No documents found in '{collection_processed_name}'. Skipping further processing.")
+            return  # Exit the function early
+
+        df = pd.DataFrame(documents1)
+
+        documents2 = list(collection_f.find({}, {
+            '_id': 1,
+            'Title of original reference article': 1,
+            'Text in main article referencing reference article': 1,
+            'Year reference article released': 1,
+            'Keywords for graph paper search': 1,
+            'Paper Id of new reference article found': 1,
+            'Title of new reference article found': 1,
+            'Year new reference article found published': 1,
+            'authors': 1,
+            'downloadable': 1,
+            'externalId_of_undownloadable_paper': 1,
+            'reason_for_failure': 1,
+            'pdf_url': 1
+        }))
+
+        df_found = pd.DataFrame(documents2)
+        df = replace_pdf_file_with_title(df, df_found)
+        df_found = update_downloadable_status_invalid(df_found)
+        df_found = df_found[df_found['downloadable'] != 'no']
+        df_found = df_found[df_found['Paper Id of new reference article found'] != '']
+
+        codable = []
+        for index, row in df_found.iterrows():
+            text = row['Text in main article referencing reference article']
+            title = row['Title of new reference article found']
+            year = row['Year new reference article found published']
+            codable.append([text, title, year])
+
+        valid_dfs = []
+        non_valid_dfs = []
+        not_dfs = []
+
+        # Use tqdm for the loop
+        for code in tqdm(codable, desc="Retrieving and Sieving with an agent"):
+            pdf = retrieve_pdf(df, code)
+            if pdf.empty:
+                print(f"No PDF found for code: {code}")
+                continue
+
+            # Retrieve and sieve
+            valid, non_valid, no_df = retrieve_sieve(pdf, code)
+
+            if not valid.empty:
+                valid_dfs.append(valid)
+            if not non_valid.empty:
+                non_valid_dfs.append(non_valid)
+            if not no_df.empty:
+                not_dfs.append(no_df)
+
+        if change_to_add:
+            # Insert logic
+            if non_valid_dfs:
+                non_valid_output_df = pd.concat(non_valid_dfs, ignore_index=True)
+                non_valid = invalid_collection_name + '.xlsx'
+                records = non_valid_output_df.to_dict(orient='records')
+                insert_documents(uri, db.name, invalid_collection_name, records)
+
+            if not_dfs:
+                not_df = pd.concat(not_dfs, ignore_index=True)
+                reject = not_match + '.xlsx'
+                records = not_df.to_dict(orient='records')
+                insert_documents(uri, db.name, not_match, records)
+
+            if valid_dfs:
+                valid_output_df = pd.concat(valid_dfs, ignore_index=True)
+                valid = valid_collection_name + '.xlsx'
+                records = valid_output_df.to_dict(orient='records')
+                insert_documents(uri, db.name, valid_collection_name, records)
+        else:
+            # Replace logic
+            if non_valid_dfs:
+                non_valid_output_df = pd.concat(non_valid_dfs, ignore_index=True)
+                non_valid = invalid_collection_name + '.xlsx'
+                records = non_valid_output_df.to_dict(orient='records')
+                replace_database_collection(uri, db.name, invalid_collection_name, records)
+
+            if not_dfs:
+                not_df = pd.concat(not_dfs, ignore_index=True)
+                reject = not_match + '.xlsx'
+                records = not_df.to_dict(orient='records')
+                replace_database_collection(uri, db.name, not_match, records)
+
+            if valid_dfs:
+                valid_output_df = pd.concat(valid_dfs, ignore_index=True)
+                valid = valid_collection_name + '.xlsx'
+                records = valid_output_df.to_dict(orient='records')
+                replace_database_collection(uri, db.name, valid_collection_name, records)
+
+        print("Process completed and data sent to MongoDB.")
+    
+    finally:
+        # Force clear any leftover tqdm instances
+        tqdm._instances.clear()
 
 
 # Function to extract valid classifications and scores
