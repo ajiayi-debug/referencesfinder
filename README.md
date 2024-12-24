@@ -172,7 +172,7 @@ Upload main article and reference article(s) to process. Edit extracted output i
 ![image](https://github.com/user-attachments/assets/7c8686fc-aad7-4e85-ba09-e17aaa3b5ead)
 
 #### **/processing**
-Allow user to upload any new reference they have found that they want to check to see if they are relevant to main article. Check existing references for retractions and corrections and downloads an excel file for user to take note. Runs through finding new references and selecting those that are deemed valid for presentation. Notify user when whole process is done (in progress)
+Allow user to upload any new reference they have found that they want to check to see if they are relevant to main article. Check existing references for retractions and corrections and downloads an excel file for user to take note. Runs through finding new references and selecting those that are deemed valid for presentation. Notify user when whole process is done (incomplete due to time constraints)
 ![image](https://github.com/user-attachments/assets/0fe92695-7af1-44c5-9f92-85859f1ceee9)
 ![image](https://github.com/user-attachments/assets/796f3e42-010b-4b01-bf34-2abbcd71b9bd)
 
