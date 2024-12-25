@@ -331,7 +331,7 @@ def make_pretty_for_expert(top_5, new_ref_collection, expert):
 
 
 
-#To make summary of original references in order to compare and see if new references found should supplement or replace the old references based on summary of retrieved content
+#To make summary of original references in order to compare and see if new references found should supplement or replace the old references based on summary of retrieved content that supports statements
 def make_summary_for_comparison(top_5,expert):
     collection_top5 = db[top_5]
     documents = list(
@@ -371,12 +371,13 @@ def make_summary_for_comparison(top_5,expert):
     unique_df = test.drop_duplicates(subset=['Reference article name', 'Reference text in main article'], keep=False)
     #drop summary then merge the list of sieved chunk and chunk tgt (with the rest being the same)
     df_replacee = duplicates.drop(columns=['Summary', 'Score'], errors='ignore')
-    grouped = df_replacee.groupby(['Reference article name', 'Reference text in main article']).agg({
-        'Sentiment': 'first',  # Take the first sentiment (or you can modify as needed)
+    grouped = df_replacee.groupby(
+        ['Reference article name', 'Reference text in main article', 'Sentiment', 'Date']
+    ).agg({
         'Chunk': lambda x: sum(x, []),  # Combine lists of 'Chunk'
         'Sieving by gpt 4o': lambda x: sum(x, []),  # Combine lists of 'Sieving by gpt 4o'
-        'Date': 'first',  # Take the first date
     }).reset_index()
+
     #Redo summary 
     new=summarize_score(grouped,got_authors=False)
     new['score'] = new['Summary'].str.extract(r'[\(\[]([^()\[\]]+)[\)\]]$')[0]
