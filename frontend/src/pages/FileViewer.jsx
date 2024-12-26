@@ -35,10 +35,14 @@ const FileViewer = () => {
     setLoading(false);
   };
 
-  // Fetch file content function
+  // Fetch file content function (with cache-busting)
   const fetchFileContent = async (subpath, setContent) => {
     try {
-      const response = await fetch(`http://127.0.0.1:8000/file/${subpath}`);
+      // Append a timestamp to avoid cached responses
+      const url = `http://127.0.0.1:8000/file/${subpath}?t=${Date.now()}`;
+      const response = await fetch(url, {
+        cache: 'no-store', // Instructs fetch not to store or use HTTP cache
+      });
       if (!response.ok) {
         throw new Error(`Failed to fetch file: ${subpath} (Status: ${response.status})`);
       }
@@ -543,5 +547,4 @@ const styles = {
 };
 
 export default FileViewer;
-
 
