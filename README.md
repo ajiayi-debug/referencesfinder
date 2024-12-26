@@ -2,6 +2,7 @@
 (Due to a lack of time, I am unable to dcokerise the application but I included (untested) docker code in the event that the application can be dockerised in future.)
 
 # **Live Demo**
+Click the following image to watch the live demo video:
 [![ReferenceFinder](https://github.com/user-attachments/assets/700b4b5c-9343-4996-beaf-819788551121)](https://youtu.be/CbiE0a6R8rc)
 
 
