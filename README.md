@@ -1,6 +1,9 @@
 # **References Finder**
 **Note** Until I get access to service principal access in azure, I am unable to dockerise the application due to the inability to automate token refresh without service principal access in a dockerised container.
 
+# **Live Demo**
+[Video](https://youtu.be/CbiE0a6R8rc)
+
 ## **Overview**
 The **References Finder** project aims to automate the updating process of non-branded educational articles for **FrieslandCampina (FC) Institute**. By leveraging **semi-agentic Retrieval-Augmented Generation (RAG)**, **Agentic Search** and **semantic chunking**, the project addresses the challenges of manual reference management. This approach reduces both **time and financial costs** involved in outsourcing to vendors and the manual effort of reading and validating scientific articles.
 ### For more information on experiments run on the differing methods and/or the detailed explanation on the methods, please refer to the [wiki](https://github.com/ajiayi-debug/referencesfinder/wiki) of this repository
