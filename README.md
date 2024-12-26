@@ -2,7 +2,8 @@
 (Due to a lack of time, I am unable to dcokerise the application but I included (untested) docker code in the event that the application can be dockerised in future.)
 
 # **Live Demo**
-[Video](https://youtu.be/CbiE0a6R8rc)
+[![ReferenceFinder](https://github.com/user-attachments/assets/700b4b5c-9343-4996-beaf-819788551121)](https://youtu.be/CbiE0a6R8rc)
+
 
 ## **Overview**
 The **References Finder** project aims to automate the updating process of non-branded educational articles for **Redacted Team**. By leveraging **semi-agentic Retrieval-Augmented Generation (RAG)**, **Agentic Search** and **semantic chunking**, the project addresses the challenges of manual reference management. This approach reduces both **time and financial costs** involved in outsourcing to vendors and the manual effort of reading and validating scientific articles.
