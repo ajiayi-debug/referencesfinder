@@ -1,5 +1,5 @@
 # **References Finder**
-**Note** Until I get access to service principal access in azure, I am unable to dockerise the application due to the inability to automate token refresh without service principal access in a dockerised container.
+(Due to a lack of time, I am unable to dcokerise the application but I included (untested) docker code in the event that the application can be dockerised in future.)
 
 # **Live Demo**
 [Video](https://youtu.be/CbiE0a6R8rc)
