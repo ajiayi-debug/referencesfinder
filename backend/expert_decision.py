@@ -245,7 +245,7 @@ def switch_sentiment(df_replacee):
 
 
 #function to split data according to reference article name, reference text in main article and sentiment
-#then, we take all sieving by gpt 4o to summarize according t how much support/oppose reference text in main article
+#then, we take all sieving by gpt 4o to summarize according to how much support/oppose reference text in main article
 #We also need to score how much paper supports/oppose statement as an overall of all top sieved chunks. 
 #include authors for citation
 #Remove row where score == irrelevant
@@ -559,7 +559,7 @@ def edit_list(file_content):
         return asyncio.run(edit_list_async(file_content))
 
 
-#extract info to be editted
+#extract info to be edited
 async def edit_list_async(file_content):
     """Call the async selector to choose the best prompt in the list"""
     return await call_extract_to_edit_async(file_content)
@@ -974,7 +974,7 @@ def edit_paper(df_main,text,remove_ref,add_ref):
 
 
 
-#format based on selection
+#update main article based on selection
 def formatting():
     #main paper data
     collection_main = db['collated_statements_and_citations']

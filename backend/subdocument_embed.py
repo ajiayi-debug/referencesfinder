@@ -10,6 +10,8 @@ from .call_mongodb import *
 from .semantic_chunking import *
 import ast
 
+#embedding of subdocument
+
 collection = 'subdocument_retrieved'
 extraction = 'main_paper_extracts'
 collections='subdocument_cossim'

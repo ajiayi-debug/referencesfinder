@@ -4,7 +4,7 @@ import os
 from pymongo import MongoClient
 from dotenv import load_dotenv
 load_dotenv()
-
+#send meta data of papers to mongo db
 def fetch_papers(query, api_key, max_results=100):
     url = "https://api.semanticscholar.org/graph/v1/paper/search"
     headers = {"x-api-key": api_key}

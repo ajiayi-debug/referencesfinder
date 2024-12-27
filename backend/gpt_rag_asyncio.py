@@ -9,7 +9,7 @@ from openai import AuthenticationError
 import httpx
 from .token_manager import get_or_refresh_token  
 
-
+#asynchronous GPT functions
 # Load environment variables
 load_dotenv()
 logging.basicConfig(level=logging.INFO)

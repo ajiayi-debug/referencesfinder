@@ -5,6 +5,8 @@ import os
 
 load_dotenv()
 
+#universal MongoDB client 
+
 class MongoDBClient:
     _client = None
 

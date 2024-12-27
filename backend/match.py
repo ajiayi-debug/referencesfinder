@@ -2,6 +2,8 @@ from nltk.tokenize import sent_tokenize
 from rapidfuzz import fuzz
 import re
 
+"""Supposed to match statements and citations in first page of frontend to extracted text and highlight the matches in extracted text but I could not get it to work in time :("""
+
 def preprocess_text(text):
     """
     Normalize text for consistent matching.

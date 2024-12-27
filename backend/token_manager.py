@@ -6,7 +6,7 @@ import time
 import logging
 from dotenv import load_dotenv
 import subprocess
-
+"""Universal token manager"""
 # Load environment variables
 load_dotenv()
 logging.basicConfig(level=logging.INFO)

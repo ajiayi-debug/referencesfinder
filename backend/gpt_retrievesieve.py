@@ -178,9 +178,7 @@ def retrieve_sieve_check(df, code):
 
 
 
-from tqdm import tqdm
-
-# Sanity checking existing references
+# Sanity checking existing references by performing RAG w GPT 4o as the retriever on uploaded, existing references
 def retrieve_sieve_references(collection_processed_name, valid_collection_name, invalid_collection_name):
     try:
         output_directory = 'backend'  # Fixed output directory
@@ -270,7 +268,7 @@ def retrieve_sieve_references(collection_processed_name, valid_collection_name, 
         tqdm._instances.clear()
 
 
-# Checking new references
+# Checking new references by performing RAG using GPT 4o as the retriever on new references found
 def retrieve_sieve_references_new(
     collection_processed_name,
     new_ref_collection,
@@ -479,7 +477,7 @@ def check_for_retry(group, threshold):
 
 
 
-#to remove hallucination of model outputting the statement
+#to remove hallucination of model outputing the statement
 def contains_reference_text(row):
     pattern = re.compile(re.escape(row['Reference text in main article']), re.IGNORECASE)
     return bool(pattern.search(row['Sieving by gpt 4o']))
@@ -598,7 +596,7 @@ def cleaning(valid_collection_name, not_match, top_5, threshold=75, change_to_ad
         records4 = retry_df.to_dict(orient='records')
         replace_database_collection(uri, db.name, 'retry', records4)
 
-
+#add new data found from agentic RAG to DB of data (respectively)
 def add_to_existing(collection_processed_name_new, collection_processed_name_original,
                     new_ref_collection_new, new_ref_collection_original,
                     valid_collection_name_new, valid_collection_name_original,
@@ -766,7 +764,7 @@ def send_excel_all(collection_processed_name,new_ref_collection,valid_collection
     send_excel(df_top_5,'backend',name_top_5)
 
 
-#cleaning without retry logic since this is initial reference articles so we just     
+#cleaning without retry logic since this is initial reference articles so we just clean    
 def cleaning_initial(valid_collection_name, not_match, top_5, threshold=75, change_to_add=False):
     # Fetch documents from the collection
     collection_valid = db[valid_collection_name]

@@ -10,6 +10,7 @@ from .call_mongodb import *
 from .semantic_chunking import *
 import ast
 
+#choosing which subdocument to focus on based on summary of subdocument using cos sim
 files_directory='text' 
 collection='subdocument_retrieved'
 extraction='main_paper_extracts'

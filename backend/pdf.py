@@ -14,6 +14,8 @@ from typing import AsyncGenerator, Generator, Iterable, TypeVar, Union, List, Di
 from pathlib import Path
 load_dotenv()
 
+"""Every functions deals w the main PDF in terms of extracted text etc"""
+
 #get list of pdf file location in the directory
 def read_pdf_file_list(directory):
     abs_directory = os.path.abspath(directory)

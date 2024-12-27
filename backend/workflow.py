@@ -9,7 +9,7 @@ from .agentic_search_system import *
 from .expert_decision import *
 from .agentic_initial_check import get_statements_agentic
 
-
+# Workflow without main.py (without frontend)
 
 """Sanity checking"""
 """Get the statements and their respective reference articles and send to mongodb"""

@@ -5,8 +5,7 @@ from openai import AzureOpenAI
 import time
 import unicodedata
 import logging
-
-
+#synchronous GPT functions
 load_dotenv()
 
 # Configure logging to display information

@@ -5,6 +5,8 @@ import pandas as pd
 from .embedding import *
 import ast
 
+#running subdocument RAG
+
 text=full_cycle('text/heyman.pdf', 'heyman_test')
 text=clean_text(text)
 split_page=chunk_text_by_page(text)

@@ -6,7 +6,7 @@ import time
 import logging
 import asyncio
 
-
+#workflow w no agentic search
 """Sanity checking"""
 """Get the statements and their respective reference articles and send to mongodb"""
 logging.info('Finding initial references')
