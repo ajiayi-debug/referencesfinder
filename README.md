@@ -60,6 +60,7 @@ The automation of reference management and article updates enables FC Institute 
 
 ## **Future Directions**
 - Fine-tuning of agents for more accurate retrieval, sieving, scoring and search
+- Knowledge RAG for Entity linking in terms of authors, citations etc.
 - A larger database to store different articles and all their related data such as old and new reference papers and their chunked content
 - Automation of final article edits instead of relying on experts in the event experts are unavailable (though not advised due to potential hallucination of LLMs)
 - Cloud deployment for multiple user use
