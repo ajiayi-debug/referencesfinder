@@ -11,6 +11,8 @@ from num2words import num2words
 from tqdm import tqdm
 
 
+#Normal embedder (not semantic chunker) that uses set tokens to embed, page to embed etc
+
 load_dotenv()
 
 az_path = os.getenv("az_path")

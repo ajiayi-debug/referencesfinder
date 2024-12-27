@@ -12,6 +12,8 @@ import pandas as pd
 import string
 import logging
 
+"""Code for user decision after processing is done as well as presentation for user decision"""
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

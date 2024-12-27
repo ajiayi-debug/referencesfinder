@@ -12,6 +12,11 @@ from .gpt_rag_asyncio import *
 import asyncio
 from .mongo_client import MongoDBClient
 
+#Please note that os.getenv(PDF) is sort of depreciated (not in use anymore)
+#Hence, I removed the PDF in my .env file. U will need to manually put in the PDF name in the following format:
+#PDF = 'name of pdf.pdf'
+#place PDF in root directory as well
+
 load_dotenv()
 #main pdf
 pdf_to_check = os.getenv("PDF")
@@ -20,6 +25,7 @@ client = MongoDBClient.get_client()
 db = client['data']
 
 #chunked and embedded original refs database, new database name to store output
+#extracts statements and citations from main article then retrieves relevant chunks from embedded and chunked db using cos sim
 def process_old_references(collection_processed_name, collection_name):
     pdf_to_check = os.getenv("PDF")
     
@@ -82,6 +88,7 @@ def process_old_references(collection_processed_name, collection_name):
 
     print("Data sent to MongoDB Atlas.")
 
+#retrieves relevant chunks from embedded and chunked db using cos sim
 def process_new_references(collection_processed_name, new_collection_name, collection_found):
     output_directory = 'backend'  # Fixed output directory
     
@@ -174,6 +181,7 @@ def process_new_references(collection_processed_name, new_collection_name, colle
 
     print("Data sent to MongoDB Atlas.")
 
+#extracts statements from main article
 def get_statements():
     # Wrapper to call async function from sync function
     async def _get_statements_async():

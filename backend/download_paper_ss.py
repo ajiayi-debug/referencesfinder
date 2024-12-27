@@ -15,6 +15,8 @@ S2_API_KEY = os.environ['x-api-key']
 
 T = TypeVar('T')
 
+"""Downloads papers found from semantic scholar if they are downloadable """
+
 def batched(iterable: Iterable[T], n: int) -> Generator[list[T], None, None]:
     "Batch data into tuples of length n. The last batch may be shorter."
     if n < 1:

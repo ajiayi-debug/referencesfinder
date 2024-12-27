@@ -15,8 +15,11 @@ db = client['data']
 uri = os.getenv("uri_mongo")
 
 
-
+#Embed and chunk PDFs of reference articles (initial, uploaded by user) and send these chunks to mongoDB
 def process_pdfs_to_mongodb(files_directory, collection1, collection2):
+    """
+    Process PDFs to MongoDB (Using embeddings for retrieval)
+    """
     
     directory = 'doc'  # Fixed directory
 
@@ -64,8 +67,11 @@ def process_pdfs_to_mongodb(files_directory, collection1, collection2):
 
     delete_folder(directory)
 
+#Embed and chunk PDFs of new reference articles (found from searching semantic scholar api) and send these chunks to mongoDB
 def process_new_pdfs_to_mongodb(files_directory, collection1, collection2):
-    
+    """
+    Process PDFs to MongoDB (Using embeddings for retrieval)
+    """
     directory = 'doc'  # Fixed directory
 
     pdf_list = read_pdf_file_list(files_directory)
@@ -119,6 +125,7 @@ def process_new_pdfs_to_mongodb(files_directory, collection1, collection2):
 
     delete_folder(directory)
 
+#Embed and chunk PDFs of reference articles (initial, uploaded by user) and send these chunks to mongoDB
 def process_pdfs_to_mongodb_noembed(files_directory, collection1):
     """
     Process PDFs into MongoDB (without using embeddings for retrieval).
@@ -156,7 +163,7 @@ def process_pdfs_to_mongodb_noembed(files_directory, collection1):
         # Force clear any leftover tqdm instances
         tqdm._instances.clear()
 
-
+#Embed and chunk PDFs of new reference articles (found from searching semantic scholar api) and send these chunks to mongoDB
 def process_pdfs_to_mongodb_noembed_new(files_directory, collection1, change_to_add=False):
     """
     Process new PDFs into MongoDB (without using embeddings for retrieval).
