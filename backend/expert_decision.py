@@ -692,7 +692,6 @@ def update_references(df_main, replace_df):
     - list: Unique references removed from df_main (Old References).
     - list: References added to df_main (New References).
     """
-    import string
 
     def normalize(text):
         """Normalize text by removing punctuation, converting to lowercase, and stripping spaces."""
