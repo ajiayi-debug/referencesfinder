@@ -195,6 +195,7 @@ Allow user to use the new selected reference article to update the article based
 2) Adding new references to exisiting statements
 3) Adding edits together with new reference to back of statements in case of change in content
 Then, use an LLM to edit the article based on the user's selected edits
+
 ![image](https://github.com/user-attachments/assets/9fd66f1b-0214-4dca-9dea-d33ecb4a1ef2)
 
 
