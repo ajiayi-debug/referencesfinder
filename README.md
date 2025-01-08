@@ -1,5 +1,5 @@
 # **References Finder**
-(Due to a lack of time, I am unable to dcokerise the application due to lack of permissions for service principal in azure open ai, but I included (untested) docker code in the event that the application can be dockerised in future.)
+(Due to a lack of time, I am unable to dcokerise the application due to lack of permissions for service principal in azure open ai, but I included (untested) docker code in the event that the application can be dockerised in future. Do note that you will need to add the service principal details in the .env file as well which I did not document in my steps if you would like to dockerise the application.)
 
 # **Live Demo**
 Click the following image to watch the live demo video:
